@@ -1,0 +1,41 @@
+name: Deploy to World Server
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - 'world'
+  workflow_dispatch:  # Allows manual execution from the Actions page
+
+env:
+  DCL_PRIVATE_KEY: ${{ secrets.DCL_PRIVATE_KEY }}
+
+jobs:
+  deploy:
+    name: Deploy to World Server
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: dcl
+        
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Use Node.js 24
+      uses: actions/setup-node@v4
+      with:
+        node-version: 24
+    
+    - name: Install npm packages
+      run: |
+        npm install
+        
+    - name: Build scene
+      run: |
+        npm run build:ci
+        
+    - name: Deploy scene
+      run: |
+        npm run deploy:world
