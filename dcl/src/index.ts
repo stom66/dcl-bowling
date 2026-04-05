@@ -1,44 +1,14 @@
-import { Quaternion, Vector3 } from '@dcl/sdk/math'
-import { engine, Transform, GltfContainer } from '@dcl/sdk/ecs'
-//
-// Note the 180 rotation, this is so that position in Blender align with positions in DCL (with Y and Z swapped)
+import { initClient } from "src/client/index";
+import { initServer } from "src/server/index";
 
-import { Settings } from "./_settings"
-import { setupUi }  from './ui'
+import { isServer } from "@dcl/sdk/network";
 
-export function main() {
-	
-	setupUi()
-
-	// ███████╗ ██████╗███████╗███╗   ██╗███████╗    ██████╗  █████╗ ██████╗ ███████╗███╗   ██╗████████╗
-	// ██╔════╝██╔════╝██╔════╝████╗  ██║██╔════╝    ██╔══██╗██╔══██╗██╔══██╗██╔════╝████╗  ██║╚══██╔══╝
-	// ███████╗██║     █████╗  ██╔██╗ ██║█████╗      ██████╔╝███████║██████╔╝█████╗  ██╔██╗ ██║   ██║
-	// ╚════██║██║     ██╔══╝  ██║╚██╗██║██╔══╝      ██╔═══╝ ██╔══██║██╔══██╗██╔══╝  ██║╚██╗██║   ██║
-	// ███████║╚██████╗███████╗██║ ╚████║███████╗    ██║     ██║  ██║██║  ██║███████╗██║ ╚████║   ██║
-	// ╚══════╝ ╚═════╝╚══════╝╚═╝  ╚═══╝╚══════╝    ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═══╝   ╚═╝
-
-	const _scene = engine.addEntity()
-
-	Transform.create(_scene, Settings.SCENE_TRANSFORM_180)
-
-
-
-	// ███████╗██╗  ██╗ █████╗ ███╗   ███╗██████╗ ██╗     ███████╗     █████╗ ███████╗███████╗███████╗████████╗
-	// ██╔════╝╚██╗██╔╝██╔══██╗████╗ ████║██╔══██╗██║     ██╔════╝    ██╔══██╗██╔════╝██╔════╝██╔════╝╚══██╔══╝
-	// █████╗   ╚███╔╝ ███████║██╔████╔██║██████╔╝██║     █████╗      ███████║███████╗███████╗█████╗     ██║
-	// ██╔══╝   ██╔██╗ ██╔══██║██║╚██╔╝██║██╔═══╝ ██║     ██╔══╝      ██╔══██║╚════██║╚════██║██╔══╝     ██║
-	// ███████╗██╔╝ ██╗██║  ██║██║ ╚═╝ ██║██║     ███████╗███████╗    ██║  ██║███████║███████║███████╗   ██║
-	// ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝     ╚══════╝╚══════╝    ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝   ╚═╝
-	//
-
-	let asset1 = engine.addEntity()
-
-	Transform.create(asset1, Settings.SCENE_TRANSFORM)
-
-	Transform.getMutable(asset1).parent = _scene
-
-	GltfContainer.create(asset1, {
-		src: "models/example_model.gltf"
-	})
-
+export async function main(): Promise<void> {
+	if (isServer()) {
+		console.log("Initializing server")
+		await initServer()
+	} else {
+		console.log("Initializing client")
+		await initClient()
+	}
 }
