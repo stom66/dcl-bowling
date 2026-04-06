@@ -20,8 +20,8 @@ export class GameSettings {
 	static MAX_LANES = 6
 	static MAX_PLAYERS_PER_LANE = 4
 
-	static GAME_START_DELAY = 6000
-	static TURN_DURATION = 10000
+	static GAME_START_DELAY = 1000 * 3
+	static TURN_DURATION = 1000 * 10
 
 	static LANE_POSITIONS = [...lanePositions]
 }

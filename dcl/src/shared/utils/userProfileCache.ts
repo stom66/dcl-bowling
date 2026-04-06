@@ -3,6 +3,7 @@
  */
 
 import { engine } from '@dcl/sdk/ecs'
+import { isServer } from '@dcl/sdk/network'
 import { getPlayer, onEnterScene } from '@dcl/sdk/players'
 
 import type { DecentralandProfile } from 'src/shared/types'
@@ -40,14 +41,20 @@ class UserProfileCache {
 	
 		this.initPromise = (async () => {
 			try {
+				// Headless authoritative server never has a local player; waiting would block forever.
+				if (isServer()) {
+					this.isInitialised = true
+					return
+				}
+
 				// Wait deterministically for local player
 				this.localUserId = await this.waitForLocalPlayer()
-	
+
 				this.isInitialised = true
-	
+
 				// Prefetch local profile
 				void this.getUserProfile()
-	
+
 				// Cache profiles for players entering scene
 				onEnterScene((player) => {
 					if (!player) return

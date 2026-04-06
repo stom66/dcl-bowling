@@ -1,9 +1,7 @@
 import { LaneStatus } from "src/shared/enums"
 import { GameSettings } from "src/shared/settings"
-import { LaneState, NotifyLaneStatePayload, Outfit, ServerState } from "src/shared/types"
+import { LaneState, NotifyLaneStatePayload, ServerState } from "src/shared/types"
 
-import { gameManager } from "src/server/gameManager"
-import { notifyLaneStateUpdate } from "src/server/serverMessaging"
 import { userProfileCache } from "src/shared/utils/userProfileCache"
 
 
@@ -72,6 +70,25 @@ export class ServerStore {
 		return Array.from(this.serverState.lanes[laneIndex].players.keys())
 	}
 
+	/** Lane index containing this player, if any. */
+	findLaneByUserId(userId: string): number | undefined {
+		for (let i = 0; i < this.serverState.lanes.length; i++) {
+			if (this.serverState.lanes[i].players.has(userId)) return i
+		}
+		return undefined
+	}
+
+	/** Reset per-frame roll arrays (10 frames each) for every player on the lane. */
+	initLaneScorecards(laneIndex: number): void {
+		const lane = this.serverState.lanes[laneIndex]
+		for (const userId of lane.players.keys()) {
+			lane.frames.set(
+				userId,
+				Array.from({ length: 10 }, () => [] as number[]),
+			)
+		}
+	}
+
 	resetLaneState(laneIndex: number): void {
 		this.serverState.lanes[laneIndex] = this.getDefaultLaneState(laneIndex)
 	}
@@ -80,8 +97,11 @@ export class ServerStore {
 	async addPlayer(userId: string, laneIndex: number): Promise<void> {
 		console.log(`serverStore: addPlayer: adding userId ${userId} to players map.`)
 
+		const lane = this.serverState.lanes[laneIndex]
+		lane.players.set(userId, '')
+
 		const displayName = await userProfileCache.getDisplayName(userId)
-		this.serverState.lanes[laneIndex].players.set(userId, displayName)	
+		lane.players.set(userId, displayName)
 	}
 
 

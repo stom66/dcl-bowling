@@ -36,14 +36,14 @@ const createClockSync = () => {
 			const avgOffset = offsetSamples.reduce((sum, val) => sum + val, 0) / offsetSamples.length
 			clockOffset = avgOffset
 			
-			console.log(
+			/* console.log(
 				'[CLIENT] Clock offset updated:',
 				Math.round(avgOffset),
 				'ms (',
 				Math.round(avgOffset / 1000),
 				's) - samples:',
 				offsetSamples.length
-			)
+			) */
 		},
 		
 		getOffset(): number {

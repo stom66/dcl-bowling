@@ -22,7 +22,6 @@
     "cannon-es": "^0.20.0",
     "dcl-npc-toolkit": "^1.5.1"
   },
-  "bundleDependencies": [],
   "engines": {
     "node": ">=16.0.0",
     "npm": ">=6.0.0"

@@ -3,13 +3,14 @@ import { Schemas } from '@dcl/sdk/ecs'
 
 // MARK: MessageType enum
 export enum MessageType {
-	REQUEST_JOIN_GAME  = 'requestJoinGame',
-	REQUEST_PLAY_TURN  = 'requestPlayTurn',
+	REQUEST_JOIN_GAME           = 'requestJoinGame',
+	REQUEST_PLAY_TURN           = 'requestPlayTurn',
 
-	NOTIFY_JOIN_GAME   = 'notifyJoinGame',
-	NOTIFY_LANE_STATE  = 'notifyLaneState',
-	NOTIFY_PLAYER_TURN = 'notifyPlayerTurn',
-	NOTIFY_SERVER_TIME = 'notifyServerTime'
+	NOTIFY_JOIN_GAME            = 'notifyJoinGame',
+	NOTIFY_LANE_STATE           = 'notifyLaneState',
+	NOTIFY_PLAYER_TURN_START    = 'notifyPlayerTurnStart',
+	NOTIFY_PLAYER_TURN_PLAYBACK = 'notifyPlayerTurnPlayback',
+	NOTIFY_SERVER_TIME          = 'notifyServerTime'
 }
 
 // MARK: Message schemas
@@ -53,7 +54,10 @@ const Messages = {
 		...turnMessageBaseSchema,
 		frameIndex: Schemas.Number
 	}),
-	[MessageType.NOTIFY_PLAYER_TURN]: Schemas.Map({
+	[MessageType.NOTIFY_PLAYER_TURN_START]: Schemas.Map({
+		userId: Schemas.String
+	}),
+	[MessageType.NOTIFY_PLAYER_TURN_PLAYBACK]: Schemas.Map({
 		...turnMessageBaseSchema,
 		playerId: Schemas.String
 	}),

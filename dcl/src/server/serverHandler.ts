@@ -1,17 +1,11 @@
 import { MessageType, room } from 'src/shared/room'
 import { GameSettings } from 'src/shared/settings'
-import { Outfit, RequestPlayTurnPayload } from 'src/shared/types'
+import { RequestPlayTurnPayload } from 'src/shared/types'
 
 import { gameManager } from 'src/server/gameManager'
-import { notifyLaneStateUpdate } from 'src/server/serverMessaging'
-import { ServerStore } from 'src/server/serverStore'
 
 
 export namespace serverHandler {
-
-	// MARK: Vars
-	const store = ServerStore.getInstance()
-
 
 	// MARK: Utility function
 	function getUserId(context: any): string {
@@ -33,7 +27,7 @@ export namespace serverHandler {
 		console.log('serverHandler: handleRequestJoinGame: userId', userId, 'requestLaneIndex', data)
 
 		if (data === undefined) {
-			gameManager.onPlayerRequestJoin(userId, undefined)
+			await gameManager.onPlayerRequestJoin(userId, undefined)
 			return
 		}
 
@@ -42,7 +36,7 @@ export namespace serverHandler {
 			return
 		}
 
-		gameManager.onPlayerRequestJoin(userId, data - 1)
+		await gameManager.onPlayerRequestJoin(userId, data - 1)
 	}
 	
 
@@ -50,6 +44,6 @@ export namespace serverHandler {
 	export async function handleRequestPlayTurn(data: RequestPlayTurnPayload, context: any) {
 		const userId = getUserId(context)
 		console.log('serverHandler: handleRequestPlayTurn: userId', userId)
-		gameManager.onPlayerRequestPlayTurn(data)
+		gameManager.onPlayerRequestPlayTurn(userId, data)
 	}
 }

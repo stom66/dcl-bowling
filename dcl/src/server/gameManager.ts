@@ -6,7 +6,7 @@ import { GameSettings } from "src/shared/settings"
 
 import { ServerStore } from "src/server/serverStore"
 import { RequestPlayTurnPayload } from "src/shared/types"
-import { notifyJoinGame, notifyLaneStateUpdate } from "./serverMessaging"
+import { notifyJoinGame, notifyLaneStateUpdate, notifyPlayerTurnStart } from "./serverMessaging"
 
 
 class GameManager {
@@ -23,7 +23,7 @@ class GameManager {
 
 
 	// MARK: Join Game
-	onPlayerRequestJoin(userId: string, laneIndex: number | undefined) {
+	async onPlayerRequestJoin(userId: string, laneIndex: number | undefined) {
 		console.log('gameManager: onPlayerRequestJoin: userId', userId, 'laneIndex', laneIndex)
 
 
@@ -58,8 +58,8 @@ class GameManager {
 			this.startGameCountdown(laneIndex)
 		}
 
-		// Add player to the game
-		this.store.addPlayer(userId, laneIndex)
+		// Add player to the game (await so profile fetch completes before notifies / any follow-up logic)
+		await this.store.addPlayer(userId, laneIndex)
 
 		// Notify player that they have joined the game
 		notifyJoinGame(userId, laneIndex)
@@ -70,12 +70,14 @@ class GameManager {
 
 
 	// MARK: Play Turn
-	onPlayerRequestPlayTurn(data: RequestPlayTurnPayload) {
-		console.log('gameManager: onPlayerRequestPlayTurn: data', data)
+	onPlayerRequestPlayTurn(userId: string, data: RequestPlayTurnPayload) {
+		console.log('gameManager: onPlayerRequestPlayTurn: userId', userId, 'data', data)
 	}
 
 
 	startGameCountdown(laneIndex: number) {
+		console.log('gameManager: startGameCountdown: laneIndex', laneIndex)
+
 		const laneState = this.store.getLaneState(laneIndex)
 		laneState.laneStatus = LaneStatus.STARTING
 		laneState.gameStartTime = Date.now() + GameSettings.GAME_START_DELAY
@@ -87,6 +89,8 @@ class GameManager {
 
 
 	startGame(laneIndex: number) {
+		console.log('gameManager: startGame: laneIndex', laneIndex)
+
 		const laneState = this.store.getLaneState(laneIndex)
 		laneState.laneStatus = LaneStatus.ACTIVE
 
@@ -94,6 +98,14 @@ class GameManager {
 		// We need to cycle throuhg th eplayers, giving them each 2 turns per frame
 		// we run for 10 frames per player
 		// the final 
+
+		// Tell the first player it's their turn
+		const firstPlayer = Array.from(laneState.players.keys())[0]
+		if (!firstPlayer) {
+			console.error('gameManager: startGame: no players in lane', laneIndex)
+			return
+		}
+		notifyPlayerTurnStart(laneIndex, firstPlayer)
 	}
 
 }
