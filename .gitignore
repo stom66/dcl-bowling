@@ -6,6 +6,7 @@ bin
 
 # Affinity design files
 *.afdesign~lock~
+*.af~lock~
 
 # Logs
 logs
