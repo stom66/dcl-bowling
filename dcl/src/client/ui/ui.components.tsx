@@ -40,14 +40,17 @@ export const ButtonAction = ({ textLabel, callback }: { textLabel: string; callb
 			uiTransform={{
 				width: "100%",
 				height: 40,
-				margin: 4
+				margin: 4,
+				borderRadius: 8,
+				borderColor: Color4.fromHexString("#508894"),
+				borderWidth: 2
 			}}
 			value={textLabel}
-			variant="primary"
 			fontSize={14}
 			onMouseDown={() => {
 				callback!()
 			}}
+			uiBackground={{ color: Color4.fromHexString("#44727b") }}
 		/>
 	)
 }
@@ -70,7 +73,7 @@ export const InfoRow = ({ label, value, fontSize, firstColumnWidth }: { label: s
 		uiText={{
 			value: label,
 			fontSize: fontSize ?? 16,
-			color: Color4.create(0.7, 0.7, 0.7, 1),
+			color: Color4.fromHexString("#345961"),
 			textAlign: 'middle-left'
 		}}
 		/>

@@ -72,16 +72,19 @@ export function GameStatusUI() {
 				key={`ui_GameStatus_body`}
 				uiTransform={{
 					width         : 400,
-					height        : 120,
+					height        : 80,
 					flexShrink    : 0,
 					flexDirection : 'row',
 					alignItems    : 'center',
 					justifyContent: 'center',
 					margin        : { top: '35px' },
 					display       : 'flex',
-					padding       : { top: 10, bottom: 10, left: 50, right: 50 }
+					padding       : { top: 10, bottom: 10, left: 30, right: 30 },
+					borderRadius  : { topLeft: 8, topRight: 8, bottomLeft: 32, bottomRight: 32 },
+					borderColor   : Color4.fromHexString("#4C9581FF"),
+					borderWidth   : 3
 				}}
-				uiBackground={{ color: Color4.fromHexString("#4C958166") }}
+				uiBackground={{ color: Color4.fromHexString("#4C958199") }}
 			>
 				<InfoRow 
 					label={roundEndTime > 0 ? `{playerName}'s Turn` : "Game Starts in..."}

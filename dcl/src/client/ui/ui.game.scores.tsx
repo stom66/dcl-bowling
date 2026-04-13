@@ -10,8 +10,6 @@ import { ClientStore } from 'src/client/clientStore'
 import { ClientEvents } from 'src/client/clientEvents'
 import { LaneState, NotifyLaneStatePayload } from 'src/shared/types'
 import { userProfileCache } from 'src/shared/utils/userProfileCache'
-import { InfoRow } from './ui.components'
-import { UIScaleUpdate } from 'dcl-npc-toolkit/dist/ui'
 
 
 // MARK: Event Bindings
@@ -23,12 +21,22 @@ eventBus.on(ClientEvents.NOTIFY_LANE_STATE, (data: LaneState) => {
 // MARK: Vars
 const clientStore = ClientStore.getInstance()
 
+const forceShowScores = true
+
+const isVisible = clientStore.getPlayerStatus() == PlayerStatus.IN_GAME_PLAYING || 
+				  clientStore.getPlayerStatus() == PlayerStatus.IN_GAME_WAITING ||
+				  forceShowScores
+
+
+const getFrames = () => {
+	return clientStore.getLaneState()?.frames ?? []
+}
 
 // MARK: Get Scores
 function GetScoreRows() {
 	const ui: ReactEcs.JSX.Element[] = []
 
-	for (const [userId, frames] of clientStore.getLaneState()?.frames ?? []) {
+	for (const [userId, frames] of getFrames()) {
 		ui.push(
 			<UiEntity
 				key={`ui_Scores_row_${userId}`}
@@ -178,6 +186,7 @@ export function ScoresUI() {
 				alignItems    : 'center',
 				justifyContent: 'flex-end',
 				positionType  : "absolute",
+				display       : isVisible ? 'flex' : 'none',
 			}}
 		>
 			<UiEntity
@@ -191,7 +200,10 @@ export function ScoresUI() {
 					justifyContent: 'center',
 					margin        : { bottom: '35px' },
 					display       : 'flex',
-					padding       : { top: 10, bottom: 10, left: 10, right: 10 }
+					padding       : { top: 10, bottom: 10, left: 10, right: 10 },
+					borderRadius  : { topLeft: 32, topRight: 32, bottomLeft: 8, bottomRight: 8 },
+					borderColor   : Color4.fromHexString("#4C9581FF"),
+					borderWidth   : 3
 				}}
 				uiBackground={{ color: Color4.fromHexString("#4C958166") }}
 			>
