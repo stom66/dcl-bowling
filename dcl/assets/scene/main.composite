@@ -614,8 +614,8 @@
       "data": {
         "0": {
           "json": {
-            "name": "Bowling",
-            "description": "Bowling game",
+            "name": "Fastlane Bowling",
+            "description": "A bowling alley!",
             "thumbnail": "images/scene-thumbnail.png",
             "categories": [],
             "author": "stom",
@@ -690,7 +690,7 @@
               }
             ],
             "skyboxConfig": {},
-            "creator": ""
+            "creator": "stom"
           }
         }
       }

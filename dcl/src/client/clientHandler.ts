@@ -15,6 +15,7 @@ const clientStore = ClientStore.getInstance()
 export namespace ClientHandler {
 	export function init() {
 		room.onMessage(MessageType.NOTIFY_JOIN_GAME, (data)            => { handleNotifyJoinGame(data) })
+		room.onMessage(MessageType.NOTIFY_GAME_START, (data)           => { handleNotifyGameStart(data) })
 		room.onMessage(MessageType.NOTIFY_LANE_STATE, (data)           => { handleNotifyLaneState(data) })
 		room.onMessage(MessageType.NOTIFY_PLAYER_TURN_START, (data)    => { handleNotifyPlayerTurnStart(data) })
 		room.onMessage(MessageType.NOTIFY_PLAYER_TURN_PLAYBACK, (data) => { handleNotifyPlayerTurnPlaybck(data) })
@@ -28,10 +29,22 @@ export namespace ClientHandler {
 
 		clockSync.updateOffset(data.sentAt)
 
-		clientStore.setPlayerStatus(PlayerStatus.WAITING)
+		clientStore.setPlayerStatus(PlayerStatus.WAITING_FOR_GAME_START)
 		clientStore.setLaneState(data)
 
 		eventBus.emit(ClientEvents.NOTIFY_JOIN_GAME, clientStore.getLaneState())
+	}
+
+	// MARK: Game Start
+	function handleNotifyGameStart(data: NotifyLaneStatePayload) {
+		console.log('ClientHandler: handleNotifyGameStart: data', data)
+
+		clockSync.updateOffset(data.sentAt)
+
+		clientStore.setPlayerStatus(PlayerStatus.IN_GAME_WAITING)
+		clientStore.setLaneState(data)
+
+		eventBus.emit(ClientEvents.NOTIFY_GAME_START, data)
 	}
 	
 
@@ -49,6 +62,11 @@ export namespace ClientHandler {
 	function handleNotifyPlayerTurnStart(data: { userId: string }) {
 		console.log('ClientHandler: handleNotifyPlayerTurnStart: data', data)
 
+		if (data.userId === clientStore.getUserId()) {
+			clientStore.setPlayerStatus(PlayerStatus.IN_GAME_PLAYING)
+		} else {
+			clientStore.setPlayerStatus(PlayerStatus.IN_GAME_WAITING)
+		}
 		eventBus.emit(ClientEvents.NOTIFY_PLAYER_TURN_START, data)
 	}
 

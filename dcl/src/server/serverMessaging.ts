@@ -17,6 +17,12 @@ export function notifyJoinGame(userId: string, laneIndex: number) {
 	room.send(MessageType.NOTIFY_JOIN_GAME, laneStatePayload, { to : [userId] })
 }
 
+export function notifyGameStart(laneIndex: number) {
+	const serverStore = ServerStore.getInstance()
+	const laneStatePayload = serverStore.getLaneStatePayload(laneIndex)
+	room.send(MessageType.NOTIFY_GAME_START, laneStatePayload, { to : serverStore.getLaneUserIds(laneIndex) })
+}
+
 export function notifyPlayerTurnStart(laneIndex: number, userId: string) {
 	const serverStore = ServerStore.getInstance()
 	room.send(MessageType.NOTIFY_PLAYER_TURN_START, { userId }, { to : serverStore.getLaneUserIds(laneIndex) })

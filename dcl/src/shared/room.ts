@@ -7,6 +7,7 @@ export enum MessageType {
 	REQUEST_PLAY_TURN           = 'requestPlayTurn',
 
 	NOTIFY_JOIN_GAME            = 'notifyJoinGame',
+	NOTIFY_GAME_START           = 'notifyGameStart',
 	NOTIFY_LANE_STATE           = 'notifyLaneState',
 	NOTIFY_PLAYER_TURN_START    = 'notifyPlayerTurnStart',
 	NOTIFY_PLAYER_TURN_PLAYBACK = 'notifyPlayerTurnPlayback',
@@ -54,6 +55,9 @@ const Messages = {
 		...turnMessageBaseSchema,
 		frameIndex: Schemas.Number
 	}),
+
+
+
 	[MessageType.NOTIFY_PLAYER_TURN_START]: Schemas.Map({
 		userId: Schemas.String
 	}),
@@ -64,6 +68,7 @@ const Messages = {
 
 	[MessageType.NOTIFY_LANE_STATE] : notifyLaneStateSchema,
 	[MessageType.NOTIFY_JOIN_GAME]  : notifyLaneStateSchema,
+	[MessageType.NOTIFY_GAME_START]: notifyLaneStateSchema,
 	[MessageType.NOTIFY_SERVER_TIME]: Schemas.Int64
 }
 

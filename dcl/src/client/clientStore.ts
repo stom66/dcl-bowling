@@ -100,14 +100,14 @@ export class ClientStore {
 		getPlayerStatus(): PlayerStatus {
 			return this.clientState.playerStatus
 		}
-		isPlayerPlaying(): boolean {
-			return this.clientState.playerStatus === PlayerStatus.PLAYING
+/* 		isPlayerInGame(): boolean {
+			return this.clientState.playerStatus === PlayerStatus.IN_GAME_PLAYING || this.clientState.playerStatus === PlayerStatus.IN_GAME_WAITING
 		}
 		isPlayerWaiting(): boolean {
-			return this.clientState.playerStatus === PlayerStatus.WAITING
+			return this.clientState.playerStatus === PlayerStatus.WAITING_FOR_GAME_START
 		}
 		isPlayerIdle(): boolean {
 			return this.clientState.playerStatus === PlayerStatus.IDLE
-		}
+		} */
 
 }

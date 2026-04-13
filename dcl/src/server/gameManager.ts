@@ -6,7 +6,7 @@ import { GameSettings } from "src/shared/settings"
 
 import { ServerStore } from "src/server/serverStore"
 import { RequestPlayTurnPayload } from "src/shared/types"
-import { notifyJoinGame, notifyLaneStateUpdate, notifyPlayerTurnStart } from "./serverMessaging"
+import { notifyGameStart, notifyJoinGame, notifyLaneStateUpdate, notifyPlayerTurnStart } from "./serverMessaging"
 
 
 class GameManager {
@@ -99,13 +99,18 @@ class GameManager {
 		// we run for 10 frames per player
 		// the final 
 
+		notifyGameStart(laneIndex)
+
 		// Tell the first player it's their turn
 		const firstPlayer = Array.from(laneState.players.keys())[0]
 		if (!firstPlayer) {
 			console.error('gameManager: startGame: no players in lane', laneIndex)
 			return
 		}
-		notifyPlayerTurnStart(laneIndex, firstPlayer)
+
+		utils.timers.setTimeout(() => {
+			notifyPlayerTurnStart(laneIndex, firstPlayer)
+		}, GameSettings.TURN_START_DELAY)
 	}
 
 }

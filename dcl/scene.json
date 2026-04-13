@@ -2,8 +2,8 @@
   "ecs7": true,
   "runtimeVersion": "7",
   "display": {
-    "title": "Bowling",
-    "description": "Bowling game",
+    "title": "Fastlane Bowling",
+    "description": "A bowling alley!",
     "navmapThumbnail": "images/scene-thumbnail.png",
     "favicon": "favicon_asset"
   },
@@ -50,16 +50,27 @@
       }
     }
   ],
-  "requiredPermissions": [],
+  "requiredPermissions": [
+    "ALLOW_TO_TRIGGER_AVATAR_EMOTE",
+    "ALLOW_TO_MOVE_PLAYER_INSIDE_SCENE"
+  ],
   "featureToggles": {
     "voiceChat": "enabled",
     "portableExperiences": "enabled"
   },
-  "creator": "",
+  "worldConfiguration": {
+    "name": "stom.dcl.eth"
+  },
+  "creator": "stom",
   "skyboxConfig": {},
   "source": {
     "origin": "creator-hub",
     "projectId": "7b296d7f-30e6-4673-99cd-64ffcbac3152"
   },
-  "authoritativeMultiplayer": true
+  "authoritativeMultiplayer": true,
+  "logsPermissions": [
+    "0xCEC7e38e088A87D77F2B60Fcae6840D00E018155",
+    "0xe2b6024873d218b2e83b462d3658d8d7c3f55a18",
+    "0x1e105bb213754519903788022b962fe2b9c4b263"
+  ]
 }

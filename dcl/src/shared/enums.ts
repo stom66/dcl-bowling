@@ -6,7 +6,8 @@ export enum LaneStatus {
 }
 
 export enum PlayerStatus {
-	IDLE = "IDLE",
-	PLAYING = "PLAYING",
-	WAITING = "WAITING",
+	IDLE                   = "IDLE",
+	WAITING_FOR_GAME_START = "WAITING_FOR_GAME_START",
+	IN_GAME_WAITING        = "IN_GAME_WAITING",
+	IN_GAME_PLAYING        = "IN_GAME_PLAYING",
 }

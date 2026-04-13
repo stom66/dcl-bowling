@@ -18,14 +18,13 @@ export namespace gameStateHandler {
 
 	// MARK: Event bindings
 	eventBus.on(ClientEvents.NOTIFY_JOIN_GAME, (data: LaneState) => { onJoinGame(data) })
-
+	eventBus.on(ClientEvents.NOTIFY_GAME_START, (data: LaneState) => { onGameStart(data) })
 	eventBus.on(ClientEvents.NOTIFY_PLAYER_TURN_START, (data: { userId: string }) => { onTurnStart(data) })
 	eventBus.on(ClientEvents.NOTIFY_PLAYER_TURN_PLAYBACK, (data: NotifyPlayerTurnPayload) => { onTurnPlayback(data) })
 
 
 	// MARK: Vars
 	const clientStore = ClientStore.getInstance()
-	var waitingTimeout: utils.TimerId | undefined = undefined
 
 
 	// MARK: Init
@@ -37,24 +36,12 @@ export namespace gameStateHandler {
 	// MARK: onJoinGame
 	function onJoinGame(data: LaneState) {
 		console.log('gameStateHandler: onJoinGame: data', data)
-
-		if (!waitingTimeout) {
-			console.log('gameStateHandler: onJoinGame: setting waiting timeout')
-			const timeToGameStart = data.gameStartTime - Date.now()
-			waitingTimeout = utils.timers.setTimeout(() => {
-				onGameStart()
-			}, timeToGameStart)
-		} else {
-			console.log('gameStateHandler: onJoinGame: waiting timeout already set')
-		}
 	}
 
 
 	// MARK: onGameStart
-	function onGameStart() {
+	function onGameStart(data: LaneState) {
 		console.log('gameStateHandler: onGameStart')
-
-		// Move the player to their lane zone
 		movePlayerToGroupZone()
 	}
 
