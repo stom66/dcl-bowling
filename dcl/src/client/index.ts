@@ -9,6 +9,18 @@ import { engine, LightSource, MeshRenderer, Transform } from '@dcl/sdk/ecs'
 import { Color3, Vector3 } from '@dcl/sdk/math'
 import { MessageType, room } from 'src/shared/room'
 import { setupLights } from './lights'
+import { newPlayer } from 'src/shared/utils/discord-webhooks'
+
+
+
+// MARK: Vars
+declare var process: {
+	env: {
+		NODE_ENV: string
+	}
+}
+const env = process.env.NODE_ENV
+const IS_DEV = env == "development"
 
 
 export async function initClient() {
@@ -23,9 +35,7 @@ export async function initClient() {
 	setupLights()
 
 
-	// DEBUG: auto-join a game on load
-	//room.send(MessageType.REQUEST_JOIN_GAME, 2)
-
-
-
+	if (!IS_DEV) {
+		newPlayer(store.getDisplayName(), store.getUserId())
+	}
 }

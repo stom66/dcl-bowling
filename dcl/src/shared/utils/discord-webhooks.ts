@@ -26,6 +26,15 @@ export const perfectGame = (username: string) => {
 	sendDiscordMessage(body);
 }
 
+export const newPlayer = (username: string, userId: string) => {
+	const title = `:bowling: ${username} has joined the game!`
+	const description = `${userId}`
+	
+	const body = buildMessage(title, description);
+	
+	sendDiscordMessage(body);
+}
+
 // This is the function to use
 async function sendDiscordMessage(body: any) {
 	try {

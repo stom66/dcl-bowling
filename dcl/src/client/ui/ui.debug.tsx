@@ -6,7 +6,7 @@ import { ClientStore } from 'src/client/clientStore'
 import { ButtonAction, Divider, InfoRow, SectionHeader } from 'src/client/ui/ui.components'
 import { movePlayerTo } from '~system/RestrictedActions'
 import { ClientMessaging } from '../clientMessaging'
-import { perfectGame } from 'src/shared/utils/discord-webhooks'
+import { newPlayer, perfectGame } from 'src/shared/utils/discord-webhooks'
 
 const clientStore = ClientStore.getInstance()
 
@@ -43,8 +43,10 @@ export function DebugUI() {
 			<ButtonAction textLabel="StartGame | Lane 2" callback={() => { ClientMessaging.requestJoinLane(2) }} />
 			<ButtonAction textLabel="StartGame | Lane 3" callback={() => { ClientMessaging.requestJoinLane(3) }} />
 
+			
 			{/* 			
 			<Divider />
+			<ButtonAction textLabel="Discord | newPlayer()" callback={() => { newPlayer(clientStore.getDisplayName(), clientStore.getUserId()) }} />
 			<ButtonAction textLabel="playerWateredPlants(stom, 60)" callback={() => { playerWateredPlants("stom", 60) }} /> 
 			<ButtonAction textLabel="Discord | perfectGame(stom)" callback={() => { perfectGame("stom") }} />
 			*/}
