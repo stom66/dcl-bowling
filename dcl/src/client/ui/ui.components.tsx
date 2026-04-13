@@ -1,4 +1,4 @@
-import ReactEcs, { UiEntity} from '@dcl/sdk/react-ecs'
+import ReactEcs, { Button, UiEntity} from '@dcl/sdk/react-ecs'
 import { Color4 } from "@dcl/sdk/math"
 
 export const SectionHeader = ({ title }: { title: string }) => {
@@ -30,6 +30,24 @@ export const Divider = () => {
 		uiBackground={{
 			color: Color4.create(0.3, 0.3, 0.3, 1)
 		}}
+		/>
+	)
+}
+
+export const ButtonAction = ({ textLabel, callback }: { textLabel: string; callback: () => void | undefined }) => {
+	return (
+		<Button
+			uiTransform={{
+				width: "100%",
+				height: 40,
+				margin: 4
+			}}
+			value={textLabel}
+			variant="primary"
+			fontSize={14}
+			onMouseDown={() => {
+				callback!()
+			}}
 		/>
 	)
 }
@@ -71,3 +89,4 @@ export const InfoRow = ({ label, value, fontSize, firstColumnWidth }: { label: s
 		</UiEntity>
 	)
 }
+
