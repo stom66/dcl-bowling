@@ -16,9 +16,9 @@
     "server-logs": "sdk-commands sdk-server-logs"
   },
   "dependencies": {
-    "@dcl-sdk/utils": "^1.3.2",
     "@dcl/js-runtime": "7.21.1-22918726402.commit-ee210ee",
-    "@dcl/sdk": "^7.21.1-22918726402.commit-ee210ee",
+    "@dcl/sdk": "7.21.1-22918726402.commit-ee210ee",
+    "@dcl-sdk/utils": "^1.4.0",
     "cannon-es": "^0.20.0",
     "dcl-npc-toolkit": "^1.5.1"
   },
