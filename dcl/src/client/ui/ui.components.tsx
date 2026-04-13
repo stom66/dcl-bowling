@@ -72,8 +72,8 @@ export const InfoRow = ({ label, value, fontSize, firstColumnWidth }: { label: s
 		}}
 		uiText={{
 			value: label,
-			fontSize: fontSize ?? 16,
-			color: Color4.fromHexString("#345961"),
+			fontSize: fontSize ?? 13,
+			color: Color4.fromHexString("#64abba"),
 			textAlign: 'middle-left'
 		}}
 		/>
@@ -84,7 +84,7 @@ export const InfoRow = ({ label, value, fontSize, firstColumnWidth }: { label: s
 		}}
 		uiText={{
 			value: value,
-			fontSize: fontSize ?? 16,
+			fontSize: fontSize ?? 13,
 			color: Color4.White(),
 			textAlign: 'middle-left'
 		}}

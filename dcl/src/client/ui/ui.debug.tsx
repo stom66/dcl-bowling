@@ -46,9 +46,9 @@ export function DebugUI() {
 			{/* 			
 			<Divider />
 			<ButtonAction textLabel="playerWateredPlants(stom, 60)" callback={() => { playerWateredPlants("stom", 60) }} /> 
+			<ButtonAction textLabel="Discord | perfectGame(stom)" callback={() => { perfectGame("stom") }} />
 			*/}
 			
-			<ButtonAction textLabel="Discord | perfectGame(stom)" callback={() => { perfectGame("stom") }} />
 			
 			<Divider />
 			
@@ -56,8 +56,13 @@ export function DebugUI() {
 			<SectionHeader title="ClientState" />
 			
 			<InfoRow label = "displayName"   value = {clientStore.getDisplayName()} />
-			<InfoRow label = "userId"        value = {clientStore.getUserId()} />
+			<InfoRow label = "userId"        value = {clientStore.getUserId()} fontSize={10} />
 			<InfoRow label = "playerStatus"  value = {clientStore.getPlayerStatus().toString()} />
+			<InfoRow label = "lane.status"  value = {clientStore.getLaneState()?.laneStatus.toString() ?? ''} />
+			<InfoRow label = "lane.currentRound"  value = {clientStore.getLaneState()?.currentRound.toString() ?? ''} />
+			<InfoRow label = "land.index"  value = {clientStore.getLaneState()?.laneIndex.toString() ?? ''} />
+			<InfoRow label = "lane.players"  value = {clientStore.getLaneState()?.players.size.toString() ?? ''} />
+			<InfoRow label = "lane.frames"  value = {clientStore.getLaneState()?.frames.size.toString() ?? ''} />
 			
 			
 			</UiEntity>
