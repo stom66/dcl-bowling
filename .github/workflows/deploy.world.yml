@@ -23,6 +23,23 @@ jobs:
     steps:
     - uses: actions/checkout@v5
 
+    - name: Generate version file
+      run: |
+        DATE=$(date +'%Y%m%d%H%M')
+        COMMIT_ID=$(git rev-parse --short HEAD)
+        VERSION="v-$DATE-$COMMIT_ID"
+
+        echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+        echo "Generated version: $VERSION"
+
+        FILE_PATH="src/client/data/version.ts"
+        mkdir -p "$(dirname "$FILE_PATH")"
+
+        {
+          echo "// Auto-generated version file"
+          echo "export const VERSION = \"$VERSION\""
+        } > "$FILE_PATH"
+
     - name: Use Node.js 24
       uses: actions/setup-node@v4
       with:

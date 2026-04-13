@@ -5,6 +5,7 @@ import { DebugUI } from 'src/client/ui/ui.debug'
 
 import { GameStatusUI } from 'src/client/ui/ui.game.gameStatus'
 import { ScoresUI } from 'src/client/ui/ui.game.scores'
+import { VersionUI } from './ui/ui.version'
 
 
 // MARK: Vars
@@ -24,6 +25,7 @@ const uiComponent = () => [
 	// GAME UIS GO HERE
 	GameStatusUI(),
 	ScoresUI(),
+	VersionUI(),
 
 	SHOW_DEBUG ? DebugUI() : null
 ]
