@@ -23,11 +23,10 @@ enum CONTROL_TYPE {
 
 /** Lateral swing ±this many meters around the lane X. */
 const POSITION_SWING_AMPLITUDE = 0.6
-/** sin argument multiplier vs. accumulated time (higher = faster wobble). */
 const POSITION_OSCILLATION_SPEED = 1.7
 
 const DIRECTION_YAW_HALF_RANGE_DEG = 30
-const DIRECTION_OSCILLATION_SPEED = 1.7
+const DIRECTION_OSCILLATION_SPEED = 1.5
 
 const STRENGTH_OSCILLATION_SPEED = 2.2
 
