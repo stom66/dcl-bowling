@@ -10,6 +10,7 @@ import { Color3, Vector3 } from '@dcl/sdk/math'
 import { MessageType, room } from 'src/shared/room'
 import { setupLights } from './lights'
 import { newPlayer } from 'src/shared/utils/discord-webhooks'
+import { onEnterScene } from '@dcl/sdk/players'
 
 
 
@@ -34,8 +35,9 @@ export async function initClient() {
 	setupBowlingHostNpc()
 	setupLights()
 
-
-	if (!IS_DEV) {
-		newPlayer(store.getDisplayName(), store.getUserId())
-	}
+	onEnterScene((player) => {
+		if (player && !IS_DEV) {
+			newPlayer(store.getDisplayName(), store.getUserId())
+		}
+	})
 }
