@@ -92,10 +92,11 @@ export namespace gameStateHandler {
 	function movePlayerToStartOfLane() {
 		
 		// move the player to the start of the lane
-		const lanePosition = lanePositions[clientStore.getLaneState()?.laneIndex ?? 0]
-		const faceForward = Vector3.create(0, 0, 10)
-		
-		movePlayerTo({ newRelativePosition: lanePosition, cameraTarget: Vector3.add(lanePosition, faceForward) })
+		const lanePosition   = lanePositions[clientStore.getLaneState()?.laneIndex ?? 0]
+		const playerOffset   = Vector3.create(-1, 0, 0)
+		const targetPosition = Vector3.add(lanePosition, playerOffset)
+		const faceForward    = Vector3.create(0, 0, 10)
+		movePlayerTo({ newRelativePosition: targetPosition, cameraTarget: Vector3.add(targetPosition, faceForward) })
 	}
 
 
