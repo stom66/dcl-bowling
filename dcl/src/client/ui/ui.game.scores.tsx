@@ -10,6 +10,7 @@ import { ClientStore } from 'src/client/clientStore'
 import { ClientEvents } from 'src/client/clientEvents'
 import { LaneState, NotifyLaneStatePayload } from 'src/shared/types'
 import { userProfileCache } from 'src/shared/utils/userProfileCache'
+import { FrameResult, getDummyScoreData, getFrameResults } from 'src/shared/utils/scoreCalc'
 
 
 // MARK: Event Bindings
@@ -21,39 +22,55 @@ eventBus.on(ClientEvents.NOTIFY_LANE_STATE, (data: LaneState) => {
 // MARK: Vars
 const clientStore = ClientStore.getInstance()
 
-const forceShowScores = true
-
-const isVisible = clientStore.getPlayerStatus() == PlayerStatus.IN_GAME_PLAYING || 
-				  clientStore.getPlayerStatus() == PlayerStatus.IN_GAME_WAITING ||
-				  forceShowScores
+const forceShowScores = false
 
 
-const getFrames = () => {
-	return clientStore.getLaneState()?.frames ?? []
+const getFrames = (): Map<string, FrameResult[]> => {
+	// The expected structure in clientState.laneState.frames is:
+	// Map<string, number[][]>, where
+	//   key: userId (string)
+	//   value: array of arrays (frames), each frame being number[] of rolled pins
+
+	const frames = getDummyScoreData()
+	//const frames = clientStore.getLaneState()?.frames ?? []
+	
+
+	const frameResults = new Map<string, FrameResult[]>()
+	for (const [userId, frame] of frames.entries()) {
+		frameResults.set(userId, getFrameResults(frame))
+	}
+
+	return frameResults
 }
 
-// MARK: Get Scores
+
+
+// MARK: Get Score Rows
 function GetScoreRows() {
+	const frameResults = getFrames()
 	const ui: ReactEcs.JSX.Element[] = []
 
-	for (const [userId, frames] of getFrames()) {
+	// A row for each player
+	for (const [userId, frameResult] of frameResults.entries()) {
 		ui.push(
 			<UiEntity
 				key={`ui_Scores_row_${userId}`}
 				uiTransform={{
 					width         : "100%",
-					height        : 60,
+					height        : 45,
 					flexShrink    : 0,
 					flexDirection : 'row',
 					alignItems    : 'flex-start',
+					margin        : { bottom: '5px' }
 				}}
 			>
 				<UiEntity
 					key={`ui_Scores_row_${userId}_avatar`}
 					uiTransform={{
-						width         : 60,
-						height        : 60,
+						width         : 45,
+						height        : 45,
 						flexShrink    : 0,
+						borderRadius: 8
 					}}
 					uiBackground={{ 
 						texture: {
@@ -66,14 +83,15 @@ function GetScoreRows() {
 					key={`ui_Scores_row_${userId}_scores`}
 					uiTransform={{
 						width         : "100%",
-						height        : 60,
+						height        : 45,
 						flexShrink    : 0,
 						flexDirection : 'row',
 						alignItems    : 'flex-start',
+						margin        : { right: '100px' },
 					}}
-					uiBackground={{ color: Color4.fromHexString("#4C958166") }}
+					//uiBackground={{ color: Color4.fromHexString("#4C958166") }}
 				>
-					{GetFrames(userId, frames)}
+					{GetFrames(userId, frameResult)}
 				</UiEntity>
 			</UiEntity>
 		)
@@ -81,34 +99,42 @@ function GetScoreRows() {
 	return ui
 }
 
-function GetFrames(userId: string, frames: number[][]) {
+
+// MARK: Get Frame Cells
+function GetFrames(userId: string, frameResults: FrameResult[]) {
 	const ui: ReactEcs.JSX.Element[] = []
 
 	var runningTotal = 0
 	
-	for (let frameIndex = 0; frameIndex < 10; frameIndex++) {
-		const frame = frames[frameIndex] ?? []
-
-		// update the running total
-		runningTotal += frame.reduce((a, b) => a + b, 0)
-
-		// build the individual scores within the frame
+	for (let [frameIndex, frameResult] of frameResults.entries()) {
+		// Add the individual scores within the frame
 		const frameScores: ReactEcs.JSX.Element[] = []
 
-		for (let i = 0; i < (frameIndex == 9 ? 3 : 2); i++ ) {
+		// MARK: Bowl Scores
+		for (let i = 0; i < frameResult.scores.length; i++ ) {
 			// Add each of the scores
+			const score = frameResult.scores[i]
+			
+			var scoreDisplay = score.toString()
+			if (score == 0) scoreDisplay = '-'
+			if (score == 10) scoreDisplay = 'X'
+			if (i == 1 && frameResult.isSpare) scoreDisplay = "/"
+
 			frameScores.push(
 				<UiEntity
 					key={`ui_Scores_row_${userId}_frame_${frameIndex}_score_${i}`}
 					uiTransform={{
-						width: 18,
+						width: 16,
 						height: 18,
-						margin: { left: 2 }
+						margin: { right: 2 },
+						borderRadius: 3,
+						alignContent: 'center',
+						alignItems: 'center',
 					}}
 					uiBackground={{ color: Color4.fromHexString("#6eb8c7aa") }}
 					uiText={{
-						value: frame[i].toString() ?? '-',
-						fontSize: 12,
+						value: scoreDisplay,
+						fontSize: 9,
 						color: Color4.White(),
 						textAlign: 'middle-center'
 					}}
@@ -116,24 +142,19 @@ function GetFrames(userId: string, frames: number[][]) {
 			)
 		}
 
-		// Add the frame itself
+		// MARK: Frame Cell
 		ui.push(
 			<UiEntity 
 				key={`ui_Scores_row_${userId}_frame_${frameIndex}`}
 				uiTransform={{ 
-					width: 60, 
-					height: 60,
-					margin: { left: 2 },
-					flexDirection: 'column'
+					width: 52, 
+					height: 45,
+					margin: { left: 4 },
+					flexDirection: 'column',
+					borderRadius: 4
 				}}
 				uiBackground={{ 
-					color: Color4.fromHexString("#4C9581aa") 
-				}}
-				uiText={{
-					value: frameIndex.toString(),
-					fontSize: 16,
-					color: Color4.White(),
-					textAlign: 'middle-center'
+					color: Color4.fromHexString(frameResult.isStrike ? "#1f354d" : frameResult.isSpare ? "#345981" : "#4C958166") 
 				}}
 				>
 
@@ -144,8 +165,9 @@ function GetFrames(userId: string, frames: number[][]) {
 						width: "100%",
 						height: "50%",
 						flexDirection: 'row',
-						alignItems: 'flex-start',
-						justifyContent: 'center'
+						alignItems: 'flex-end',
+						justifyContent: 'flex-end'
+
 					}}
 				>
 					{frameScores}
@@ -161,8 +183,8 @@ function GetFrames(userId: string, frames: number[][]) {
 						justifyContent: 'center'
 					}}
 					uiText={{
-						value: runningTotal.toString() ?? '-',
-						fontSize: 16,
+						value: frameResult.runningScore?.toString() ?? '-',
+						fontSize: 14,
 						color: Color4.White(),
 						textAlign: 'middle-center'
 					}}
@@ -176,6 +198,10 @@ function GetFrames(userId: string, frames: number[][]) {
 
 // MARK: Main GameUI
 export function ScoresUI() {
+	const isVisible = clientStore.getPlayerStatus() == PlayerStatus.IN_GAME_PLAYING || 
+					  clientStore.getPlayerStatus() == PlayerStatus.IN_GAME_WAITING ||
+					  forceShowScores
+
 	return (
 		<UiEntity
 			key={`ui_GameStatus_root`}
@@ -193,14 +219,14 @@ export function ScoresUI() {
 				key={`ui_GameStatus_body`}
 				uiTransform={{
 					width         : 680,
-					height        : 120,
+					height        : 'auto',
 					flexShrink    : 0,
-					flexDirection : 'row',
+					flexDirection : 'column',
 					alignItems    : 'center',
 					justifyContent: 'center',
 					margin        : { bottom: '35px' },
 					display       : 'flex',
-					padding       : { top: 10, bottom: 10, left: 10, right: 10 },
+					padding       : { top: 16, bottom: 10, left: 32, right: 32 },
 					borderRadius  : { topLeft: 32, topRight: 32, bottomLeft: 8, bottomRight: 8 },
 					borderColor   : Color4.fromHexString("#4C9581FF"),
 					borderWidth   : 3
