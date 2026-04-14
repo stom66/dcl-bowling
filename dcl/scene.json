@@ -15,6 +15,7 @@
   "main": "bin/index.js",
   "tags": [],
   "scene": {
+    "base": "0,0",
     "parcels": [
       "0,2",
       "1,2",
@@ -22,8 +23,7 @@
       "1,1",
       "0,0",
       "1,0"
-    ],
-    "base": "0,0"
+    ]
   },
   "spawnPoints": [
     {
@@ -61,7 +61,7 @@
   "worldConfiguration": {
     "name": "stom.dcl.eth"
   },
-  "creator": "stom",
+  "creator": "0xCEC7e38e088A87D77F2B60Fcae6840D00E018155",
   "skyboxConfig": {},
   "source": {
     "origin": "creator-hub",
