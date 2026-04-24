@@ -1,6 +1,6 @@
 import { LaneStatus, PlayerStatus } from 'src/shared/enums';
 import { MessageType, room } from 'src/shared/room';
-import { NotifyLaneStatePayload, NotifyPlayerTurnPayload } from 'src/shared/types';
+import { NotifyLaneStatePayload, NotifyPlayerRollPayload } from 'src/shared/types';
 import { clockSync } from 'src/shared/utils/clockSync';
 import { eventBus } from 'src/shared/utils/eventBus';
 
@@ -16,9 +16,14 @@ export namespace ClientHandler {
 	export function init() {
 		room.onMessage(MessageType.NOTIFY_JOIN_GAME, (data)            => { handleNotifyJoinGame(data) })
 		room.onMessage(MessageType.NOTIFY_GAME_START, (data)           => { handleNotifyGameStart(data) })
+		room.onMessage(MessageType.NOTIFY_GAME_END, (data)           => { handleNotifyGameEnd(data) })
 		room.onMessage(MessageType.NOTIFY_LANE_STATE, (data)           => { handleNotifyLaneState(data) })
-		room.onMessage(MessageType.NOTIFY_PLAYER_TURN_START, (data)    => { handleNotifyPlayerTurnStart(data) })
-		room.onMessage(MessageType.NOTIFY_PLAYER_TURN_PLAYBACK, (data) => { handleNotifyPlayerTurnPlaybck(data) })
+
+		room.onMessage(MessageType.NOTIFY_PLAYER_FRAME_START, (data)   => { handleNotifyPlayerFrameStart(data) })
+		room.onMessage(MessageType.NOTIFY_PLAYER_ROLL_START, (data)    => { handleNotifyPlayerRollStart(data) })
+		room.onMessage(MessageType.NOTIFY_PLAYER_ROLL_PLAYBACK, (data) => { handleNotifyPlayerRollPlayback(data) })
+		room.onMessage(MessageType.NOTIFY_PLAYER_ROLL_END, (data)      => { handleNotifyPlayerRollEnd(data) })
+		room.onMessage(MessageType.NOTIFY_PLAYER_FRAME_END, (data)     => { handleNotifyPlayerFrameEnd(data) })
 		room.onMessage(MessageType.NOTIFY_SERVER_TIME, (data)          => { handleNotifyServerTime(data) })
 	}
 
@@ -32,7 +37,7 @@ export namespace ClientHandler {
 		clientStore.setPlayerStatus(PlayerStatus.WAITING_FOR_GAME_START)
 		clientStore.setLaneState(data)
 
-		eventBus.emit(ClientEvents.NOTIFY_JOIN_GAME, clientStore.getLaneState())
+		eventBus.emit(ClientEvents.ON_GAME_JOINED, clientStore.getLaneState())
 	}
 
 	// MARK: Game Start
@@ -44,11 +49,20 @@ export namespace ClientHandler {
 		clientStore.setPlayerStatus(PlayerStatus.IN_GAME_WAITING)
 		clientStore.setLaneState(data)
 
-		eventBus.emit(ClientEvents.NOTIFY_GAME_START, data)
+		eventBus.emit(ClientEvents.ON_GROUP_GAME_START, data)
 	}
 	
 
-	// MARK: State
+	// MARK: Game End
+	function handleNotifyGameEnd(data: NotifyLaneStatePayload) {
+		console.log('ClientHandler: handleNotifyGameEnd: data', data)
+
+		clockSync.updateOffset(data.sentAt)
+		eventBus.emit(ClientEvents.ON_GROUP_GAME_END, data)
+	}
+
+
+	// MARK: Lane State
 	function handleNotifyLaneState(data: NotifyLaneStatePayload) {
 		console.log('ClientHandler: handleNotifyState: state', data)
 
@@ -58,25 +72,57 @@ export namespace ClientHandler {
 		eventBus.emit(ClientEvents.NOTIFY_LANE_STATE, clientStore.getLaneState())
 	}
 
+	
 
-	function handleNotifyPlayerTurnStart(data: { userId: string }) {
-		console.log('ClientHandler: handleNotifyPlayerTurnStart: data', data)
+	// MARK: Frame Start
+	function handleNotifyPlayerFrameStart(data: { userId: string }) {
+		console.log('ClientHandler: handleNotifyPlayerFrameStart: data', data)
 
 		if (data.userId === clientStore.getUserId()) {
 			clientStore.setPlayerStatus(PlayerStatus.IN_GAME_PLAYING)
+			eventBus.emit(ClientEvents.ON_MY_FRAME_START, data)
 		} else {
-			clientStore.setPlayerStatus(PlayerStatus.IN_GAME_WAITING)
+			eventBus.emit(ClientEvents.ON_GROUP_FRAME_START, data)
 		}
-		eventBus.emit(ClientEvents.NOTIFY_PLAYER_TURN_START, data)
+	}
+
+	// MARK: Roll Start
+	function handleNotifyPlayerRollStart(data: { userId: string }) {
+		if (data.userId === clientStore.getUserId()) {
+			eventBus.emit(ClientEvents.ON_MY_ROLL_START, data)
+		} else {
+			eventBus.emit(ClientEvents.ON_GROUP_ROLL_START, data)
+		}
+	}
+
+	// MARK: Roll Playback
+	function handleNotifyPlayerRollPlayback(data: NotifyPlayerRollPayload) {
+		console.log('ClientHandler: handleNotifyPlayerRollPlayback: data', data)
+		eventBus.emit(ClientEvents.ON_GROUP_ROLL_PLAYBACK, data)
+	}
+
+	// MARK: Roll End
+	function handleNotifyPlayerRollEnd(data: { userId: string }) {
+		if (data.userId === clientStore.getUserId()) {
+			eventBus.emit(ClientEvents.ON_MY_ROLL_END, data)
+		} else {
+			eventBus.emit(ClientEvents.ON_GROUP_ROLL_END, data)
+		}
 	}
 
 
-	// MARK: Player Turn
-	function handleNotifyPlayerTurnPlaybck(data: NotifyPlayerTurnPayload) {
-		console.log('ClientHandler: handleNotifyPlayerTurnPlaybck: data', data)
+	// MARK: Frame End
+	function handleNotifyPlayerFrameEnd(data: { userId: string }) {
+		console.log('ClientHandler: handleNotifyPlayerFrameEnd: data', data)
 
-		eventBus.emit(ClientEvents.NOTIFY_PLAYER_TURN_PLAYBACK, data)
+		if (data.userId === clientStore.getUserId()) {
+			clientStore.setPlayerStatus(PlayerStatus.IN_GAME_WAITING)
+			eventBus.emit(ClientEvents.ON_MY_FRAME_END, data)
+		} else {
+			eventBus.emit(ClientEvents.ON_GROUP_FRAME_END, data)
+		}
 	}
+
 
 
 	// MARK: Server Time

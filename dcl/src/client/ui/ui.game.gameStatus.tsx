@@ -16,14 +16,14 @@ import { InfoRow } from './ui.components'
 // MARK: Event Bindings
 eventBus.on(ClientEvents.NOTIFY_LANE_STATE, (data: LaneState) => {
 	// Player name
-	if (data.currentTurnUserId) {
-		userProfileCache.getDisplayName(data.currentTurnUserId).then(displayName => {
+	if (data.currentFrameUserId) {
+		userProfileCache.getDisplayName(data.currentFrameUserId).then(displayName => {
 			playerName = displayName
 		})
 	}
 
-	if (data.currentTurnStartTime) {
-		roundEndTime = data.currentTurnStartTime + GameSettings.TURN_DURATION
+	if (data.currentRollStartTime) {
+		roundEndTime = data.currentRollStartTime + GameSettings.ROLL_MAX_DURATION
 	} else {
 		roundEndTime = 0
 		gameStartTime = data.gameStartTime

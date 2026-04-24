@@ -11,6 +11,7 @@ import { MessageType, room } from 'src/shared/room'
 import { setupLights } from './lights'
 import { newPlayer } from 'src/shared/utils/discord-webhooks'
 import { onEnterScene } from '@dcl/sdk/players'
+import { playerMover } from './playerMover'
 
 
 
@@ -30,6 +31,7 @@ export async function initClient() {
 
 	ClientHandler.init()
 	gameStateHandler.init()
+	playerMover.init()
 
 	SetupUI()
 	setupBowlingHostNpc()

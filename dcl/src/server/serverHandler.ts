@@ -1,6 +1,6 @@
 import { MessageType, room } from 'src/shared/room'
 import { GameSettings } from 'src/shared/settings'
-import { RequestPlayTurnPayload } from 'src/shared/types'
+import { RequestPlayRollPayload } from 'src/shared/types'
 
 import { gameManager } from 'src/server/gameManager'
 
@@ -16,7 +16,7 @@ export namespace serverHandler {
 	// MARK: Init
 	export function init() {
 		room.onMessage(MessageType.REQUEST_JOIN_GAME, (data, context) => handleRequestJoinGame(data, context))
-		room.onMessage(MessageType.REQUEST_PLAY_TURN, (data, context) => handleRequestPlayTurn(data, context))
+		room.onMessage(MessageType.REQUEST_PLAY_ROLL, (data, context) => handleRequestPlayRoll(data, context))
 	}
 
 	
@@ -40,10 +40,10 @@ export namespace serverHandler {
 	}
 	
 
-	// MARK: Play Turn
-	export async function handleRequestPlayTurn(data: RequestPlayTurnPayload, context: any) {
+	// MARK: Play Roll
+	export async function handleRequestPlayRoll(data: RequestPlayRollPayload, context: any) {
 		const userId = getUserId(context)
-		console.log('serverHandler: handleRequestPlayTurn: userId', userId)
-		gameManager.onPlayerRequestPlayTurn(userId, data)
+		console.log('serverHandler: handleRequestPlayRoll: userId', userId)
+		gameManager.onPlayerRequestPlayRoll(userId, data)
 	}
 }

@@ -16,11 +16,11 @@
     "server-logs": "sdk-commands sdk-server-logs"
   },
   "dependencies": {
-    "@dcl/js-runtime": "7.21.1-22918726402.commit-ee210ee",
-    "@dcl/sdk": "7.21.1-22918726402.commit-ee210ee",
     "@dcl-sdk/utils": "^1.4.0",
+    "@dcl/js-runtime": "7.22.5-24779418349.commit-111fd7e",
+    "@dcl/sdk": "7.22.5-24779418349.commit-111fd7e",
     "cannon-es": "^0.20.0",
-    "dcl-npc-toolkit": "^1.5.1"
+    "dcl-npc-toolkit": "^1.7.3"
   },
   "engines": {
     "node": ">=16.0.0",

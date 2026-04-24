@@ -7,6 +7,7 @@ import { ButtonAction, Divider, InfoRow, SectionHeader } from 'src/client/ui/ui.
 import { movePlayerTo } from '~system/RestrictedActions'
 import { ClientMessaging } from '../clientMessaging'
 import { newPlayer, perfectGame } from 'src/shared/utils/discord-webhooks'
+import { ClearEmote, PlayBowlingAnimation } from '../emotes'
 
 const clientStore = ClientStore.getInstance()
 
@@ -17,7 +18,7 @@ export function DebugUI() {
 		key="ui_debug_root"
 		uiTransform={{
 			width         : 300,
-			height        : 500,
+			height        : 640,
 			flexDirection : 'column',
 			alignItems    : 'flex-start',
 			justifyContent: 'space-between',
@@ -42,6 +43,9 @@ export function DebugUI() {
 			
 			<ButtonAction textLabel="StartGame | Lane 2" callback={() => { ClientMessaging.requestJoinLane(2) }} />
 			<ButtonAction textLabel="StartGame | Lane 3" callback={() => { ClientMessaging.requestJoinLane(3) }} />
+			<ButtonAction textLabel="Anim | Bowl (loop)" callback={() => { PlayBowlingAnimation(true) }} />
+			
+			
 
 			
 			{/* 			
@@ -57,14 +61,24 @@ export function DebugUI() {
 			
 			<SectionHeader title="ClientState" />
 			
-			<InfoRow label = "displayName"   value = {clientStore.getDisplayName()} />
-			<InfoRow label = "userId"        value = {clientStore.getUserId()} fontSize={10} />
-			<InfoRow label = "playerStatus"  value = {clientStore.getPlayerStatus().toString()} />
-			<InfoRow label = "lane.status"  value = {clientStore.getLaneState()?.laneStatus.toString() ?? ''} />
-			<InfoRow label = "lane.currentRound"  value = {clientStore.getLaneState()?.currentRound.toString() ?? ''} />
-			<InfoRow label = "land.index"  value = {clientStore.getLaneState()?.laneIndex.toString() ?? ''} />
-			<InfoRow label = "lane.players"  value = {clientStore.getLaneState()?.players.size.toString() ?? ''} />
-			<InfoRow label = "lane.frames"  value = {clientStore.getLaneState()?.frames.size.toString() ?? ''} />
+			<InfoRow label = "displayName"                 value = {clientStore.getDisplayName()} />
+			<InfoRow label = "userId"                      value = {clientStore.getUserId()} fontSize = {10} />
+			<InfoRow label = "playerStatus"                value = {clientStore.getPlayerStatus().toString()} />
+			
+			<Divider />
+			<SectionHeader title="laneState" />
+
+			<InfoRow label = "currentFrameIndex"         value = {clientStore.getCurrentFrameIndex()?.toString() ?? ''} />
+			<InfoRow label = "currentFramePlayerIndex"   value = {clientStore.getCurrentFramePlayerIndex()?.toString() ?? ''} />
+			<InfoRow label = "currentFrameUserId"        value = {clientStore.getCurrentFrameUserId() ?? ''} fontSize = {10} />
+			<InfoRow label = "currentRollIndex"          value = {clientStore.getCurrentRollIndex()?.toString() ?? ''} />
+			<InfoRow label = "currentRollStartTime"      value = {clientStore.getCurrentRollStartTime()?.toString() ?? ''} />
+			<InfoRow label = "frames"                    value = {clientStore.getFrames()?.size.toString() ?? ''} />
+			<InfoRow label = "laneStatus"                value = {clientStore.getLaneStatus()?.toString() ?? ''} />
+			<InfoRow label = "laneIndex"                 value = {clientStore.getLaneIndex()?.toString() ?? ''} />
+			<InfoRow label = "players"                   value = {clientStore.getPlayers()?.size.toString() ?? ''} />
+			<InfoRow label = "gameStartTime"             value = {clientStore.getGameStartTime()?.toString() ?? ''} />
+			
 			
 			
 			</UiEntity>

@@ -27,7 +27,7 @@ const uiComponent = () => [
 	GameStatusUI(),
 	ScoresUI(),
 	VersionUI(),
-	HowToPlay(),
+	//HowToPlay(),
 
 	DebugUI()
 	//SHOW_DEBUG ? DebugUI() : null

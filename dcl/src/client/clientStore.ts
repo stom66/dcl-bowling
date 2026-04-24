@@ -45,10 +45,10 @@ export class ClientStore {
 			console.error('ClientStore: fetchUserProfile: no record/name/userId')
 			return
 		}
-		this.clientState.userId = record.userId
-		this.clientState.displayName = record.name
+		this.setUserId(record.userId)
+		this.setDisplayName(record.name)
 
-		console.log('ClientStore: fetchUserProfile: success. userId:', this.clientState.userId, 'displayName:', this.clientState.displayName)
+		console.log('ClientStore: fetchUserProfile: success. userId:', this.getUserId(), 'displayName:', this.getDisplayName())
 	}
 
 
@@ -57,57 +57,120 @@ export class ClientStore {
 		if (!ClientStore.instance) ClientStore.instance = new ClientStore()
 		return ClientStore.instance
 	}
-		
-	// MARK: User data
-	getUserId(): string {
-		return this.clientState.userId
+
+
+	// MARK: ClientState
+
+	setUserId(value: string) {
+		this.clientState.userId = value
 	}
-	getDisplayName(): string {
-		return this.clientState.displayName
+		getUserId(): string {
+			return this.clientState.userId
+		}
+
+	setDisplayName(value: string) {
+		this.clientState.displayName = value
 	}
+		getDisplayName(): string {
+			return this.clientState.displayName
+		}
 
-
-
-	// MARK: LaneState
 	setLaneState(data: NotifyLaneStatePayload): void {
 		this.clientState.laneState = {
-			//groupId             : data.groupId,
-			currentRound        : data.currentRound,
-			currentTurnStartTime: data.currentTurnStartTime,
-			currentTurnUserId   : data.currentTurnUserId,
-			gameStartTime       : data.gameStartTime,
-			laneIndex           : data.laneIndex,
-			laneStatus          : data.laneStatus as LaneStatus,
-			players             : new Map<string, string>(data.players.map(player => [player.userId, player.displayName])),
-			frames              : new Map<string, number[][]>(data.frames.map(frame => [frame.userId, frame.frames])),
+			currentFrameIndex      : data.currentFrameIndex ?? 0,
+			currentFramePlayerIndex: data.currentFramePlayerIndex ?? 0,
+			currentFrameUserId     : data.currentFrameUserId,
+			currentRollIndex       : data.currentRollIndex ?? 0,
+			currentRollStartTime   : data.currentRollStartTime,
+			gameStartTime          : data.gameStartTime,
+			laneIndex              : data.laneIndex,
+			laneStatus             : data.laneStatus as LaneStatus,
+			players                : new Map<string, string>(data.players.map(p => [p.userId, p.displayName])),
+			frames                 : new Map<string, number[][]>(data.frames.map(f => [f.userId, f.frames])),
 		}
 	}
 		getLaneState(): LaneState | undefined {
 			return this.clientState.laneState
 		}
 
-
-	getGameStartTime(): number {
-		return this.clientState.laneState?.gameStartTime ?? 0
-	}
-
-
-
-	// MARK: PlayerStatus
 	setPlayerStatus(status: PlayerStatus): void {
 		this.clientState.playerStatus = status
 	}
 		getPlayerStatus(): PlayerStatus {
 			return this.clientState.playerStatus
 		}
-/* 		isPlayerInGame(): boolean {
-			return this.clientState.playerStatus === PlayerStatus.IN_GAME_PLAYING || this.clientState.playerStatus === PlayerStatus.IN_GAME_WAITING
+
+
+	// MARK: LaneState
+
+	setCurrentFrameIndex(value: number) {
+		if (this.clientState.laneState) this.clientState.laneState.currentFrameIndex = value
+	}
+		getCurrentFrameIndex(): number | undefined {
+			return this.clientState.laneState?.currentFrameIndex
 		}
-		isPlayerWaiting(): boolean {
-			return this.clientState.playerStatus === PlayerStatus.WAITING_FOR_GAME_START
+
+	setCurrentFramePlayerIndex(value: number) {
+		if (this.clientState.laneState) this.clientState.laneState.currentFramePlayerIndex = value
+	}
+		getCurrentFramePlayerIndex(): number | undefined {
+			return this.clientState.laneState?.currentFramePlayerIndex
 		}
-		isPlayerIdle(): boolean {
-			return this.clientState.playerStatus === PlayerStatus.IDLE
-		} */
+
+	setCurrentFrameUserId(value: string | undefined) {
+		if (this.clientState.laneState) this.clientState.laneState.currentFrameUserId = value
+	}
+		getCurrentFrameUserId(): string | undefined {
+			return this.clientState.laneState?.currentFrameUserId
+		}
+
+	setCurrentRollIndex(value: number) {
+		if (this.clientState.laneState) this.clientState.laneState.currentRollIndex = value
+	}
+		getCurrentRollIndex(): number | undefined {
+			return this.clientState.laneState?.currentRollIndex
+		}
+
+	setCurrentRollStartTime(value: number | undefined) {
+		if (this.clientState.laneState) this.clientState.laneState.currentRollStartTime = value
+	}
+		getCurrentRollStartTime(): number | undefined {
+			return this.clientState.laneState?.currentRollStartTime
+		}
+
+	setFrames(value: Map<string, number[][]>) {
+		if (this.clientState.laneState) this.clientState.laneState.frames = value
+	}
+		getFrames(): Map<string, number[][]> | undefined {
+			return this.clientState.laneState?.frames
+		}
+
+	setGameStartTime(value: number) {
+		if (this.clientState.laneState) this.clientState.laneState.gameStartTime = value
+	}
+		getGameStartTime(): number {
+			return this.clientState.laneState?.gameStartTime ?? 0
+		}
+
+	setLaneIndex(value: number) {
+		if (this.clientState.laneState) this.clientState.laneState.laneIndex = value
+	}
+		getLaneIndex(): number | undefined {
+			return this.clientState.laneState?.laneIndex
+		}
+
+	setLaneStatus(value: LaneStatus) {
+		if (this.clientState.laneState) this.clientState.laneState.laneStatus = value
+	}
+		getLaneStatus(): LaneStatus | undefined {
+			return this.clientState.laneState?.laneStatus
+		}
+
+	setPlayers(value: Map<string, string>) {
+		if (this.clientState.laneState) this.clientState.laneState.players = value
+	}
+		getPlayers(): Map<string, string> | undefined {
+			return this.clientState.laneState?.players
+		}
 
 }

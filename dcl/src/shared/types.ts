@@ -31,39 +31,36 @@ export type ServerState = {
 }
 
 export type LaneState = {
-	gameStartTime       : number,
-	laneIndex           : number,
-	laneStatus          : LaneStatus,
-	players             : Map<string, string>,   // userId -> displayName
-	frames              : Map<string, number[][]>, // userId -> scores
-	//groupId             : string | undefined
-	currentRound        : number
-	currentTurnUserId   : string | undefined
-	currentTurnStartTime: number | undefined
+	currentFrameIndex       : number
+	currentFramePlayerIndex : number
+	currentFrameUserId?     : string
+	currentRollIndex        : number
+	currentRollStartTime?   : number | undefined
+	frames                  : Map<string, number[][]>, // userId -> scores
+	gameStartTime           : number,
+	laneIndex               : number,
+	laneStatus              : LaneStatus
+	players                 : Map<string, string>,     // userId -> displayName
+	//groupId                 :  string | undefined
 }
 
-	// MARK: NotifyStatePayload
-	export type NotifyLaneStatePayload = {
-		//groupId              : string | undefined
-		currentRound         : number
-		currentTurnUserId?   : string
-		currentTurnStartTime?: number
-		gameStartTime        : number
-		laneIndex            : number
-		laneStatus           : string
-		players              : {
-			userId              : string
-			displayName         : string	
-		}[]
-		sentAt               : number
-		frames               : {
-			userId              : string
-			frames              : number[][]
-		}[]
-	}
+// MARK: NotifyLaneStatePayload (wire format — arrays, not Maps)
+export type NotifyLaneStatePayload = {
+	currentFrameIndex?      : number
+	currentFramePlayerIndex?: number
+	currentFrameUserId?     : string
+	currentRollIndex?       : number
+	currentRollStartTime?   : number
+	frames                  : { userId: string, frames: number[][] }[]
+	gameStartTime           : number
+	laneIndex               : number
+	laneStatus              : string
+	players                 : { userId: string, displayName: string }[]
+	sentAt                  : number
+}
 
 export type PlayerGroup = {
-	groundId: string
+	groundId : string
 	laneIndex: number
 	players  : Map<string, string> // userId -> displayName
 }
@@ -76,24 +73,39 @@ export type NotifyJoinGamePayload = {
 }
 
 
-/** Shared turn/replay body (matches `turnMessageBaseSchema` in room). */
-export type TurnPayload = {
-	frameIndex   : number
-	pinStates    : boolean[]
-	ballPositions: Vector3Type[]
-	pinPositions : Vector3Type[][]
-	pinRotations : QuaternionType[][]
-	score        : number
-	sentAt       : number
+/** Shared roll/replay body (matches `rollMessageBaseSchema` in room). */
+export type SimObjectKeyframe = {
+	time    : number
+	position?: Vector3Type
+	rotation?: QuaternionType
 }
 
-/** Client → server: same snapshot fields plus which frame is being submitted. */
-export type RequestPlayTurnPayload = TurnPayload & {
+export type SimObjectKeyframes = {
+	index    : number
+	keyframes: SimObjectKeyframe[]
 }
 
-/** Server → clients: replay plus acting player (no frameIndex on wire). */
-export type NotifyPlayerTurnPayload = TurnPayload & {
-	playerId: string
+export type RollPayload = {
+	frameIndex       : number
+	rollIndex        : number
+	startingPinStates: boolean[]
+	finalPinStates   : boolean[]
+	ballKeyframes    : SimObjectKeyframes
+	pinsKeyframes    : SimObjectKeyframes[]
+	score            : number
+	sentAt           : number
+}
+
+/** Client → server: roll snapshot. */
+export type RequestPlayRollPayload = {
+	position : Vector3Type
+	direction: Vector3Type
+	power    : number
+}
+
+/** Server → clients: roll replay plus acting player. */
+export type NotifyPlayerRollPayload = RollPayload & {
+	userId: string
 }
 
 

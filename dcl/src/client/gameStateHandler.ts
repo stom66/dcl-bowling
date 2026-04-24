@@ -1,7 +1,7 @@
 import * as utils from "@dcl-sdk/utils"
 
 import { LaneStatus, PlayerStatus } from "src/shared/enums"
-import { ClientState, LaneState, NotifyJoinGamePayload, NotifyPlayerTurnPayload } from "src/shared/types"
+import { ClientState, LaneState, NotifyJoinGamePayload, NotifyPlayerRollPayload } from "src/shared/types"
 import { eventBus } from "src/shared/utils/eventBus"
 
 import { ClientEvents } from "src/client/clientEvents"
@@ -17,14 +17,20 @@ import { BowlingControls } from "./bowlingControls"
 export namespace gameStateHandler {
 
 	// MARK: Event bindings
-	eventBus.on(ClientEvents.NOTIFY_JOIN_GAME, (data: LaneState) => { onJoinGame(data) })
-	eventBus.on(ClientEvents.NOTIFY_GAME_START, (data: LaneState) => { onGameStart(data) })
-	eventBus.on(ClientEvents.NOTIFY_PLAYER_TURN_START, (data: { userId: string }) => { onTurnStart(data) })
-	eventBus.on(ClientEvents.NOTIFY_PLAYER_TURN_PLAYBACK, (data: NotifyPlayerTurnPayload) => { onTurnPlayback(data) })
+	eventBus.on(ClientEvents.ON_GAME_JOINED, (data: LaneState) => { onJoinGame(data) })
+	eventBus.on(ClientEvents.ON_GROUP_GAME_START, (data: LaneState) => { onGameStart(data) })
+
+	eventBus.on(ClientEvents.ON_MY_ROLL_START, (data: { userId: string }) => { onMyRollStart(data) })
+	eventBus.on(ClientEvents.ON_MY_ROLL_END, (data: { userId: string }) => { onMyRollEnd(data) })
+
+	eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK, (data: NotifyPlayerRollPayload) => { onRollPlayback(data) })
+
 
 
 	// MARK: Vars
 	const clientStore = ClientStore.getInstance()
+
+	var bowlingControls: BowlingControls | undefined
 
 
 	// MARK: Init
@@ -42,62 +48,33 @@ export namespace gameStateHandler {
 	// MARK: onGameStart
 	function onGameStart(data: LaneState) {
 		console.log('gameStateHandler: onGameStart')
-		movePlayerToGroupZone()
 	}
 
 
-	function onTurnStart(data: { userId: string }) {
-		if (data.userId === clientStore.getUserId()) {
-			console.log('gameStateHandler: onTurnStart: moving player to start of lane')
-			movePlayerToStartOfLane()
-		}
+	function onMyRollStart(data: { userId: string }) {
 
 		// Change the players camera to ve a view down the lane
 		// Trigger the input controls
-		const laneIndex       = clientStore.getLaneState()?.laneIndex ?? 0
-		const lanePosition    = lanePositions[laneIndex]
-		var bowlingControls = new BowlingControls(lanePosition)
-
-		utils.timers.setTimeout(() => {
-			bowlingControls.EndTheBowl()
-			bowlingControls = new BowlingControls(lanePosition)
-		}, 20000)
-
+		const laneIndex    = clientStore.getLaneIndex() ?? 0
+		const lanePosition = lanePositions[laneIndex]
+		bowlingControls    = new BowlingControls(lanePosition)
 	}
 
 
-	function onTurnEnd() {
-		movePlayerToGroupZone()
+	function onMyRollEnd(data: { userId: string }) {
+
+		if (bowlingControls) {
+			bowlingControls.Destroy()
+			bowlingControls = undefined
+		}
 	}
 
 
-	function onTurnPlayback(data: NotifyPlayerTurnPayload) {
-		console.log('gameStateHandler: onTurnPlayback: replaying the turn taken by another players')
-		// TODO: replay other players turn
+	function onRollPlayback(data: NotifyPlayerRollPayload) {
+		console.log('gameStateHandler: onRollPlayback: replaying roll from another player')
+		// TODO: replay other player's roll
 	}
 
-
-
-
-	// MARK: Player Movement
-	function movePlayerToGroupZone() {
-		const groupZoneOffset = Vector3.create(0, 0, -3.75) // How far back from the lane should the group be
-		const lanePosition = lanePositions[clientStore.getLaneState()?.laneIndex ?? 0]
-		const circlePosition = Vector3.add(lanePosition, groupZoneOffset)
-		const randomPoint = GetRandomPointInCircle(circlePosition, 1.5)
-
-		movePlayerTo({ newRelativePosition: randomPoint })
-	}
-
-	function movePlayerToStartOfLane() {
-		
-		// move the player to the start of the lane
-		const lanePosition   = lanePositions[clientStore.getLaneState()?.laneIndex ?? 0]
-		const playerOffset   = Vector3.create(-1, 0, 0)
-		const targetPosition = Vector3.add(lanePosition, playerOffset)
-		const faceForward    = Vector3.create(0, 0, 10)
-		movePlayerTo({ newRelativePosition: targetPosition, cameraTarget: Vector3.add(targetPosition, faceForward) })
-	}
 
 
 

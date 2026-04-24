@@ -141,6 +141,7 @@ export function setupBowlingHostNpc(): void {
 				'urn:decentraland:off-chain:base-avatars:yellow_tshirt'
 			],
 			faceUser: true,
+			reactDistance: 5,
 			hoverText: 'Join bowling',
 			onActivate: (_other: Entity) => {
 				npc.talk(bowlingHostNpc, script, D.lanes12)

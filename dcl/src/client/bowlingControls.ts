@@ -1,18 +1,23 @@
 import * as utils from "@dcl-sdk/utils"
 import {
 	ColliderLayer,
+	EasingFunction,
 	engine,
 	Entity,
 	GltfContainer,
+	GltfContainerLoadingState,
 	InputAction,
+	LoadingState,
 	Material,
 	MeshCollider,
 	MeshRenderer,
 	pointerEventsSystem,
 	Transform,
+	Tween,
 } from "@dcl/sdk/ecs";
 import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
-import { CannonSim, PIN_LANE_LOCAL_POSITIONS } from "./cannon-sim";
+import { CannonSim, PIN_LANE_LOCAL_POSITIONS } from "../shared/utils/cannon-sim";
+import { ClientMessaging } from "./clientMessaging";
 
 
 enum CONTROL_TYPE {
@@ -72,11 +77,11 @@ export class BowlingControls {
 			visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
 		})
 
-		// Create the vollider for itneractions
+		// Create the collider for itneractions
 		this.pointerCollider = engine.addEntity()
 		Transform.create(this.pointerCollider, { 
-			position: Vector3.add(lanePosition, Vector3.create(0, 1, 1)), 
-			scale: Vector3.create(2, 2, 2) 
+			position: Vector3.add(lanePosition, Vector3.create(0, 2, 1)), 
+			scale: Vector3.create(2, 5, 2) 
 		})
 		//MeshRenderer.setBox(this.pointerCollider)
 		MeshCollider.setBox(this.pointerCollider)
@@ -133,7 +138,8 @@ export class BowlingControls {
 				this.strength = arrowScale.x
 
 				// AND NOW, WE BOWL!
-				this.DoTheBowl()
+				//this.DoTheBowl()
+				this.RequestBowl()
 				return
 
 			case CONTROL_TYPE.DIRECTION:
@@ -171,24 +177,25 @@ export class BowlingControls {
 		}
 	}
 
-	// MARK: Do The Bowl
+
+	// MARK: Request Bowl
+	RequestBowl() {
+		console.log("bowlingControls: RequestBowl", this.position, this.direction, this.strength)
+		ClientMessaging.requestPlayRoll(this.position, this.direction, this.strength)
+	}
+
+	// MARK: Do The Bowl - runs a local
 	DoTheBowl() {
 		console.log("bowlingControls: DoTheBowl", this.position, this.direction, this.strength)
 
-		engine.removeSystem(this.sys_BallPhysics)
-		this.cannonSim?.dispose()
-		this.cannonSim = undefined
-
-		//this.ball = this.CreateBall()
-		//this.SpawnPins()
-		this.cannonSim = new CannonSim(this.position, this.direction, this.strength)
-		engine.addSystem(this.sys_BallPhysics, undefined, "bowling-ball-physics")
-	}
-
-	// MARK: End The Bowl
-	EndTheBowl() {
-		console.log("bowlingControls: EndTheBowl")
-		this.Destroy()
+		//engine.removeSystem(this.sys_BallPhysics)
+		//this.cannonSim?.dispose()
+		//this.cannonSim = undefined
+//
+		////this.ball = this.CreateBall()
+		////this.SpawnPins()
+		//this.cannonSim = new CannonSim(this.position, this.direction, this.strength)
+		//engine.addSystem(this.sys_BallPhysics, undefined, "bowling-ball-physics")
 	}
 
 	// MARK: Destroy
@@ -198,25 +205,35 @@ export class BowlingControls {
 		engine.removeSystem(this.sys_PositionAnimation)
 		engine.removeSystem(this.sys_DirectionAnimation)
 		engine.removeSystem(this.sys_StrengthAnimation)
-		engine.removeSystem(this.sys_BallPhysics)
+		
 		this.cannonSim?.dispose()
 		this.cannonSim = undefined
 		if (this.ball) engine.removeEntity(this.ball)
 		this.RemovePins()
 	}
 
-	SpawnPins() {
+	SpawnPins(pinStates: boolean[] = Array(10).fill(true)) {
 		this.RemovePins()
 		const id = Quaternion.Identity()
-		for (const pos of PIN_LANE_LOCAL_POSITIONS) {
+		for (let i = 0; i < PIN_LANE_LOCAL_POSITIONS.length; i++) {
+			const pos = PIN_LANE_LOCAL_POSITIONS[i]!
+			if (!pinStates[i]) continue
+
 			const pin = engine.addEntity()
-			const laneLocal = Vector3.create(pos[0], pos[1], pos[2])
-			const worldPos = this.pinPivotWorldFromSimBody(laneLocal, id)
+			const laneLocalPosition = Vector3.create(pos[0], pos[1], pos[2])
+			const worldPos = this.pinPivotWorldFromSimBody(laneLocalPosition, id)
 			Transform.create(pin, {
 				position: worldPos,
-				scale: Vector3.create(PIN_VISUAL_SCALE, PIN_VISUAL_SCALE, PIN_VISUAL_SCALE)
+				scale: Vector3.Zero()
 			})
 			GltfContainer.create(pin, { src: "assets/models/pin.gltf" })
+			GltfContainerLoadingState.onChange(pin, (state) => {
+				if (state?.currentState === LoadingState.FINISHED) {
+					utils.timers.setTimeout(() => {
+						Tween.setScale(pin, Vector3.Zero(),Vector3.create(PIN_VISUAL_SCALE, PIN_VISUAL_SCALE, PIN_VISUAL_SCALE), 0.7, EasingFunction.EF_EASEINCUBIC)
+					}, 50*i)
+				}
+			})
 			this.pinEntities.push(pin)
 		}
 	}
@@ -288,23 +305,5 @@ export class BowlingControls {
 		const s = (Math.sin(this.accumulatedTime * STRENGTH_OSCILLATION_SPEED) + 1) * 0.5
 		const t = Transform.getMutable(this.arrow)
 		t.scale = Vector3.create(s, s, s)
-	}
-
-	private sys_BallPhysics = (dt: number) => {
-		if (!this.ball) return
-		if (!this.cannonSim) return
-
-		const data = this.cannonSim.advance(dt)
-		const ballTransform = Transform.getMutable(this.ball)
-		ballTransform.position = Vector3.add(this.lanePosition, data.ball.position)
-		ballTransform.rotation = data.ball.rotation
-
-		for (let i = 0; i < this.pinEntities.length; i++) {
-			const pinState = data.pins[i]
-			if (!pinState) continue
-			const t = Transform.getMutable(this.pinEntities[i]!)
-			t.position = this.pinPivotWorldFromSimBody(pinState.position, pinState.rotation)
-			t.rotation = pinState.rotation
-		}
 	}
 }

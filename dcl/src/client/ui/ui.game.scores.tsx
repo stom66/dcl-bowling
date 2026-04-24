@@ -31,8 +31,8 @@ const getFrames = (): Map<string, FrameResult[]> => {
 	//   key: userId (string)
 	//   value: array of arrays (frames), each frame being number[] of rolled pins
 
-	const frames = getDummyScoreData()
-	//const frames = clientStore.getLaneState()?.frames ?? []
+	//const frames = getDummyScoreData()
+	const frames = clientStore.getFrames() ?? new Map<string, number[][]>()
 	
 
 	const frameResults = new Map<string, FrameResult[]>()
@@ -75,7 +75,8 @@ function GetScoreRows() {
 					uiBackground={{ 
 						texture: {
 							src: userProfileCache.getCachedAvatarUrl(userId)
-						}
+						},
+						textureMode: 'stretch'
 					 }}
 				/>
 
