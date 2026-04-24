@@ -1,17 +1,22 @@
+import { engine, LightSource, MeshRenderer, Transform } from '@dcl/sdk/ecs'
+import { Color3, Vector3 } from '@dcl/sdk/math'
+import { onEnterScene } from '@dcl/sdk/players'
+
+
+import { MessageType, room } from 'src/shared/room'
+import { newPlayer } from 'src/shared/utils/discord-webhooks'
+
 import { ClientHandler } from 'src/client/clientHandler'
 import { ClientStore } from 'src/client/clientStore'
 
-import { gameStateHandler } from './gameStateHandler'
+import { gameStateHandler } from 'src/client/gameStateHandler'
 import { setupBowlingHostNpc } from 'src/client/npcGameHost'
 
 import { SetupUI } from 'src/client/ui'
-import { engine, LightSource, MeshRenderer, Transform } from '@dcl/sdk/ecs'
-import { Color3, Vector3 } from '@dcl/sdk/math'
-import { MessageType, room } from 'src/shared/room'
-import { setupLights } from './lights'
-import { newPlayer } from 'src/shared/utils/discord-webhooks'
-import { onEnterScene } from '@dcl/sdk/players'
-import { playerMover } from './playerMover'
+import { setupLights } from 'src/client/lights'
+import { playerMover } from 'src/client/playerMover'
+import { SoundManager } from 'src/client/soundManager'
+import { CameraController } from 'src/client/cameraController'
 
 
 
@@ -32,6 +37,8 @@ export async function initClient() {
 	ClientHandler.init()
 	gameStateHandler.init()
 	playerMover.init()
+	CameraController.init()
+	SoundManager.init()
 
 	SetupUI()
 	setupBowlingHostNpc()

@@ -197,7 +197,9 @@ export class CannonSim {
 	dispose(): void {}
 
 	advance(dt: number): CannonSimAdvanceResult {
-		this.world.fixedStep(dt, GameSettings.SIM_SUB_STEPS)
+		// This simulation runs in a tight offline loop, so we must advance by an
+		// explicit fixed timestep rather than using wall-clock based stepping.
+		this.world.step(dt)
 		return {
 			ball: this.getBodyTransform(this.ballBody),
 			pins: this.pinBodies.map((b) => this.getBodyTransform(b))
@@ -279,10 +281,14 @@ export class CannonSim {
 			}
 		}
 
+		//return simResults
+
 		const optimisedSimResults = this.optimise(simResults)
 		return optimisedSimResults
 	}
 
+
+	// MARK: Optimise
 	optimise(simResults: CannonSimResults): CannonSimResults {
 		const startTime = Date.now()
 		const optimisedBallKeyframes = this.reduceKeyframes(simResults.ballKeyframes.keyframes)
@@ -302,6 +308,15 @@ export class CannonSim {
 
 		const originalKeyframes = this.countKeyframes(simResults)
 		const optimisedKeyframes = this.countKeyframes(optimisedResults)
+		const ballOriginal = simResults.ballKeyframes.keyframes.length
+		const ballOptimised = optimisedBallKeyframes.length
+		console.log(`cannon-sim: optimise: ball keyframes ${ballOriginal} -> ${ballOptimised} (${ballOriginal - ballOptimised} removed)`)
+		for (const [i, pin] of simResults.pinsKeyframes.entries()) {
+			const optimisedPin = optimisedPinsKeyframes[i]
+			const originalPinCount = pin.keyframes.length
+			const optimisedPinCount = optimisedPin?.keyframes.length ?? 0
+			console.log(`cannon-sim: optimise: pin ${pin.index} keyframes ${originalPinCount} -> ${optimisedPinCount} (${originalPinCount - optimisedPinCount} removed)`)
+		}
 
 		const duration = Date.now() - startTime
 		console.log(`cannon-sim: optimise: original keyframes ${originalKeyframes}, optimised keyframes ${optimisedKeyframes}, duration ${duration}ms`)
@@ -309,6 +324,7 @@ export class CannonSim {
 		return optimisedResults
 	}
 
+	// MARK: Helpers
 	private getBodyTransform(body: Body): CannonSimObjectState {
 		const p = body.position
 		const q = body.quaternion
@@ -323,51 +339,35 @@ export class CannonSim {
 	
 	// MARK: utils
 	private reduceKeyframes(keyframes: SimObjectKeyframe[]): SimObjectKeyframe[] {
-		var lastPosition: Vector3 | undefined = undefined
-		var lastRotation: Quaternion | undefined = undefined
-		var reducedKeyframes: SimObjectKeyframe[] = []
+		const reducedKeyframes: SimObjectKeyframe[] = []
 		for (const [i, keyframe] of keyframes.entries()) {
-			// make the new keyframe
 			const newKeyframe: SimObjectKeyframe = {
 				time    : keyframe.time
 			}
 
-			// Get the current and next positions
-			const currentPosition = keyframe.position!
-			const nextPosition = keyframes[i + 1]?.position
+			const previousPosition = keyframes[i - 1]?.position
+			const currentPosition  = keyframe.position!
+			const nextPosition     = keyframes[i + 1]?.position
 
-			// if either the last or next keyframe are null, add the current keyframe
-			if (!nextPosition || !lastPosition) {
+			if (!previousPosition || !nextPosition) {
 				newKeyframe.position = currentPosition
-				lastPosition = currentPosition
-			} 
-
-			// or if the positions differs from the last or next frame are far enough apart, add the current keyframe
-			else if (nextPosition !== undefined && lastPosition !== undefined) {
-				if (
-					!Vector3.equalsWithEpsilon(currentPosition, lastPosition, GameSettings.SIM_KEYFRAME_REDUCTION_EPSILON) ||
-					!Vector3.equalsWithEpsilon(currentPosition, nextPosition, GameSettings.SIM_KEYFRAME_REDUCTION_EPSILON)
-				) {
-					newKeyframe.position = currentPosition
-					lastPosition = currentPosition
-				}
+			} else if (
+				!this.areVectorsEqual(previousPosition, currentPosition) ||
+				!this.areVectorsEqual(currentPosition, nextPosition)
+			) {
+				newKeyframe.position = currentPosition
 			}
 			
-			// Get the current and next rotations
+			const previousRotation = keyframes[i - 1]?.rotation
 			const currentRotation = keyframe.rotation!
 			const nextRotation = keyframes[i + 1]?.rotation
-			if (!nextRotation || !lastRotation) {
+			if (!previousRotation || !nextRotation) {
 				newKeyframe.rotation = currentRotation
-				lastRotation = currentRotation
-			}
-			else if (nextRotation !== undefined && lastRotation !== undefined) {
-				if (
-					Quaternion.dot(currentRotation, lastRotation) < (1-GameSettings.SIM_KEYFRAME_REDUCTION_EPSILON) ||
-					Quaternion.dot(currentRotation, nextRotation) < (1-GameSettings.SIM_KEYFRAME_REDUCTION_EPSILON)
-				) {
-					newKeyframe.rotation = currentRotation
-					lastRotation = currentRotation
-				}
+			} else if (
+				!this.areQuaternionsEqual(previousRotation, currentRotation) ||
+				!this.areQuaternionsEqual(currentRotation, nextRotation)
+			) {
+				newKeyframe.rotation = currentRotation
 			}
 
 			if (newKeyframe.position !== undefined || newKeyframe.rotation !== undefined) {
@@ -375,6 +375,15 @@ export class CannonSim {
 			}
 		}
 		return reducedKeyframes
+	}
+
+	private areVectorsEqual(a: Vector3Type, b: Vector3Type): boolean {
+		return Vector3.equalsWithEpsilon(a, b, GameSettings.SIM_KEYFRAME_REDUCTION_EPSILON)
+	}
+
+	private areQuaternionsEqual(a: QuaternionType, b: QuaternionType): boolean {
+		const dot = Quaternion.dot(a, b)
+		return 1 - Math.abs(dot) < GameSettings.SIM_KEYFRAME_REDUCTION_EPSILON
 	}
 	
 	private countKeyframes(steps: CannonSimResults) {

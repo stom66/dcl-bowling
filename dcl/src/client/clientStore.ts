@@ -1,6 +1,6 @@
 import { Color3 } from '@dcl/sdk/math'
 
-import { LaneStatus, PlayerStatus } from 'src/shared/enums'
+import { LanePhase, LaneStatus, PlayerStatus } from 'src/shared/enums'
 import { LaneState, NotifyLaneStatePayload } from 'src/shared/types'
 import { eventBus } from 'src/shared/utils/eventBus'
 import { userProfileCache } from 'src/shared/utils/userProfileCache'
@@ -85,6 +85,7 @@ export class ClientStore {
 			gameStartTime          : data.gameStartTime,
 			laneIndex              : data.laneIndex,
 			laneStatus             : data.laneStatus as LaneStatus,
+			phase                  : data.phase as LanePhase,
 			players                : new Map<string, string>(data.players.map(p => [p.userId, p.displayName])),
 			frames                 : new Map<string, number[][]>(data.frames.map(f => [f.userId, f.frames])),
 		}
@@ -92,6 +93,10 @@ export class ClientStore {
 		getLaneState(): LaneState | undefined {
 			return this.clientState.laneState
 		}
+
+	getLanePhase(): LanePhase {
+		return this.clientState.laneState?.phase ?? LanePhase.NONE
+	}
 
 	setPlayerStatus(status: PlayerStatus): void {
 		this.clientState.playerStatus = status

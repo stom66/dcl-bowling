@@ -3,6 +3,7 @@ export enum LaneStatus {
 	IDLE     = "IDLE",
 	STARTING = "STARTING",
 	ACTIVE   = "ACTIVE",
+	ENDING   = "ENDING",
 }
 
 export enum PlayerStatus {
@@ -12,11 +13,6 @@ export enum PlayerStatus {
 	IN_GAME_PLAYING        = "IN_GAME_PLAYING",
 }
 
-/**
- * Per-lane game phase used by GameManager's systemFrameWatcher to decide when
- * to advance the game. When a phase's timer elapses, the watcher invokes the
- * corresponding phase-advance function.
- */
 export enum LanePhase {
 	NONE              = "NONE",               // Not running / idle
 	FRAME_START_DELAY = "FRAME_START_DELAY",  // notifyPlayerFrameStart sent, waiting to start roll

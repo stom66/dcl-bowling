@@ -36,6 +36,7 @@ const notifyLaneStateSchema = Schemas.Map({
 	//groupId                : Schemas.String,
 	laneIndex              : Schemas.Int,
 	laneStatus             : Schemas.String,
+	phase                  : Schemas.String,
 	players                : Schemas.Array(
 		Schemas.Map({
 			userId               : Schemas.String,
@@ -62,16 +63,16 @@ const rollReplaySchema = {
 		index    : Schemas.Int,
 		keyframes: Schemas.Array(Schemas.Map({
 			time    : Schemas.Number,
-			position: Schemas.Vector3,
-			rotation: Schemas.Quaternion
+			position: Schemas.Optional(Schemas.Vector3),
+			rotation: Schemas.Optional(Schemas.Quaternion)
 		}))
 	}),
 	pinsKeyframes    : Schemas.Array(Schemas.Map({
 		index    : Schemas.Int,
 		keyframes: Schemas.Array(Schemas.Map({
 			time    : Schemas.Number,
-			position: Schemas.Vector3,
-			rotation: Schemas.Quaternion
+			position: Schemas.Optional(Schemas.Vector3),
+			rotation: Schemas.Optional(Schemas.Quaternion)
 		}))
 	})),
 	score        : Schemas.Number,

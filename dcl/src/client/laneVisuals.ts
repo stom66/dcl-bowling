@@ -2,7 +2,7 @@ import * as utils from "@dcl-sdk/utils"
 import { EasingFunction, engine, Entity, GltfContainer, GltfContainerLoadingState, LoadingState, Transform, Tween, TweenSequence, tweenSystem } from "@dcl/sdk/ecs"
 import { Quaternion, Vector3 } from "@dcl/sdk/math"
 
-import { RollPayload, SimObjectKeyframe } from "src/shared/types"
+import { NotifyPlayerRollPayload, RollPayload, SimObjectKeyframe } from "src/shared/types"
 import { PIN_LANE_LOCAL_POSITIONS } from "src/shared/utils/cannon-sim"
 
 
@@ -50,6 +50,7 @@ export class LaneVisuals {
 	// MARK: Constructor
 	constructor(lanePosition: Vector3) {
 		this.lanePosition = lanePosition
+		this.setupBall()
 	}
 
 
@@ -134,6 +135,10 @@ export class LaneVisuals {
 		}
 	}
 
+	getBall(): Entity | undefined {
+		return this.ball
+	}
+
 
 	// MARK: removeBall
 	removeBall(): void {
@@ -155,7 +160,7 @@ export class LaneVisuals {
 	 * The replay ends when keyframes run out; `onComplete` (if supplied) is
 	 * invoked exactly once. Call `stopReplay()` to abort early.
 	 */
-	runReplay(data: RollPayload, onComplete?: () => void): void {
+	runReplay(data: NotifyPlayerRollPayload, onComplete?: () => void): void {
 
 		// Make sure the ball exists before we start driving its transform.
 		if (this.ball === undefined) this.setupBall()

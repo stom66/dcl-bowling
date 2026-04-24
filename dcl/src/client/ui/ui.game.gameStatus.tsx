@@ -1,7 +1,7 @@
 import ReactEcs, { UiEntity } from '@dcl/sdk/react-ecs'
 import { Color4 } from '@dcl/sdk/math'
 
-import { PlayerStatus } from 'src/shared/enums'
+import { LanePhase, LaneStatus, PlayerStatus } from 'src/shared/enums'
 import { GameSettings } from 'src/shared/settings'
 import { eventBus } from 'src/shared/utils/eventBus'
 import { clockSync } from 'src/shared/utils/clockSync'
@@ -22,37 +22,62 @@ eventBus.on(ClientEvents.NOTIFY_LANE_STATE, (data: LaneState) => {
 		})
 	}
 
+	// Timing
 	if (data.currentRollStartTime) {
-		roundEndTime = data.currentRollStartTime + GameSettings.ROLL_MAX_DURATION
+		endTime = data.currentRollStartTime + GameSettings.ROLL_MAX_DURATION
 	} else {
-		roundEndTime = 0
-		gameStartTime = data.gameStartTime
+		endTime = data.gameStartTime
 	}
-})
 
+	// Phase
+	lanePhase = data.phase
+
+	// Status
+	laneStatus = data.laneStatus
+})
 
 // MARK: Vars
 const clientStore = ClientStore.getInstance()
-
-var playerName    : string = "~"
-//var roundStartTime: number = 0
-var roundEndTime  : number = 0
-var gameStartTime : number = 0
-
+var laneStatus: LaneStatus = LaneStatus.IDLE
+var lanePhase : LanePhase  = LanePhase.NONE
+var playerName: string     = "~"
+var endTime   : number     = 0
 
 
 
 
-function getTimeToGameStart() {
-	const gameStartTime = clientStore.getGameStartTime()
-	const timeToGameStart = Math.ceil((gameStartTime - Date.now()) / 1000)
-	return timeToGameStart > 0 ? timeToGameStart : "~"
+function getStatusText() {
+	var text = "You are idle."
+	if (laneStatus === LaneStatus.STARTING) {
+		text = "Game is starting..."
+	} else if (laneStatus === LaneStatus.ACTIVE) {
+		if (lanePhase === LanePhase.FRAME_START_DELAY) {
+			text = playerName + "'s turn is starting"
+		} else if (lanePhase === LanePhase.ROLL_AWAITING) {
+			text = playerName + " is about to roll"
+		} else if (lanePhase === LanePhase.ROLL_PLAYBACK) {
+			text = playerName + " is rolling!"
+		} else if (lanePhase === LanePhase.ROLL_END_DELAY) {
+			text = playerName + " has finished rolling"
+		} else if (lanePhase === LanePhase.FRAME_END_DELAY) {
+			text = playerName + " has finished their frame"
+		} else {
+			text = "Idle phase"
+		}
+	} else if (laneStatus === LaneStatus.ENDING) {
+		text = "Game is ending..."
+	}
+	return text
 }
 
-function getRoundTimeRemaing() {
-	const timeRemaining = Math.ceil((roundEndTime - Date.now()) / 1000)
-	return timeRemaining > 0 ? timeRemaining : "~"
+function getCountdownTime() {
+	if (endTime > 0) {
+		const timeRemaining = Math.ceil((endTime - Date.now()) / 1000)
+		return timeRemaining > 0 ? timeRemaining.toString() : "~"
+	}
+	return "~"
 }
+
 
 // MARK: Main GameUI
 export function GameStatusUI() {
@@ -87,10 +112,10 @@ export function GameStatusUI() {
 				uiBackground={{ color: Color4.fromHexString("#4C958199") }}
 			>
 				<InfoRow 
-					label={roundEndTime > 0 ? `{playerName}'s Turn` : "Game Starts in..."}
-					value={roundEndTime > 0 ? getRoundTimeRemaing().toString() : getTimeToGameStart().toString()}
-					fontSize={26}
-					firstColumnWidth={70}
+					label            = {getStatusText()}
+					value            = {getCountdownTime()}
+					fontSize         = {26}
+					firstColumnWidth = {70}
 				/>
 			</UiEntity>
 		</UiEntity>

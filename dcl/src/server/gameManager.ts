@@ -127,6 +127,8 @@ class GameManager {
 		this.store.setCurrentRollStartTime(laneIndex, undefined)
 		this.store.initLaneScorecards(laneIndex)
 
+		this.store.setLanePhase(laneIndex, LanePhase.NONE)
+
 		this.runtime.set(laneIndex, {
 			phase       : LanePhase.NONE,
 			phaseEndTime: 0,
@@ -181,10 +183,10 @@ class GameManager {
 		const rt = this.getRuntime(laneIndex)
 		rt.pinStanding = newFullPinRack()
 
+		this.schedulePhase(laneIndex, LanePhase.FRAME_START_DELAY, delayMs)
+		
 		ServerMessaging.notifyPlayerFrameStart(laneIndex, userId)
 		ServerMessaging.notifyLaneStateUpdate(laneIndex)
-
-		this.schedulePhase(laneIndex, LanePhase.FRAME_START_DELAY, delayMs)
 	}
 
 
@@ -206,10 +208,11 @@ class GameManager {
 
 		this.store.setCurrentRollStartTime(laneIndex, Date.now())
 
+		this.schedulePhase(laneIndex, LanePhase.ROLL_AWAITING, GameSettings.ROLL_MAX_DURATION)
+
 		ServerMessaging.notifyPlayerRollStart(laneIndex, userId)
 		ServerMessaging.notifyLaneStateUpdate(laneIndex)
 
-		this.schedulePhase(laneIndex, LanePhase.ROLL_AWAITING, GameSettings.ROLL_MAX_DURATION)
 	}
 
 
@@ -282,10 +285,10 @@ class GameManager {
 		rt.pinStanding = simResults.finalPinStates
 		this.store.addScore(laneIndex, frameIndex, userId, score)
 
+		this.schedulePhase(laneIndex, LanePhase.ROLL_PLAYBACK, GameSettings.ROLL_REPLAY_DURATION)
+
 		ServerMessaging.notifyPlayerRollPlayback(laneIndex, payload)
 		ServerMessaging.notifyLaneStateUpdate(laneIndex)
-
-		this.schedulePhase(laneIndex, LanePhase.ROLL_PLAYBACK, GameSettings.ROLL_REPLAY_DURATION)
 	}
 
 
@@ -338,10 +341,10 @@ class GameManager {
 
 		this.store.setCurrentRollStartTime(laneIndex, undefined)
 
+		this.schedulePhase(laneIndex, LanePhase.ROLL_END_DELAY, GameSettings.FRAME_DELAY_BETWEEN_TURNS)
+
 		ServerMessaging.notifyPlayerRollEnd(laneIndex, userId)
 		ServerMessaging.notifyLaneStateUpdate(laneIndex)
-
-		this.schedulePhase(laneIndex, LanePhase.ROLL_END_DELAY, GameSettings.FRAME_DELAY_BETWEEN_TURNS)
 	}
 
 
@@ -375,10 +378,10 @@ class GameManager {
 
 		console.log(`gameManager: endPlayerFrame: lane ${laneIndex}, user ${userId}`)
 
+		this.schedulePhase(laneIndex, LanePhase.FRAME_END_DELAY, GameSettings.FRAME_DELAY_BETWEEN_TURNS)
+		
 		ServerMessaging.notifyPlayerFrameEnd(laneIndex, userId)
 		ServerMessaging.notifyLaneStateUpdate(laneIndex)
-
-		this.schedulePhase(laneIndex, LanePhase.FRAME_END_DELAY, GameSettings.FRAME_DELAY_BETWEEN_TURNS)
 	}
 
 
@@ -429,6 +432,7 @@ class GameManager {
 
 	private resetLane(laneIndex: number) {
 		this.runtime.delete(laneIndex)
+		this.store.setLanePhase(laneIndex, LanePhase.NONE)
 		this.store.resetLaneState(laneIndex)
 		ServerMessaging.notifyLaneStateUpdate(laneIndex)
 	}
@@ -510,6 +514,8 @@ class GameManager {
 		const runtime = this.getRuntime(laneIndex)
 		runtime.phase        = phase
 		runtime.phaseEndTime = Date.now() + durationMs
+		
+		this.store.setLanePhase(laneIndex, phase)
 	}
 
 	private getRuntime(laneIndex: number): LaneRuntime {
@@ -539,3 +545,7 @@ function newFullPinRack(): boolean[] {
 
 
 export const gameManager = new GameManager()
+
+
+
+

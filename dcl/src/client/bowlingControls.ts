@@ -1,22 +1,7 @@
 import * as utils from "@dcl-sdk/utils"
-import {
-	ColliderLayer,
-	EasingFunction,
-	engine,
-	Entity,
-	GltfContainer,
-	GltfContainerLoadingState,
-	InputAction,
-	LoadingState,
-	Material,
-	MeshCollider,
-	MeshRenderer,
-	pointerEventsSystem,
-	Transform,
-	Tween,
-} from "@dcl/sdk/ecs";
+import { ColliderLayer, EasingFunction, engine, Entity, GltfContainer, GltfContainerLoadingState, InputAction, LoadingState, Material, MeshCollider, MeshRenderer, pointerEventsSystem, Transform, Tween } from "@dcl/sdk/ecs";
 import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
-import { CannonSim, PIN_LANE_LOCAL_POSITIONS } from "../shared/utils/cannon-sim";
+//import { CannonSim } from "src/shared/utils/cannon-sim";
 import { ClientMessaging } from "./clientMessaging";
 
 
@@ -61,13 +46,14 @@ export class BowlingControls {
 	private awaitingPointerUp = false // simple debounce
 
 	private ball?: Entity
-	private pinEntities: Entity[] = []
-	private cannonSim?: CannonSim
+	//private pinEntities: Entity[] = []
+	//private cannonSim?: CannonSim
 
 	// MARK: Constructor
-	constructor(lanePosition: Vector3) {
+	constructor(lanePosition: Vector3, ball: Entity | undefined) {
 		console.log("bowlingControls: BowlingControls: constructor", lanePosition.x, lanePosition.y, lanePosition.z)
 		this.lanePosition = lanePosition
+		this.ball = ball
 
 		// Create the arrow entity
 		this.arrow = engine.addEntity()
@@ -92,8 +78,8 @@ export class BowlingControls {
 		// Add the position animation system
 		engine.addSystem(this.sys_PositionAnimation)
 
-		this.ball = this.CreateBall()
-		this.SpawnPins()
+		//this.ball = this.CreateBall()
+		//this.SpawnPins()
 	}
 
 	// MARK: Update Pointer System
@@ -184,19 +170,6 @@ export class BowlingControls {
 		ClientMessaging.requestPlayRoll(this.position, this.direction, this.strength)
 	}
 
-	// MARK: Do The Bowl - runs a local
-	DoTheBowl() {
-		console.log("bowlingControls: DoTheBowl", this.position, this.direction, this.strength)
-
-		//engine.removeSystem(this.sys_BallPhysics)
-		//this.cannonSim?.dispose()
-		//this.cannonSim = undefined
-//
-		////this.ball = this.CreateBall()
-		////this.SpawnPins()
-		//this.cannonSim = new CannonSim(this.position, this.direction, this.strength)
-		//engine.addSystem(this.sys_BallPhysics, undefined, "bowling-ball-physics")
-	}
 
 	// MARK: Destroy
 	Destroy() {
@@ -205,42 +178,11 @@ export class BowlingControls {
 		engine.removeSystem(this.sys_PositionAnimation)
 		engine.removeSystem(this.sys_DirectionAnimation)
 		engine.removeSystem(this.sys_StrengthAnimation)
-		
-		this.cannonSim?.dispose()
-		this.cannonSim = undefined
+
+		//this.cannonSim?.dispose()
+		//this.cannonSim = undefined
 		if (this.ball) engine.removeEntity(this.ball)
-		this.RemovePins()
-	}
-
-	SpawnPins(pinStates: boolean[] = Array(10).fill(true)) {
-		this.RemovePins()
-		const id = Quaternion.Identity()
-		for (let i = 0; i < PIN_LANE_LOCAL_POSITIONS.length; i++) {
-			const pos = PIN_LANE_LOCAL_POSITIONS[i]!
-			if (!pinStates[i]) continue
-
-			const pin = engine.addEntity()
-			const laneLocalPosition = Vector3.create(pos[0], pos[1], pos[2])
-			const worldPos = this.pinPivotWorldFromSimBody(laneLocalPosition, id)
-			Transform.create(pin, {
-				position: worldPos,
-				scale: Vector3.Zero()
-			})
-			GltfContainer.create(pin, { src: "assets/models/pin.gltf" })
-			GltfContainerLoadingState.onChange(pin, (state) => {
-				if (state?.currentState === LoadingState.FINISHED) {
-					utils.timers.setTimeout(() => {
-						Tween.setScale(pin, Vector3.Zero(),Vector3.create(PIN_VISUAL_SCALE, PIN_VISUAL_SCALE, PIN_VISUAL_SCALE), 0.7, EasingFunction.EF_EASEINCUBIC)
-					}, 50*i)
-				}
-			})
-			this.pinEntities.push(pin)
-		}
-	}
-
-	RemovePins() {
-		for (const e of this.pinEntities) engine.removeEntity(e)
-		this.pinEntities = []
+		//this.RemovePins()
 	}
 
 	/** Sim uses cylinder center; glTF pivot is lower. Offset rotates with the pin. */

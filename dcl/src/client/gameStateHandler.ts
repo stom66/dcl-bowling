@@ -12,6 +12,7 @@ import { GetRandomPointInCircle } from "src/shared/utils/math"
 import { movePlayerTo } from "~system/RestrictedActions"
 import { userProfileCache } from "src/shared/utils/userProfileCache"
 import { BowlingControls } from "./bowlingControls"
+import { LaneVisuals } from "./laneVisuals"
 
 
 export namespace gameStateHandler {
@@ -31,7 +32,7 @@ export namespace gameStateHandler {
 	const clientStore = ClientStore.getInstance()
 
 	var bowlingControls: BowlingControls | undefined
-
+	var laneVisuals    : LaneVisuals | undefined
 
 	// MARK: Init
 	export function init() {
@@ -57,7 +58,8 @@ export namespace gameStateHandler {
 		// Trigger the input controls
 		const laneIndex    = clientStore.getLaneIndex() ?? 0
 		const lanePosition = lanePositions[laneIndex]
-		bowlingControls    = new BowlingControls(lanePosition)
+		laneVisuals        = new LaneVisuals(lanePosition)
+		bowlingControls    = new BowlingControls(lanePosition, laneVisuals.getBall())
 	}
 
 
