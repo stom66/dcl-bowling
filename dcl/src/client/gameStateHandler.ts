@@ -74,7 +74,13 @@ export namespace gameStateHandler {
 
 	function onRollPlayback(data: NotifyPlayerRollPayload) {
 		console.log('gameStateHandler: onRollPlayback: replaying roll from another player')
-		// TODO: replay other player's roll
+		// TODO: replay other player's roll	eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK, (data: NotifyPlayerRollPayload) => { handleNotifyPlayerRollPlayback(data) })
+
+		if (!laneVisuals) {
+			console.log('gameStateHandler: onRollPlayback: laneVisuals not found')
+			return
+		}
+		laneVisuals.runReplay(data)
 	}
 
 

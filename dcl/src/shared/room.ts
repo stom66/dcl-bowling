@@ -1,5 +1,6 @@
 import { registerMessages } from '@dcl/sdk/network'
 import { Schemas } from '@dcl/sdk/ecs'
+import { ReadWriteByteBuffer } from '@dcl/ecs/dist/serialization/ByteBuffer'
 
 // MARK: MessageType enum
 export enum MessageType {
@@ -85,6 +86,11 @@ const userIdMessageBaseSchema = {
 	userId       : Schemas.String
 }
 
+const eventEnvelopeSchema = Schemas.Map({
+	eventType: Schemas.String,
+	timestamp: Schemas.Int64
+})
+
 const Messages = {
 	// Sent by client
 	[MessageType.REQUEST_JOIN_GAME]          : Schemas.Optional(Schemas.Number),
@@ -114,6 +120,21 @@ const Messages = {
 		...userIdMessageBaseSchema,
 	}),
 	[MessageType.NOTIFY_GAME_END]          : notifyLaneStateSchema,
+}
+
+const CUSTOM_EVENT_WRAPPER_BYTES = 1
+
+export function getMessagePayloadSizeBytes(eventType: keyof typeof Messages, data: unknown): number {
+	const buffer = new ReadWriteByteBuffer()
+
+	eventEnvelopeSchema.serialize({
+		eventType : eventType,
+		timestamp : Date.now()
+	}, buffer)
+
+	Messages[eventType].serialize(data as never, buffer)
+
+	return buffer.toBinary().byteLength + CUSTOM_EVENT_WRAPPER_BYTES
 }
 
 // Export room

@@ -162,6 +162,8 @@ export class LaneVisuals {
 	 */
 	runReplay(data: NotifyPlayerRollPayload, onComplete?: () => void): void {
 
+		console.log("laneVisuals: runReplay(): data", data)
+
 		// Make sure the ball exists before we start driving its transform.
 		if (this.ball === undefined) this.setupBall()
 
@@ -210,9 +212,6 @@ export class LaneVisuals {
 				engine.removeSystem(systemName)
 			}
 		}, undefined, systemName)
-	}
-
-	animateEntity(entity: Entity, keyframes: any) {
 	}
 
 	getPositionWaypoints(keyframes: SimObjectKeyframe[]) {

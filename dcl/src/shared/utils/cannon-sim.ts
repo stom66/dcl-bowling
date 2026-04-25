@@ -62,24 +62,6 @@ const BOWL_SPEED_MIN = 5
 const BOWL_SPEED_MAX = 20
 
 
-function roundVector3(vector: Vector3, decimalPlaces: number = 3): Vector3 {
-	const factor = 10 ** decimalPlaces
-	return Vector3.create(
-		Math.round(vector.x * factor) / factor,
-		Math.round(vector.y * factor) / factor,
-		Math.round(vector.z * factor) / factor
-	)
-}
-function roundQuaternion(quaternion: Quaternion, decimalPlaces: number = 3): Quaternion {
-	const factor = 10 ** decimalPlaces
-	return Quaternion.create(
-		Math.round(quaternion.x * factor) / factor,
-		Math.round(quaternion.y * factor) / factor,
-		Math.round(quaternion.z * factor) / factor,
-		Math.round(quaternion.w * factor) / factor
-	)
-}
-
 
 
 /** Lane-local pin rest positions (same order as simulation bodies). */
@@ -207,6 +189,8 @@ export class CannonSim {
 	}
 
 	simulate(duration: number): CannonSimResults {
+		const simStartTime = Date.now()
+
 		var framesWithNovelocity = 0
 		const STEP_TIME = 1 / GameSettings.SIM_FRAME_RATE
 		const STEPS     = Math.floor(duration / STEP_TIME)
@@ -222,6 +206,9 @@ export class CannonSim {
 			,
 			finalPinStates: Array.from({ length: PIN_LANE_LOCAL_POSITIONS.length }, () => true)
 		}
+
+		const setupDuration = Date.now() - simStartTime
+		console.log(`cannon-sim: setup finished after: ${setupDuration}ms`)
 
 		for (let i = 0; i < STEPS; i++) {
 			var hasVelocity = false
@@ -265,10 +252,13 @@ export class CannonSim {
 			}
 
 			if (framesWithNovelocity > GameSettings.SIM_FRAMES_WITH_NO_VELOCITY_THRESHOLD) {
-				console.log(`cannon-sim: simulate: stopping simulation at frame ${i} because it has been running for too long`)
+				console.log(`cannon-sim: stopping simulation at frame ${i} because it has been running for too long`)
 				break
 			}
 		}
+		
+		const simulationDuration = Date.now() - simStartTime
+		console.log(`cannon-sim: simulation finished after: ${simulationDuration}ms`)
 
 		// Now work out  which of the pins are no longer standing
 		for (const pinKeyframes of simResults.pinsKeyframes) {
@@ -280,10 +270,15 @@ export class CannonSim {
 				simResults.finalPinStates[index] = false
 			}
 		}
+		
+		const finalPinStatesDuration = Date.now() - simStartTime
+		console.log(`cannon-sim: finalPinStates finished after: ${finalPinStatesDuration}ms`)
 
-		//return simResults
 
 		const optimisedSimResults = this.optimise(simResults)
+		
+		const optimisationDuration = Date.now() - simStartTime
+		console.log(`cannon-sim: optimisation finished after: ${optimisationDuration}ms`)
 		return optimisedSimResults
 	}
 
@@ -306,16 +301,21 @@ export class CannonSim {
 			finalPinStates: simResults.finalPinStates
 		}
 
-		const originalKeyframes = this.countKeyframes(simResults)
-		const optimisedKeyframes = this.countKeyframes(optimisedResults)
-		const ballOriginal = simResults.ballKeyframes.keyframes.length
-		const ballOptimised = optimisedBallKeyframes.length
+		const originalKeyframes  = countKeyframes(simResults)
+		const optimisedKeyframes = countKeyframes(optimisedResults)
+		const ballOriginal       = simResults.ballKeyframes.keyframes.length
+		const ballOptimised      = optimisedBallKeyframes.length
 		console.log(`cannon-sim: optimise: ball keyframes ${ballOriginal} -> ${ballOptimised} (${ballOriginal - ballOptimised} removed)`)
+
 		for (const [i, pin] of simResults.pinsKeyframes.entries()) {
-			const optimisedPin = optimisedPinsKeyframes[i]
-			const originalPinCount = pin.keyframes.length
+			const startTimePin = Date.now()
+			
+			const optimisedPin      = optimisedPinsKeyframes[i]
+			const originalPinCount  = pin.keyframes.length
 			const optimisedPinCount = optimisedPin?.keyframes.length ?? 0
-			console.log(`cannon-sim: optimise: pin ${pin.index} keyframes ${originalPinCount} -> ${optimisedPinCount} (${originalPinCount - optimisedPinCount} removed)`)
+
+			const pinDuration = Date.now() - startTimePin
+			console.log(`cannon-sim: optimise: pin ${pin.index} keyframes ${originalPinCount} -> ${optimisedPinCount} (${originalPinCount - optimisedPinCount} removed) in ${pinDuration}ms`)
 		}
 
 		const duration = Date.now() - startTime
@@ -337,7 +337,8 @@ export class CannonSim {
 		}
 	}
 	
-	// MARK: utils
+
+	// MARK: reduceKeyframes
 	private reduceKeyframes(keyframes: SimObjectKeyframe[]): SimObjectKeyframe[] {
 		const reducedKeyframes: SimObjectKeyframe[] = []
 		for (const [i, keyframe] of keyframes.entries()) {
@@ -352,8 +353,8 @@ export class CannonSim {
 			if (!previousPosition || !nextPosition) {
 				newKeyframe.position = currentPosition
 			} else if (
-				!this.areVectorsEqual(previousPosition, currentPosition) ||
-				!this.areVectorsEqual(currentPosition, nextPosition)
+				!areVectorsEqual(previousPosition, currentPosition) ||
+				!areVectorsEqual(currentPosition, nextPosition)
 			) {
 				newKeyframe.position = currentPosition
 			}
@@ -364,8 +365,8 @@ export class CannonSim {
 			if (!previousRotation || !nextRotation) {
 				newKeyframe.rotation = currentRotation
 			} else if (
-				!this.areQuaternionsEqual(previousRotation, currentRotation) ||
-				!this.areQuaternionsEqual(currentRotation, nextRotation)
+				!areQuaternionsEqual(previousRotation, currentRotation) ||
+				!areQuaternionsEqual(currentRotation, nextRotation)
 			) {
 				newKeyframe.rotation = currentRotation
 			}
@@ -377,23 +378,48 @@ export class CannonSim {
 		return reducedKeyframes
 	}
 
-	private areVectorsEqual(a: Vector3Type, b: Vector3Type): boolean {
-		return Vector3.equalsWithEpsilon(a, b, GameSettings.SIM_KEYFRAME_REDUCTION_EPSILON)
-	}
-
-	private areQuaternionsEqual(a: QuaternionType, b: QuaternionType): boolean {
-		const dot = Quaternion.dot(a, b)
-		return 1 - Math.abs(dot) < GameSettings.SIM_KEYFRAME_REDUCTION_EPSILON
-	}
 	
-	private countKeyframes(steps: CannonSimResults) {
-		var count = 0
-		count += steps.ballKeyframes.keyframes.length
-		for (const pin of steps.pinsKeyframes) {
-			count += pin.keyframes.length
-		}
-		return count
-	}
+
 
 
 }
+
+// MARK: Utils
+
+function roundVector3(vector: Vector3, decimalPlaces: number = 3): Vector3 {
+	const factor = 10 ** decimalPlaces
+	return Vector3.create(
+		Math.round(vector.x * factor) / factor,
+		Math.round(vector.y * factor) / factor,
+		Math.round(vector.z * factor) / factor
+	)
+}
+function roundQuaternion(quaternion: Quaternion, decimalPlaces: number = 3): Quaternion {
+	const factor = 10 ** decimalPlaces
+	return Quaternion.create(
+		Math.round(quaternion.x * factor) / factor,
+		Math.round(quaternion.y * factor) / factor,
+		Math.round(quaternion.z * factor) / factor,
+		Math.round(quaternion.w * factor) / factor
+	)
+}
+
+function areVectorsEqual(a: Vector3Type, b: Vector3Type): boolean {
+	return Vector3.equalsWithEpsilon(a, b, GameSettings.SIM_KEYFRAME_REDUCTION_EPSILON)
+}
+
+function areQuaternionsEqual(a: QuaternionType, b: QuaternionType): boolean {
+	const dot = Quaternion.dot(a, b)
+	return 1 - Math.abs(dot) < GameSettings.SIM_KEYFRAME_REDUCTION_EPSILON
+}
+
+	
+function countKeyframes(steps: CannonSimResults) {
+	var count = 0
+	count += steps.ballKeyframes.keyframes.length
+	for (const pin of steps.pinsKeyframes) {
+		count += pin.keyframes.length
+	}
+	return count
+}
+

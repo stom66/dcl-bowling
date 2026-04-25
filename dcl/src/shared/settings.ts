@@ -35,9 +35,9 @@ export class GameSettings {
 
 	// Cannon-es sim settings
 	static SIM_KEYFRAME_REDUCTION_EPSILON = 0.002
-	static SIM_FRAME_RATE                 = 30
-	static SIM_SUB_STEPS                  = 4
-	static SIM_DURATION                   = 8             // in seconds NOT in milliseconds
+	static SIM_FRAME_RATE                 = 6
+	static SIM_SUB_STEPS                  = 12
+	static SIM_DURATION                   = 6             // in seconds NOT in milliseconds
 	static SIM_FRAMES_WITH_NO_VELOCITY_THRESHOLD = 10
 
 }
