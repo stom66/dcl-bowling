@@ -17,8 +17,8 @@
   },
   "dependencies": {
     "@dcl-sdk/utils": "^1.4.0",
-    "@dcl/js-runtime": "7.22.5-24779418349.commit-111fd7e",
-    "@dcl/sdk": "7.22.5-24779418349.commit-111fd7e",
+    "@dcl/js-runtime": "^7.22.5-24836126953.commit-ddc8da1",
+    "@dcl/sdk": "^7.22.5-24836126953.commit-ddc8da1",
     "cannon-es": "^0.20.0",
     "dcl-npc-toolkit": "^1.7.3"
   },
