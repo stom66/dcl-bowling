@@ -5,10 +5,12 @@ import { Quaternion, Vector3 } from "@dcl/sdk/math"
 import { LanePhase, LaneStatus } from "src/shared/enums"
 import { GameSettings } from "src/shared/settings"
 import { NotifyPlayerRollPayload, RequestPlayRollPayload, RollPayload } from "src/shared/types"
-import { CannonSim, CannonSimAdvanceResult, CannonSimResults, PIN_LANE_LOCAL_POSITIONS } from "src/shared/utils/cannon-sim"
 
 import { ServerStore } from "src/server/serverStore"
 import * as ServerMessaging from "./serverMessaging"
+import { getSimulationResults } from "./physics/physics.client"
+import { SimulationInput, SimulationResult } from "./physics/types"
+import { PIN_LANE_LOCAL_POSITIONS } from "./physics/physics.cannon-sim"
 
 
 /** Per-lane runtime state that lives only on the server (not part of the wire payload). */
@@ -203,6 +205,8 @@ class GameManager {
 		if (!userId) return
 
 		const rollIndex = this.store.getCurrentRollIndex(laneIndex)
+		const rt = this.getRuntime(laneIndex)
+		const pinStanding = rt.pinStanding.slice()
 
 		console.log(`gameManager: startPlayerRoll: lane ${laneIndex}, user ${userId}, rollIndex ${rollIndex}`)
 
@@ -210,7 +214,7 @@ class GameManager {
 
 		this.schedulePhase(laneIndex, LanePhase.ROLL_AWAITING, GameSettings.ROLL_MAX_DURATION)
 
-		ServerMessaging.notifyPlayerRollStart(laneIndex, userId)
+		ServerMessaging.notifyPlayerRollStart(laneIndex, userId, pinStanding)
 		ServerMessaging.notifyLaneStateUpdate(laneIndex)
 
 	}
@@ -252,28 +256,27 @@ class GameManager {
 
 
 	/**
-	 * Run the Cannon simulation for this roll, assemble a replay payload and
+	 * Run the Physics simulation for this roll, assemble a replay payload and
 	 * broadcast it via NOTIFY_PLAYER_ROLL_PLAYBACK. Enters ROLL_PLAYBACK phase.
 	 */
 	private simulateAndPlaybackRoll(laneIndex: number, userId: string, data: RequestPlayRollPayload) {
-		const frameIndex = this.store.getCurrentFrameIndex(laneIndex)
-		const rollIndex  = this.store.getCurrentRollIndex(laneIndex)
-		const rt         = this.getRuntime(laneIndex)
+		const simStartTime      = Date.now()
 
+		const frameIndex        = this.store.getCurrentFrameIndex(laneIndex)
+		const rollIndex         = this.store.getCurrentRollIndex(laneIndex)
+		const rt                = this.getRuntime(laneIndex)
 		const startingPinStates = rt.pinStanding.slice()
 
-		// TODO: respect `standingBefore` when seeding the sim so already-knocked
-		// pins don't re-appear in the replay. For now the sim always runs with
-		// a full rack; the score calculation below still only counts *newly*
-		// knocked pins on the 2nd roll of a frame.
-		const simStartTime = Date.now()
-		const sim = new CannonSim(
-			Vector3.create(data.position.x, data.position.y, data.position.z),
-			Vector3.create(data.direction.x, data.direction.y, data.direction.z),
-			data.power,
-			startingPinStates,
-		)
-		const simResults = sim.simulate(GameSettings.SIM_DURATION)
+		// Run the sim - the could take a couple of seconds
+		const simInput: SimulationInput = {
+			direction: Vector3.create(data.direction.x, data.direction.y, data.direction.z),
+			duration : GameSettings.SIM_DURATION,
+			pinStates: startingPinStates,
+			position : Vector3.create(data.position.x, data.position.y, data.position.z),
+			spin     : 0,
+			strength : data.power,
+		}
+		const simResults: SimulationResult = getSimulationResults(simInput)
 
 		const simDuration = Date.now() - simStartTime
 		console.log(`gameManager: simulateAndPlaybackRoll: simDuration ${simDuration}ms`)
@@ -297,7 +300,7 @@ class GameManager {
 		userId           : string,
 		frameIndex       : number,
 		rollIndex        : number,
-		simResults       : CannonSimResults,
+		simResults       : SimulationResult,
 		startingPinStates: boolean[],
 		score            : number,
 	): NotifyPlayerRollPayload {
@@ -308,8 +311,8 @@ class GameManager {
 			rollIndex        : rollIndex,
 			startingPinStates: startingPinStates,
 			finalPinStates   : simResults.finalPinStates,
-			ballKeyframes    : simResults.ballKeyframes,
-			pinsKeyframes    : simResults.pinsKeyframes,
+			ballKeyframes    : simResults.compressed.ballKeyframes,
+			pinsKeyframes    : simResults.compressed.pinsKeyframes,
 			score            : score,
 			sentAt           : Date.now(),
 		}

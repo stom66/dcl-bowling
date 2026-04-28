@@ -79,7 +79,7 @@ export type NotifyJoinGamePayload = {
 export type SimObjectKeyframe = {
 	time    : number
 	position?: Vector3Type
-	rotation?: QuaternionType
+	rotation?: Vector3Type
 }
 
 export type SimObjectKeyframes = {

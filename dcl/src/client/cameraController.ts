@@ -32,7 +32,7 @@ export namespace CameraController {
 
 	// MARK: Init
 	export function init() {
-		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK, (data: { userId: string }) => { onGroupRollPlayback(data) })
+		//eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK, (data: { userId: string }) => { onGroupRollPlayback(data) })
 		eventBus.on(ClientEvents.ON_MY_ROLL_START, (data: { userId: string }) => { onMyRollStart(data) })
 		eventBus.on(ClientEvents.ON_MY_ROLL_END, (data: { userId: string }) => { onMyRollEnd(data) })
 

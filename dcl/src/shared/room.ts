@@ -65,7 +65,7 @@ const rollReplaySchema = {
 		keyframes: Schemas.Array(Schemas.Map({
 			time    : Schemas.Number,
 			position: Schemas.Optional(Schemas.Vector3),
-			rotation: Schemas.Optional(Schemas.Quaternion)
+			rotation: Schemas.Optional(Schemas.Vector3)
 		}))
 	}),
 	pinsKeyframes    : Schemas.Array(Schemas.Map({
@@ -73,7 +73,7 @@ const rollReplaySchema = {
 		keyframes: Schemas.Array(Schemas.Map({
 			time    : Schemas.Number,
 			position: Schemas.Optional(Schemas.Vector3),
-			rotation: Schemas.Optional(Schemas.Quaternion)
+			rotation: Schemas.Optional(Schemas.Vector3)
 		}))
 	})),
 	score        : Schemas.Number,
@@ -109,6 +109,7 @@ const Messages = {
 	}),
 	[MessageType.NOTIFY_PLAYER_ROLL_START]   : Schemas.Map({
 		...userIdMessageBaseSchema,
+		pinStanding: Schemas.Array(Schemas.Boolean),
 	}),
 	[MessageType.NOTIFY_PLAYER_ROLL_PLAYBACK]: Schemas.Map({
 		...rollReplaySchema

@@ -87,11 +87,11 @@ export namespace ClientHandler {
 	}
 
 	// MARK: Roll Start
-	function handleNotifyPlayerRollStart(data: { userId: string }) {
+	function handleNotifyPlayerRollStart(data: { userId: string, pinStanding: boolean[] }) {
 		if (data.userId === clientStore.getUserId()) {
-			eventBus.emit(ClientEvents.ON_MY_ROLL_START, data)
+			eventBus.emit(ClientEvents.ON_MY_ROLL_START, { userId: data.userId, pinStanding: data.pinStanding })
 		} else {
-			eventBus.emit(ClientEvents.ON_GROUP_ROLL_START, data)
+			eventBus.emit(ClientEvents.ON_GROUP_ROLL_START, { userId: data.userId, pinStanding: data.pinStanding })
 		}
 	}
 

@@ -21,10 +21,14 @@ export namespace gameStateHandler {
 	eventBus.on(ClientEvents.ON_GAME_JOINED, (data: LaneState) => { onJoinGame(data) })
 	eventBus.on(ClientEvents.ON_GROUP_GAME_START, (data: LaneState) => { onGameStart(data) })
 
-	eventBus.on(ClientEvents.ON_MY_ROLL_START, (data: { userId: string }) => { onMyRollStart(data) })
+	eventBus.on(ClientEvents.ON_MY_ROLL_START, (data: { userId: string, pinStanding: boolean[] }) => { onMyRollStart(data) })
 	eventBus.on(ClientEvents.ON_MY_ROLL_END, (data: { userId: string }) => { onMyRollEnd(data) })
 
+	eventBus.on(ClientEvents.ON_GROUP_ROLL_START, (data: { userId: string, pinStanding: boolean[] }) => { onGroupRollStart(data) })
+	eventBus.on(ClientEvents.ON_GROUP_ROLL_END, (data: { userId: string }) => { })
 	eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK, (data: NotifyPlayerRollPayload) => { onRollPlayback(data) })
+	
+
 
 
 
@@ -51,17 +55,23 @@ export namespace gameStateHandler {
 		console.log('gameStateHandler: onGameStart')
 	}
 
-
-	function onMyRollStart(data: { userId: string }) {
-
-		// Change the players camera to ve a view down the lane
-		// Trigger the input controls
+	function onGroupRollStart(data: { userId: string, pinStanding: boolean[] }) {
+		console.log('gameStateHandler: onGroupRollStart: data', data)
+		
 		const laneIndex    = clientStore.getLaneIndex() ?? 0
 		const lanePosition = lanePositions[laneIndex]
 		laneVisuals        = new LaneVisuals(lanePosition)
-		bowlingControls    = new BowlingControls(lanePosition, laneVisuals.getBall())
+		laneVisuals.setupPins(data.pinStanding)
 	}
 
+	function onMyRollStart(data: { userId: string, pinStanding: boolean[] }) {
+		console.log('gameStateHandler: onMyRollStart: data', data)
+		const laneIndex    = clientStore.getLaneIndex() ?? 0
+		const lanePosition = lanePositions[laneIndex]
+		laneVisuals        = new LaneVisuals(lanePosition)	
+		laneVisuals.setupPins(data.pinStanding)
+		bowlingControls    = new BowlingControls(lanePosition, laneVisuals.getBall())
+	}
 
 	function onMyRollEnd(data: { userId: string }) {
 

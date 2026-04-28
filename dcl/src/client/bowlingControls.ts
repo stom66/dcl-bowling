@@ -181,7 +181,7 @@ export class BowlingControls {
 
 		//this.cannonSim?.dispose()
 		//this.cannonSim = undefined
-		if (this.ball) engine.removeEntity(this.ball)
+		//if (this.ball) engine.removeEntity(this.ball)
 		//this.RemovePins()
 	}
 

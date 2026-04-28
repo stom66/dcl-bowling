@@ -1,0 +1,27 @@
+{
+	"_comment": "Lane-local pin positions and Cannon cylinder parameters.",
+	"cylinder": {
+		"radiusTop"   : 0.07,
+		"radiusBottom": 0.09,
+		"height"      : 0.6,
+		"numSegments" : 12,
+		"friction"    : 0.5,
+		"restitution" : 0,
+		"mass"        : 1
+	},
+	"positions": [
+		[0.0, 0.31, 18.0],
+
+		[-0.15, 0.31, 18.3],
+		[0.15, 0.31, 18.3],
+
+		[-0.3, 0.31, 18.6],
+		[0.0, 0.31, 18.6],
+		[0.3, 0.31, 18.6],
+
+		[-0.45, 0.31, 18.9],
+		[-0.15, 0.31, 18.9],
+		[0.15, 0.31, 18.9],
+		[0.45, 0.31, 18.9]
+	]
+}
