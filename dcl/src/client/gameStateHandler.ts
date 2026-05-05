@@ -1,7 +1,7 @@
 import * as utils from "@dcl-sdk/utils"
 
-import { LaneStatus, PlayerStatus } from "src/shared/enums"
-import { ClientState, LaneState, NotifyJoinGamePayload, NotifyPlayerRollPayload } from "src/shared/types"
+import { LanePhase, PlayerStatus } from "src/shared/enums"
+import { ClientState, LaneState, NotifyJoinGamePayload, NotifyPlayerRollPayload } from "src/shared/types/shared-types"
 import { eventBus } from "src/shared/utils/eventBus"
 
 import { ClientEvents } from "src/client/clientEvents"

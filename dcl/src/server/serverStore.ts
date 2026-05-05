@@ -1,6 +1,6 @@
-import { LanePhase, LaneStatus } from "src/shared/enums"
+import { LanePhase } from "src/shared/enums"
 import { GameSettings } from "src/shared/settings"
-import { LaneState, NotifyLaneStatePayload, ServerState } from "src/shared/types"
+import { LaneState, NotifyLaneStatePayload, ServerState } from "src/shared/types/shared-types"
 
 import { userProfileCache } from "src/shared/utils/userProfileCache"
 
@@ -31,7 +31,6 @@ export class ServerStore {
 			frames                 : new Map<string, number[][]>(),
 			gameStartTime          : 0,
 			laneIndex              : laneIndex,
-			laneStatus             : LaneStatus.IDLE,
 			phase                  : LanePhase.NONE,
 			players                : new Map<string, string>(),
 		} as LaneState
@@ -114,13 +113,6 @@ export class ServerStore {
 			return this.getLaneState(laneIndex).laneIndex
 		}
 
-	setLaneStatus(laneIndex: number, value: LaneStatus) {
-		this.getLaneState(laneIndex).laneStatus = value
-	}
-		getLaneStatus(laneIndex: number): LaneStatus {
-			return this.getLaneState(laneIndex).laneStatus
-		}
-
 	setLanePhase(laneIndex: number, value: LanePhase) {
 		this.getLaneState(laneIndex).phase = value
 	}
@@ -148,7 +140,6 @@ export class ServerStore {
 			currentRollStartTime   : lane.currentRollStartTime,
 			gameStartTime          : lane.gameStartTime,
 			laneIndex              : lane.laneIndex,
-			laneStatus             : lane.laneStatus,
 			phase                  : lane.phase,
 			players                : Array.from(lane.players.entries()).map(([userId, displayName]) => ({ userId, displayName })),
 			frames                 : Array.from(lane.frames.entries()).map(([userId, frames]) => ({ userId, frames })),

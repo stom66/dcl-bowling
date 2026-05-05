@@ -6,7 +6,7 @@ import { engine } from '@dcl/sdk/ecs'
 import { isServer } from '@dcl/sdk/network'
 import { getPlayer, onEnterScene } from '@dcl/sdk/players'
 
-import type { DecentralandProfile } from 'src/shared/types'
+import type { DecentralandProfile } from 'src/shared/types/shared-types'
 
 
 // MARK: Vars

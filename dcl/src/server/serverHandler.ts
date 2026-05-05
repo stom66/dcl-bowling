@@ -1,6 +1,6 @@
 import { MessageType, room } from 'src/shared/room'
 import { GameSettings } from 'src/shared/settings'
-import { RequestPlayRollPayload } from 'src/shared/types'
+import { RequestPlayRollPayload } from 'src/shared/types/shared-types'
 
 import { gameManager } from 'src/server/gameManager'
 

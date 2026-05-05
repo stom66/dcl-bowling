@@ -1,13 +1,13 @@
 import ReactEcs, { UiEntity } from '@dcl/sdk/react-ecs'
 import { Color4 } from '@dcl/sdk/math'
 
-import { LanePhase, LaneStatus, PlayerStatus } from 'src/shared/enums'
+import { LanePhase, PlayerStatus } from 'src/shared/enums'
 import { GameSettings } from 'src/shared/settings'
 import { clockSync } from 'src/shared/utils/clockSync'
 import { eventBus, ClientEvents } from 'src/shared/utils/eventBus'
 
 import { ClientStore } from 'src/client/clientStore'
-import { LaneState, NotifyLaneStatePayload } from 'src/shared/types'
+import { LaneState, NotifyLaneStatePayload } from 'src/shared/types/shared-types'
 import { userProfileCache } from 'src/shared/utils/userProfileCache'
 import { InfoRow } from './ui.components'
 
@@ -31,13 +31,10 @@ eventBus.on(ClientEvents.NOTIFY_LANE_STATE, (data: LaneState) => {
 	// Phase
 	lanePhase = data.phase
 
-	// Status
-	laneStatus = data.laneStatus
 })
 
 // MARK: Vars
 const clientStore = ClientStore.getInstance()
-var laneStatus: LaneStatus = LaneStatus.IDLE
 var lanePhase : LanePhase  = LanePhase.NONE
 var playerName: string     = "~"
 var endTime   : number     = 0
@@ -47,24 +44,22 @@ var endTime   : number     = 0
 
 function getStatusText() {
 	var text = "You are idle."
-	if (laneStatus === LaneStatus.STARTING) {
+	if (lanePhase === LanePhase.GAME_STARTING) {
 		text = "Game is starting..."
-	} else if (laneStatus === LaneStatus.ACTIVE) {
-		if (lanePhase === LanePhase.FRAME_START_DELAY) {
-			text = playerName + "'s turn is starting"
-		} else if (lanePhase === LanePhase.ROLL_AWAITING) {
-			text = playerName + " is about to roll"
-		} else if (lanePhase === LanePhase.ROLL_PLAYBACK) {
-			text = playerName + " is rolling!"
-		} else if (lanePhase === LanePhase.ROLL_END_DELAY) {
-			text = playerName + " has finished rolling"
-		} else if (lanePhase === LanePhase.FRAME_END_DELAY) {
-			text = playerName + " has finished their frame"
-		} else {
-			text = "Idle phase"
-		}
-	} else if (laneStatus === LaneStatus.ENDING) {
+	} else if (lanePhase === LanePhase.FRAME_START) {
+		text = playerName + "'s turn is starting"
+	} else if (lanePhase === LanePhase.ROLL_AWAITING) {
+		text = playerName + " is about to roll"
+	} else if (lanePhase === LanePhase.ROLL_PLAYBACK) {
+		text = playerName + " is rolling!"
+	} else if (lanePhase === LanePhase.ROLL_END) {
+		text = playerName + " has finished rolling"
+	} else if (lanePhase === LanePhase.FRAME_END) {
+		text = playerName + " has finished their frame"
+	} else if (lanePhase === LanePhase.GAME_ENDING) {
 		text = "Game is ending..."
+	} else {
+		text = "You are not in a game"
 	}
 	return text
 }
@@ -101,7 +96,7 @@ export function GameStatusUI() {
 					flexDirection : 'row',
 					alignItems    : 'center',
 					justifyContent: 'center',
-					margin        : { top: '35px' },
+					margin        : { top: '8px' },
 					display       : 'flex',
 					padding       : { top: 10, bottom: 10, left: 30, right: 30 },
 					borderRadius  : { topLeft: 8, topRight: 8, bottomLeft: 32, bottomRight: 32 },

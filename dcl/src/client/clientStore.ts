@@ -1,7 +1,7 @@
 import { Color3 } from '@dcl/sdk/math'
 
-import { LanePhase, LaneStatus, PlayerStatus } from 'src/shared/enums'
-import { LaneState, NotifyLaneStatePayload } from 'src/shared/types'
+import { LanePhase, PlayerStatus } from 'src/shared/enums'
+import { LaneState, NotifyLaneStatePayload } from 'src/shared/types/shared-types'
 import { eventBus, ClientEvents } from 'src/shared/utils/eventBus'
 import { userProfileCache } from 'src/shared/utils/userProfileCache'
 
@@ -83,7 +83,6 @@ export class ClientStore {
 			currentRollStartTime   : data.currentRollStartTime,
 			gameStartTime          : data.gameStartTime,
 			laneIndex              : data.laneIndex,
-			laneStatus             : data.laneStatus as LaneStatus,
 			phase                  : data.phase as LanePhase,
 			players                : new Map<string, string>(data.players.map(p => [p.userId, p.displayName])),
 			frames                 : new Map<string, number[][]>(data.frames.map(f => [f.userId, f.frames])),
@@ -93,9 +92,12 @@ export class ClientStore {
 			return this.clientState.laneState
 		}
 
-	getLanePhase(): LanePhase {
-		return this.clientState.laneState?.phase ?? LanePhase.NONE
+	setLanePhase(value: LanePhase) {
+		if (this.clientState.laneState) this.clientState.laneState.phase = value
 	}
+		getLanePhase(): LanePhase {
+			return this.clientState.laneState?.phase ?? LanePhase.NONE
+		}
 
 	setPlayerStatus(status: PlayerStatus): void {
 		this.clientState.playerStatus = status
@@ -161,13 +163,6 @@ export class ClientStore {
 	}
 		getLaneIndex(): number | undefined {
 			return this.clientState.laneState?.laneIndex
-		}
-
-	setLaneStatus(value: LaneStatus) {
-		if (this.clientState.laneState) this.clientState.laneState.laneStatus = value
-	}
-		getLaneStatus(): LaneStatus | undefined {
-			return this.clientState.laneState?.laneStatus
 		}
 
 	setPlayers(value: Map<string, string>) {

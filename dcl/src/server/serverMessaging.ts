@@ -1,5 +1,5 @@
 import { getMessagePayloadSizeBytes, MessageType, room } from "src/shared/room"
-import { NotifyPlayerRollPayload } from "src/shared/types"
+import { NotifyPlayerRollPayload } from "src/shared/types/shared-types"
 
 import { ServerStore } from "src/server/serverStore"
 

@@ -7,7 +7,7 @@ import { clockSync } from 'src/shared/utils/clockSync'
 import { eventBus, ClientEvents } from 'src/shared/utils/eventBus'
 
 import { ClientStore } from 'src/client/clientStore'
-import { LaneState, NotifyLaneStatePayload } from 'src/shared/types'
+import { LaneState, NotifyLaneStatePayload } from 'src/shared/types/shared-types'
 import { userProfileCache } from 'src/shared/utils/userProfileCache'
 import { FrameResult, getDummyScoreData, getFrameResults } from 'src/shared/utils/scoreCalc'
 

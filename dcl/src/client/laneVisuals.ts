@@ -5,7 +5,7 @@ import { PIN_LANE_LOCAL_POSITIONS } from 'src/server/physics/physics.pin-layout'
 import { resolveSimulationSettings } from "src/server/physics/physics.client"
 import { DEFAULT_STORED_ROTATION, storedRotationToQuaternion } from "src/server/physics/physics.utils"
 
-import { NotifyPlayerRollPayload, RollPayload, SimObjectKeyframe } from "src/shared/types"
+import { NotifyPlayerRollPayload, RollPayload, SimObjectKeyframe } from "src/shared/types/shared-types"
 import { eventBus } from "src/shared/utils/eventBus"
 import { ClientEvents } from "./clientEvents"
 import { SimObjectKeyframes } from "src/server/physics/types"

@@ -36,7 +36,6 @@ const notifyLaneStateSchema = Schemas.Map({
 	gameStartTime          : Schemas.Int64,
 	//groupId                : Schemas.String,
 	laneIndex              : Schemas.Int,
-	laneStatus             : Schemas.String,
 	phase                  : Schemas.String,
 	players                : Schemas.Array(
 		Schemas.Map({

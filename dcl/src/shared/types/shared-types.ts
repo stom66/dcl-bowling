@@ -1,7 +1,7 @@
 import { QuaternionType, Vector3Type } from "@dcl/sdk/ecs"
 import { Color3, Vector3 } from "@dcl/sdk/math"
 
-import { LanePhase, LaneStatus } from "src/shared/enums"
+import { LanePhase } from "src/shared/enums"
 
 
 
@@ -39,10 +39,21 @@ export type LaneState = {
 	frames                  : Map<string, number[][]>, // userId -> scores
 	gameStartTime           : number,
 	laneIndex               : number,
-	laneStatus              : LaneStatus
+	//laneStatus              : LaneStatus
 	phase                   : LanePhase
 	players                 : Map<string, string>,     // userId -> displayName
 	//groupId                 :  string | undefined
+}
+
+// MARK: LaneComponents
+
+export type LaneScores = {
+	userId: string
+	frames: number[][]
+}
+export type LanePlayers = {
+	userId     : string
+	displayName: string
 }
 
 // MARK: NotifyLaneStatePayload (wire format — arrays, not Maps)
@@ -55,7 +66,6 @@ export type NotifyLaneStatePayload = {
 	frames                  : { userId: string, frames: number[][] }[]
 	gameStartTime           : number
 	laneIndex               : number
-	laneStatus              : string
 	phase                   : string
 	players                 : { userId: string, displayName: string }[]
 	sentAt                  : number

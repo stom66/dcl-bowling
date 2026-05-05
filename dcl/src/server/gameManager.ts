@@ -2,9 +2,9 @@ import * as utils from "@dcl-sdk/utils"
 import { engine } from "@dcl/sdk/ecs"
 import { Quaternion, Vector3 } from "@dcl/sdk/math"
 
-import { LanePhase, LaneStatus } from "src/shared/enums"
+import { LanePhase } from "src/shared/enums"
 import { GameSettings } from "src/shared/settings"
-import { NotifyPlayerRollPayload, RequestPlayRollPayload, RollPayload } from "src/shared/types"
+import { NotifyPlayerRollPayload, RequestPlayRollPayload, RollPayload } from "src/shared/types/shared-types"
 
 import { PIN_LANE_LOCAL_POSITIONS } from 'src/server/physics/physics.pin-layout'
 import { getSimulationResults } from "src/server/physics/physics.client"
@@ -65,7 +65,7 @@ class GameManager {
 			return
 		}
 
-		if (this.store.getLaneStatus(laneIndex) === LaneStatus.ACTIVE) {
+		if (this.store.getLanePhase(laneIndex) !== LanePhase.NONE && this.store.getLanePhase(laneIndex) !== LanePhase.GAME_STARTING) {
 			console.log('gameManager: onPlayerRequestJoin: game already started, ignoring')
 			return
 		}
@@ -80,7 +80,7 @@ class GameManager {
 
 		// Starting the countdown is what transitions a brand-new lane into the
 		// game lifecycle. Only the first joiner triggers it.
-		if (isFirstPlayer && this.store.getLaneStatus(laneIndex) === LaneStatus.IDLE) {
+		if (isFirstPlayer && this.store.getLanePhase(laneIndex) === LanePhase.NONE) {
 			this.startGameCountdown(laneIndex)
 		}
 	}
@@ -93,7 +93,7 @@ class GameManager {
 	private startGameCountdown(laneIndex: number) {
 		console.log('gameManager: startGameCountdown: laneIndex', laneIndex)
 
-		this.store.setLaneStatus(laneIndex, LaneStatus.STARTING)
+		this.store.setLanePhase(laneIndex, LanePhase.GAME_STARTING)
 		this.store.setGameStartTime(laneIndex, Date.now() + GameSettings.GAME_START_COUNTDOWN_DURATION)
 
 		ServerMessaging.notifyLaneStateUpdate(laneIndex)
@@ -122,7 +122,6 @@ class GameManager {
 			return
 		}
 
-		this.store.setLaneStatus(laneIndex, LaneStatus.ACTIVE)
 		this.store.setCurrentFrameIndex(laneIndex, 0)
 		this.store.setCurrentFramePlayerIndex(laneIndex, 0)
 		this.store.setCurrentRollIndex(laneIndex, 0)
@@ -130,10 +129,10 @@ class GameManager {
 		this.store.setCurrentRollStartTime(laneIndex, undefined)
 		this.store.initLaneScorecards(laneIndex)
 
-		this.store.setLanePhase(laneIndex, LanePhase.NONE)
+		this.store.setLanePhase(laneIndex, LanePhase.WAITING)
 
 		this.runtime.set(laneIndex, {
-			phase       : LanePhase.NONE,
+			phase       : LanePhase.WAITING,
 			phaseEndTime: 0,
 			pinStanding : newFullPinRack(),
 		})
@@ -186,7 +185,7 @@ class GameManager {
 		const rt = this.getRuntime(laneIndex)
 		rt.pinStanding = newFullPinRack()
 
-		this.schedulePhase(laneIndex, LanePhase.FRAME_START_DELAY, delayMs)
+		this.schedulePhase(laneIndex, LanePhase.FRAME_START, delayMs)
 		
 		ServerMessaging.notifyPlayerFrameStart(laneIndex, userId)
 		ServerMessaging.notifyLaneStateUpdate(laneIndex)
@@ -235,10 +234,6 @@ class GameManager {
 		const laneIndex = this.store.findLaneByUserId(userId)
 		if (laneIndex === undefined) {
 			console.log('gameManager: onPlayerRequestPlayRoll: user not in any lane')
-			return
-		}
-		if (this.store.getLaneStatus(laneIndex) !== LaneStatus.ACTIVE) {
-			console.log('gameManager: onPlayerRequestPlayRoll: lane not ACTIVE, ignoring')
 			return
 		}
 		if (this.store.getCurrentFrameUserId(laneIndex) !== userId) {
@@ -348,7 +343,7 @@ class GameManager {
 
 		this.store.setCurrentRollStartTime(laneIndex, undefined)
 
-		this.schedulePhase(laneIndex, LanePhase.ROLL_END_DELAY, GameSettings.FRAME_DELAY_BETWEEN_TURNS)
+		this.schedulePhase(laneIndex, LanePhase.ROLL_END, GameSettings.FRAME_DELAY_BETWEEN_TURNS)
 
 		ServerMessaging.notifyPlayerRollEnd(laneIndex, userId)
 		ServerMessaging.notifyLaneStateUpdate(laneIndex)
@@ -385,7 +380,7 @@ class GameManager {
 
 		console.log(`gameManager: endPlayerFrame: lane ${laneIndex}, user ${userId}`)
 
-		this.schedulePhase(laneIndex, LanePhase.FRAME_END_DELAY, GameSettings.FRAME_DELAY_BETWEEN_TURNS)
+		this.schedulePhase(laneIndex, LanePhase.FRAME_END, GameSettings.FRAME_DELAY_BETWEEN_TURNS)
 		
 		ServerMessaging.notifyPlayerFrameEnd(laneIndex, userId)
 		ServerMessaging.notifyLaneStateUpdate(laneIndex)
@@ -429,7 +424,7 @@ class GameManager {
 	private endGame(laneIndex: number) {
 		console.log(`gameManager: endGame: lane ${laneIndex}`)
 
-		this.store.setLaneStatus(laneIndex, LaneStatus.IDLE)
+		this.store.setLanePhase(laneIndex, LanePhase.NONE)
 
 		ServerMessaging.notifyGameEnd(laneIndex)
 
@@ -458,7 +453,7 @@ class GameManager {
 		const now = Date.now()
 
 		for (let laneIndex = 0; laneIndex < GameSettings.MAX_LANES; laneIndex++) {
-			if (this.store.getLaneStatus(laneIndex) !== LaneStatus.ACTIVE) continue
+			if (this.store.getLanePhase(laneIndex) === LanePhase.NONE) continue
 
 			activeGameCount++
 
@@ -486,7 +481,7 @@ class GameManager {
 	/** Route a completed phase to the function that advances from it. */
 	private onPhaseComplete(laneIndex: number, completed: LanePhase) {
 		switch (completed) {
-			case LanePhase.FRAME_START_DELAY:
+			case LanePhase.FRAME_START:
 				this.startPlayerRoll(laneIndex)
 				break
 			case LanePhase.ROLL_AWAITING:
@@ -496,10 +491,10 @@ class GameManager {
 			case LanePhase.ROLL_PLAYBACK:
 				this.endRoll(laneIndex, false)
 				break
-			case LanePhase.ROLL_END_DELAY:
+			case LanePhase.ROLL_END:
 				this.afterRollEnd(laneIndex)
 				break
-			case LanePhase.FRAME_END_DELAY:
+			case LanePhase.FRAME_END:
 				this.advanceToNextPlayerFrame(laneIndex)
 				break
 			default:

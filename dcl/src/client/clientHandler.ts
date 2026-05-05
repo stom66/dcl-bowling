@@ -1,6 +1,6 @@
-import { LaneStatus, PlayerStatus } from 'src/shared/enums';
+import { PlayerStatus } from 'src/shared/enums';
 import { MessageType, room } from 'src/shared/room';
-import { NotifyLaneStatePayload, NotifyPlayerRollPayload } from 'src/shared/types';
+import { NotifyLaneStatePayload, NotifyPlayerRollPayload } from 'src/shared/types/shared-types';
 import { clockSync } from 'src/shared/utils/clockSync';
 import { eventBus, ClientEvents } from 'src/shared/utils/eventBus';
 

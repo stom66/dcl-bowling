@@ -86,7 +86,7 @@ export function DebugUI() {
 			<InfoRow label = "currentRollIndex"          value = {clientStore.getCurrentRollIndex()?.toString() ?? ''} />
 			<InfoRow label = "currentRollStartTime"      value = {clientStore.getCurrentRollStartTime()?.toString() ?? ''} />
 			<InfoRow label = "frames"                    value = {clientStore.getFrames()?.size.toString() ?? ''} />
-			<InfoRow label = "laneStatus"                value = {clientStore.getLaneStatus()?.toString() ?? ''} />
+			<InfoRow label = "lanePhase"                 value = {clientStore.getLanePhase()?.toString() ?? ''} />
 			<InfoRow label = "laneIndex"                 value = {clientStore.getLaneIndex()?.toString() ?? ''} />
 			<InfoRow label = "players"                   value = {clientStore.getPlayers()?.size.toString() ?? ''} />
 			<InfoRow label = "gameStartTime"             value = {clientStore.getGameStartTime()?.toString() ?? ''} />
