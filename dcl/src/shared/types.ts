@@ -88,10 +88,12 @@ export type SimObjectKeyframes = {
 }
 
 export type RollPayload = {
+	duration         : number
 	frameIndex       : number
 	rollIndex        : number
 	startingPinStates: boolean[]
 	finalPinStates   : boolean[]
+	gutterBall       : boolean
 	ballKeyframes    : SimObjectKeyframes
 	pinsKeyframes    : SimObjectKeyframes[]
 	score            : number
@@ -103,6 +105,7 @@ export type RequestPlayRollPayload = {
 	position : Vector3Type
 	direction: Vector3Type
 	power    : number
+	spin     : number
 }
 
 /** Server → clients: roll replay plus acting player. */

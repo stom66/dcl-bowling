@@ -3,11 +3,10 @@ import { Color4 } from '@dcl/sdk/math'
 
 import { PlayerStatus } from 'src/shared/enums'
 import { GameSettings } from 'src/shared/settings'
-import { eventBus } from 'src/shared/utils/eventBus'
 import { clockSync } from 'src/shared/utils/clockSync'
+import { eventBus, ClientEvents } from 'src/shared/utils/eventBus'
 
 import { ClientStore } from 'src/client/clientStore'
-import { ClientEvents } from 'src/client/clientEvents'
 import { LaneState, NotifyLaneStatePayload } from 'src/shared/types'
 import { userProfileCache } from 'src/shared/utils/userProfileCache'
 import { FrameResult, getDummyScoreData, getFrameResults } from 'src/shared/utils/scoreCalc'

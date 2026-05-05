@@ -26,7 +26,7 @@ export namespace gameStateHandler {
 
 	eventBus.on(ClientEvents.ON_GROUP_ROLL_START, (data: { userId: string, pinStanding: boolean[] }) => { onGroupRollStart(data) })
 	eventBus.on(ClientEvents.ON_GROUP_ROLL_END, (data: { userId: string }) => { })
-	eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK, (data: NotifyPlayerRollPayload) => { onRollPlayback(data) })
+	eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, (data: NotifyPlayerRollPayload) => { onRollPlaybackStart(data) })
 	
 
 
@@ -60,6 +60,7 @@ export namespace gameStateHandler {
 		
 		const laneIndex    = clientStore.getLaneIndex() ?? 0
 		const lanePosition = lanePositions[laneIndex]
+		laneVisuals?.destroy()
 		laneVisuals        = new LaneVisuals(lanePosition)
 		laneVisuals.setupPins(data.pinStanding)
 	}
@@ -68,6 +69,7 @@ export namespace gameStateHandler {
 		console.log('gameStateHandler: onMyRollStart: data', data)
 		const laneIndex    = clientStore.getLaneIndex() ?? 0
 		const lanePosition = lanePositions[laneIndex]
+		laneVisuals?.destroy()
 		laneVisuals        = new LaneVisuals(lanePosition)	
 		laneVisuals.setupPins(data.pinStanding)
 		bowlingControls    = new BowlingControls(lanePosition, laneVisuals.getBall())
@@ -82,7 +84,7 @@ export namespace gameStateHandler {
 	}
 
 
-	function onRollPlayback(data: NotifyPlayerRollPayload) {
+	function onRollPlaybackStart(data: NotifyPlayerRollPayload) {
 		console.log('gameStateHandler: onRollPlayback: replaying roll from another player')
 		// TODO: replay other player's roll	eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK, (data: NotifyPlayerRollPayload) => { handleNotifyPlayerRollPlayback(data) })
 
@@ -90,7 +92,9 @@ export namespace gameStateHandler {
 			console.log('gameStateHandler: onRollPlayback: laneVisuals not found')
 			return
 		}
-		laneVisuals.runReplay(data)
+		laneVisuals.runReplay(data, () => {
+			console.log('gameStateHandler: onRollPlayback: roll replay complete')
+		})
 	}
 
 

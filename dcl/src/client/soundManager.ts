@@ -1,10 +1,10 @@
 import * as utils from '@dcl-sdk/utils'
 import { AudioSource, engine, Entity, Transform } from '@dcl/sdk/ecs'
 
-import { eventBus } from 'src/shared/utils/eventBus'
+import { eventBus, ClientEvents } from 'src/shared/utils/eventBus'
 
-import { ClientEvents } from 'src/client/clientEvents'
 import { sfx } from 'src/client/data/sfx'
+export { sfx } from 'src/client/data/sfx'
 
 export namespace SoundManager {
 

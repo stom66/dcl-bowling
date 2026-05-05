@@ -2,11 +2,10 @@ import { Color3 } from '@dcl/sdk/math'
 
 import { LanePhase, LaneStatus, PlayerStatus } from 'src/shared/enums'
 import { LaneState, NotifyLaneStatePayload } from 'src/shared/types'
-import { eventBus } from 'src/shared/utils/eventBus'
+import { eventBus, ClientEvents } from 'src/shared/utils/eventBus'
 import { userProfileCache } from 'src/shared/utils/userProfileCache'
 
 import { clockSync } from 'src/shared/utils/clockSync'
-import { ClientEvents } from 'src/client/clientEvents'
 
 // MARK: Type
 export type ClientState = {

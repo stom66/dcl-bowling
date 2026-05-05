@@ -6,11 +6,12 @@ import { LanePhase, LaneStatus } from "src/shared/enums"
 import { GameSettings } from "src/shared/settings"
 import { NotifyPlayerRollPayload, RequestPlayRollPayload, RollPayload } from "src/shared/types"
 
+import { PIN_LANE_LOCAL_POSITIONS } from 'src/server/physics/physics.pin-layout'
+import { getSimulationResults } from "src/server/physics/physics.client"
+import { GameSettings as PhysicsSimulationSettings } from "src/server/physics/physics.settings"
+import { SimulationInput, SimulationResult } from "src/server/physics/types"
+import * as ServerMessaging from "src/server/serverMessaging"
 import { ServerStore } from "src/server/serverStore"
-import * as ServerMessaging from "./serverMessaging"
-import { getSimulationResults } from "./physics/physics.client"
-import { SimulationInput, SimulationResult } from "./physics/types"
-import { PIN_LANE_LOCAL_POSITIONS } from "./physics/physics.cannon-sim"
 
 
 /** Per-lane runtime state that lives only on the server (not part of the wire payload). */
@@ -270,12 +271,13 @@ class GameManager {
 		// Run the sim - the could take a couple of seconds
 		const simInput: SimulationInput = {
 			direction: Vector3.create(data.direction.x, data.direction.y, data.direction.z),
-			duration : GameSettings.SIM_DURATION,
+			duration : PhysicsSimulationSettings.simDuration,
 			pinStates: startingPinStates,
 			position : Vector3.create(data.position.x, data.position.y, data.position.z),
-			spin     : 0,
+			spin     : data.spin,
 			strength : data.power,
 		}
+		console.log('gameManager: simulateAndPlaybackRoll: simInput', JSON.stringify(simInput, null, 2))
 		const simResults: SimulationResult = getSimulationResults(simInput)
 
 		const simDuration = Date.now() - simStartTime
@@ -311,7 +313,9 @@ class GameManager {
 			rollIndex        : rollIndex,
 			startingPinStates: startingPinStates,
 			finalPinStates   : simResults.finalPinStates,
+			gutterBall       : simResults.gutterBall,
 			ballKeyframes    : simResults.compressed.ballKeyframes,
+			duration         : simResults.duration,
 			pinsKeyframes    : simResults.compressed.pinsKeyframes,
 			score            : score,
 			sentAt           : Date.now(),
@@ -514,7 +518,7 @@ class GameManager {
 	}
 
 	private schedulePhase(laneIndex: number, phase: LanePhase, durationMs: number) {
-		const runtime = this.getRuntime(laneIndex)
+		const runtime        = this.getRuntime(laneIndex)
 		runtime.phase        = phase
 		runtime.phaseEndTime = Date.now() + durationMs
 		

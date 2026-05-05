@@ -1,26 +1,17 @@
 import * as utils from "@dcl-sdk/utils"
-import { EasingFunction, engine, Entity, GltfContainer, GltfContainerLoadingState, LoadingState, Transform, Tween, TweenSequence, tweenSystem } from "@dcl/sdk/ecs"
+import { Animator, EasingFunction, engine, Entity, GltfContainer, GltfContainerLoadingState, LoadingState, Transform, Tween, TweenSequence, tweenSystem } from "@dcl/sdk/ecs"
 import { Quaternion, Vector3 } from "@dcl/sdk/math"
-import { PIN_LANE_LOCAL_POSITIONS } from "src/server/physics/physics.cannon-sim"
+import { PIN_LANE_LOCAL_POSITIONS } from 'src/server/physics/physics.pin-layout'
+import { resolveSimulationSettings } from "src/server/physics/physics.client"
+import { DEFAULT_STORED_ROTATION, storedRotationToQuaternion } from "src/server/physics/physics.utils"
 
 import { NotifyPlayerRollPayload, RollPayload, SimObjectKeyframe } from "src/shared/types"
+import { eventBus } from "src/shared/utils/eventBus"
+import { ClientEvents } from "./clientEvents"
+import { SimObjectKeyframes } from "src/server/physics/types"
 
 
-// MARK: Constants
-
-/** Lane-local Y for the ball center; must clear the lane floor (sim ball radius is 0.1). */
-const BALL_SPAWN_LANE_LOCAL_Y = 0.32
-
-/** `pin.gltf` root node translates the mesh up; entity pivot sits below the pin center.
- *  Used to reconcile the Cannon cylinder center (sim) with the glTF pivot (visual). */
-const PIN_GLTF_MESH_OFFSET_Y = 0.18949292600154877
-const PIN_VISUAL_SCALE       = 1.5
-
-/** Simulation step rate (see `CannonSim.simulate` — 1 / FRAMERATE). */
-const REPLAY_FRAMERATE = 30
-
-const PIN_COUNT = PIN_LANE_LOCAL_POSITIONS.length
-
+// MARK: Types
 
 type replayKeyframes = {
 	currentPosition: SimObjectKeyframe | undefined,
@@ -30,7 +21,7 @@ type replayKeyframes = {
 }
 
 type ReplayState = {
-	data               : RollPayload
+	//data               : RollPayload
 	elapsed            : number
 	duration           : number
 	ballKeyframes      : replayKeyframes
@@ -38,6 +29,19 @@ type ReplayState = {
 
 	onComplete?        : () => void
 }
+
+
+// MARK: Constants
+
+const BALL_SPAWN_LANE_LOCAL_Y = 0.32
+const PIN_GLTF_MESH_OFFSET_Y  = 0.18949292600154877
+const PIN_VISUAL_SCALE        = 1.5
+const PIN_COUNT               = PIN_LANE_LOCAL_POSITIONS.length
+const LANE_END_Z              = 17
+const SCORE_OBJECT_POSITION   = Vector3.create(0, 0.5, 18)
+const SCORE_OBJECT_SCALE      = Vector3.create(0.6, 0.6, 0.6)
+
+
 
 
 /**
@@ -48,12 +52,14 @@ type ReplayState = {
 export class LaneVisuals {
 
 	private readonly lanePosition: Vector3
+	private rollPayload: NotifyPlayerRollPayload | undefined
 
 	/** Indexed 0..9 to match the Cannon sim / payload layout. Undefined = pin not currently displayed. */
 	private pinEntities: (Entity | undefined)[] = new Array(PIN_COUNT).fill(undefined)
 	private ball?: Entity
 
-	//private replay?: ReplayState
+	/** When set, {@link runReplay} is driving ball/pin transforms each frame until cleared. */
+	private replayDriver?: (dt: number) => void
 
 
 	// MARK: Constructor
@@ -65,12 +71,14 @@ export class LaneVisuals {
 
 	// MARK: Destroy
 	destroy(): void {
+		this.detachReplayDriver()
 		this.removePins()
 		this.removeBall()
 	}
 
 
-	// MARK: setupPins
+
+	// MARK: Pins
 	setupPins(pinStates: boolean[] = new Array(PIN_COUNT).fill(true)): void {
 		this.removePins()
 
@@ -106,26 +114,32 @@ export class LaneVisuals {
 			this.pinEntities[i] = pin
 		}
 	}
-	
-	getPins(): Entity[] {
-		return this.pinEntities.filter((pin) => pin) as Entity[]
-	}
+
 
 	removePins(): void {
-		const tweenDuration = 0.5
-		const interval = 50
-		var removedCount = 0
+		this.detachReplayDriver()
+
+		/** `Tween.setMove` duration is milliseconds (same as `Tween.create` / camera tweens). */
+		const tweenDurationMs = 500
+		const staggerMs       = 50
+		let removedCount      = 0
 		for (let i = 0; i < PIN_COUNT; i++) {
 			const pin = this.pinEntities[i]
 			if (pin !== undefined) {
-				const t = Transform.getMutable(pin)
-
-				utils.timers.setTimeout(() => {
-					Tween.setMove(pin, t.position, Vector3.add(t.position, Vector3.create(0, 5, 5)), tweenDuration, EasingFunction.EF_EASEINCUBIC)
-					utils.timers.setTimeout(() => {
-						engine.removeEntity(pin)
-					}, tweenDuration)
-				}, removedCount*interval)
+				const delayMs = removedCount * staggerMs
+				setTimeout(() => {
+					if (!Transform.has(pin)) {
+						return
+					}
+					const start = Transform.get(pin).position
+					const end   = Vector3.add(start, Vector3.create(0, 5, 5))
+					Tween.setMove(pin, start, end, tweenDurationMs, EasingFunction.EF_EASEINCUBIC)
+					setTimeout(() => {
+						if (Transform.has(pin)) {
+							engine.removeEntity(pin)
+						}
+					}, tweenDurationMs)
+				}, delayMs)
 
 				removedCount++
 			}
@@ -134,8 +148,67 @@ export class LaneVisuals {
 	}
 
 
+	// MARK: Score Animations
+
+	showScoreNumber(score: number): void {
+		console.log("laneVisuals: showScoreNumber(): score", score)
+		score = Math.min(9, Math.max(1, score))
+		this.showScoreObject("Score_Score_" + score.toString())
+	}
+
+	showScoreStrike() {
+		this.showScoreObject("Score_Strike")
+	}
+
+	showScoreSpare() {
+		this.showScoreObject("Score_Spare")
+	}
+
+	showScoreZero() {
+		this.showScoreObject("Score_Zero")
+	}
+
+	showScoreGutterBall() { 
+		this.showScoreObject("Score_GutterBall")
+	}
+
+	showScoreObject(filename: string) {
+		console.log("laneVisuals: showScoreObject(): filename", filename)
+
+		const scoreEntity = engine.addEntity()
+		Transform.create(scoreEntity, { 
+			position: Vector3.add(this.lanePosition, SCORE_OBJECT_POSITION),
+			rotation: Quaternion.fromEulerDegrees(0, 180, 0),
+			scale: Vector3.Zero()
+		 })
+		GltfContainer.create(scoreEntity, { src: `assets/models/${filename}.gltf` })
+		Animator.create(scoreEntity, {
+			states: [
+				{
+					clip: filename,
+					playing: false,
+					loop: false,
+				}
+			]
+		})
+		GltfContainerLoadingState.onChange(scoreEntity, (state) => {
+			if (state?.currentState !== LoadingState.FINISHED) return
+
+			Tween.setScale(scoreEntity, Vector3.Zero(), SCORE_OBJECT_SCALE, 0.1, EasingFunction.EF_EASEINCUBIC)
+
+			// Tirgger the animation
+			Animator.playSingleAnimation(scoreEntity, filename, true)
+
+			// Remove the entity after the animation has finished
+			utils.timers.setTimeout(() => {
+				engine.removeEntity(scoreEntity)
+			}, 5000)
+		})
+	}
+
+
 	
-	// MARK: setupBall
+	// MARK: Ball
 	setupBall(laneLocalPosition: Vector3 = Vector3.create(0, BALL_SPAWN_LANE_LOCAL_Y, 0)): void {
 		const worldPos = Vector3.add(this.lanePosition, laneLocalPosition)
 
@@ -148,11 +221,12 @@ export class LaneVisuals {
 		}
 	}
 
+
 	getBall(): Entity | undefined {
 		return this.ball
 	}
 
-	// MARK: removeBall
+
 	removeBall(): void {
 		if (this.ball === undefined) return
 		engine.removeEntity(this.ball)
@@ -163,45 +237,6 @@ export class LaneVisuals {
 	// =========================================================================
 	// MARK: Replay
 	// =========================================================================
-
-
-	// MARK: getNextKeyframeWithPosition
-	/**
-	 * Next keyframe after `currentIndex` that defines `position`. `currentIndex` is a keyframes
-	 * array index, not simulation time.
-	 */
-	getNextKeyframeWithPosition(keyframes: SimObjectKeyframe[], currentIndex: number): SimObjectKeyframe | undefined {
-		let nextIndex = currentIndex + 1
-		while (nextIndex < keyframes.length) {
-			const kf = keyframes[nextIndex]
-			if (kf?.position) {
-				return kf
-			}
-			nextIndex++
-		}
-		return undefined
-	}
-
-
-	// MARK: getNextKeyframeWithRotation
-	/**
-	 * Next keyframe after `currentIndex` that defines `rotation`. `currentIndex` is a keyframes
-	 * array index, not simulation time.
-	 */
-	getNextKeyframeWithRotation(keyframes: SimObjectKeyframe[], currentIndex: number): SimObjectKeyframe | undefined {
-		let nextIndex = currentIndex + 1
-		while (nextIndex < keyframes.length) {
-			const kf = keyframes[nextIndex]
-			if (kf?.rotation) {
-				return kf
-			}
-			nextIndex++
-		}
-		return undefined
-	}
-
-
-	// MARK: runReplay
 	/**
 	 * Play back a roll. Ball and any currently-displayed pins are animated
 	 * frame-by-frame from the payload's keyframe tracks. Pins not present in
@@ -210,25 +245,60 @@ export class LaneVisuals {
 	 * The replay ends when keyframes run out; `onComplete` (if supplied) is
 	 * invoked exactly once. Call `stopReplay()` to abort early.
 	 */
+	onReplayEnd(): void {
+		console.log("laneVisuals: onReplayEnd()")
+
+		const allPinsUpAtStart = this.rollPayload?.startingPinStates.every((pin) => pin)
+		const allPinsDownAtEnd = this.rollPayload?.finalPinStates.every((pin) => !pin)
+		// Was it a strike?
+		if (this.rollPayload?.gutterBall === true) {
+			this.showScoreGutterBall()
+		}
+		else if (allPinsUpAtStart && allPinsDownAtEnd) {
+			this.showScoreStrike()
+		} 
+		else if (!allPinsUpAtStart && allPinsDownAtEnd) {
+			this.showScoreSpare()
+		} 
+		else if (this.rollPayload?.score === 0) {
+			this.showScoreZero()
+		} 
+		else {
+			this.showScoreNumber(this.rollPayload?.score ?? 1)
+		}
+
+		utils.timers.setTimeout(() => {
+			this.removePins()
+		}, 1000)
+
+
+		utils.timers.setTimeout(() => {
+			this.replayDriver = undefined
+			eventBus.emit(ClientEvents.ON_GROUP_ROLL_PLAYBACK_END, {})
+		}, 2000)
+	}
+
 	runReplay(data: NotifyPlayerRollPayload, onComplete?: () => void): void {
 
 		console.log("laneVisuals: runReplay(): data", data)
+		this.rollPayload = data
+		this.detachReplayDriver()
+
 		const replayState: ReplayState = {
-			data                    : data,
 			elapsed                 : 0,
-			duration                : data.ballKeyframes.keyframes.length,
+			duration                : data.duration,
 			ballKeyframes: {
 				currentPosition: data.ballKeyframes.keyframes[0],
 				currentRotation: data.ballKeyframes.keyframes[0],
-				nextPosition   : this.getNextKeyframeWithPosition(data.ballKeyframes.keyframes, 0),
-				nextRotation   : this.getNextKeyframeWithRotation(data.ballKeyframes.keyframes, 0),
+				nextPosition   : replayGetNextKeyframeWithPosition(data.ballKeyframes.keyframes, 0),
+				nextRotation   : replayGetNextKeyframeWithRotation(data.ballKeyframes.keyframes, 0),
 			},
 			pinsKeyframes: data.pinsKeyframes.map((pins) => {
 				return {
 					currentPosition: pins.keyframes[0],
 					currentRotation: pins.keyframes[0],
-					nextPosition   : this.getNextKeyframeWithPosition(pins.keyframes, 0),
-					nextRotation   : this.getNextKeyframeWithRotation(pins.keyframes, 0),
+					nextPosition   : replayGetNextKeyframeWithPosition(pins.keyframes, 0),
+					nextRotation   : replayGetNextKeyframeWithRotation(pins.keyframes, 0),
 				}
 			}),
 			onComplete:  onComplete
@@ -242,116 +312,62 @@ export class LaneVisuals {
 			return
 		}
 
-
-
+		const ballKf  = data.ballKeyframes as SimObjectKeyframes
+		const pinsKfs = data.pinsKeyframes as SimObjectKeyframes[]
 
 		const replaySystem = (dt: number) => {
 			replayState.elapsed += dt
 			if (replayState.elapsed >= replayState.duration) {
 				replayState.onComplete?.()
 				engine.removeSystem(replaySystem)
-			}
-
-			// Do we need to skip to the next position keyframe?
-			if (replayState.ballKeyframes.nextPosition?.time && replayState.ballKeyframes.nextPosition.time <= replayState.elapsed) {
-				const ballKf = data.ballKeyframes.keyframes
-				replayState.ballKeyframes.currentPosition = replayState.ballKeyframes.nextPosition
-				const cur = replayState.ballKeyframes.currentPosition
-				const curIdx = cur !== undefined ? ballKf.indexOf(cur) : 0
-				replayState.ballKeyframes.nextPosition = this.getNextKeyframeWithPosition(ballKf, curIdx >= 0 ? curIdx : 0)
-			}
-
-			if (!replayState.ballKeyframes.nextPosition) {
-				//console.log("laneVisuals: runReplay(): no next ball Position keyframe - this should mean we've reached the end of the sim")
+				this.onReplayEnd()
 				return
 			}
+
+			const elapsed = replayState.elapsed
+			replayAdvanceTrack(replayState.ballKeyframes, ballKf.keyframes, elapsed)
 
 			const ballTransform = Transform.getMutableOrNull(this.ball!)
-			if (!ballTransform) {
-				console.log("laneVisuals: runReplay(): ball Transform not found")
-				return
+			if (ballTransform) {
+				const ballLaneLocal = replaySampleLaneLocal(replayState.ballKeyframes, elapsed)
+				ballTransform.position = Vector3.add(this.lanePosition, ballLaneLocal)
+				ballTransform.rotation = replaySampleRotation(replayState.ballKeyframes, elapsed)
 			}
 
-			const progress         = (replayState.elapsed - (replayState.ballKeyframes.currentPosition?.time ?? 0)) / (replayState.ballKeyframes.nextPosition.time - (replayState.ballKeyframes.currentPosition?.time ?? 0))
-			const targetPosition   = Vector3.lerp(replayState.ballKeyframes.currentPosition?.position ?? Vector3.Zero(), replayState.ballKeyframes.nextPosition.position ?? Vector3.Zero(), progress)
-			ballTransform.position = Vector3.add(this.lanePosition, targetPosition)
+			const pinTracks = replayState.pinsKeyframes
+			for (let i = 0, n = pinTracks.length; i < n; i++) {
+				const pinEnt = this.pinEntities[i]
+				if (pinEnt === undefined) continue
 
-			console.log("laneVisuals: runReplay(): ball position.z", targetPosition.z)
+				const pinKf = pinsKfs[i]?.keyframes
+				if (pinKf === undefined) continue
 
+				const track = pinTracks[i]!
+				replayAdvanceTrack(track, pinKf, elapsed)
+				const pinTransform = Transform.getMutableOrNull(pinEnt)
+				if (!pinTransform) continue
+
+				const laneLocal = replaySampleLaneLocal(track, elapsed)
+				const rot = replaySampleRotation(track, elapsed)
+				pinTransform.position = this.pinPivotWorldFromSimBody(laneLocal, rot)
+				pinTransform.rotation = rot
+			}
 		}
+		this.replayDriver = replaySystem
 		engine.addSystem(replaySystem)
-
-
-		
-		// Old system using Tweens in sequence
-		/*
-		const ballWaypoints = this.getPositionWaypoints(data.ballKeyframes.keyframes)
- 		const sequence = ballWaypoints.map((w: any) => {
-			return {
-				duration      : w.duration!,
-				easingFunction: EasingFunction.EF_LINEAR,
-				mode          : Tween.Mode.Move({
-					start: w.start!,
-					end  : w.end!,
-				}),
-			}
-		})
-		// Remove the first waypoint from the sequence, because we've already animated it with setMove below
-		sequence.shift()
-
-
-		Tween.setMove(this.ball!, 
-			ballWaypoints[0].start!, 
-			ballWaypoints[0].end!, 
-			ballWaypoints[0].duration!
-		)
-
-		TweenSequence.create(this.ball!, { sequence: sequence })
-
-		const systemName = `animateBall`
-		engine.addSystem(() => {
-			if (!this.ball) {
-				engine.removeSystem(systemName); 
-				return;
-			}
-
-			const tweenCompleted = tweenSystem.tweenCompleted(this.ball)
-			if (tweenCompleted) {
-				console.log("laneVisuals: runReplay(): tween completed for ball")
-				const tween = Tween.getMutableOrNull(this.ball)
-				if (tween) {
-					tween.playing = false
-					Tween.deleteFrom(this.ball)
-				}
-				engine.removeSystem(systemName)
-			}
-		}, undefined, systemName)
-		 */
 	}
 
-	getPositionWaypoints(keyframes: SimObjectKeyframe[]) {
-		const waypoints: any = {}
-
-		// now we go through the ball keyframes and get the 
-		var lastPosition = keyframes[0]!.position
-		var lastTime = keyframes[0]!.time
-		
-		// Build a list of the position
-		for (const [index, keyframe] of keyframes.entries()) {
-			if (index === 0) continue
-
-			if (keyframe.position) {
-				waypoints.push({
-					start: lastPosition,
-					end  : keyframe.position!,
-					time : keyframe.time - lastTime
-				})
-				lastPosition = keyframe.position
-				lastTime = keyframe.time
-			}
+	// MARK: detachReplayDriver
+	/**
+	 * Unregisters the replay system so per-frame keyframe writes stop. Call before clearing pins or
+	 * starting a new replay, otherwise transforms fight tweens and entities never leave the scene cleanly.
+	 */
+	private detachReplayDriver(): void {
+		if (this.replayDriver === undefined) {
+			return
 		}
-
-		return waypoints
+		engine.removeSystem(this.replayDriver)
+		this.replayDriver = undefined
 	}
 
 
@@ -371,4 +387,137 @@ export class LaneVisuals {
 			bodyWorld.z - offsetWorld.z,
 		)
 	}
+
+}
+
+
+// MARK: Replay track helpers
+
+
+function replayGetNextKeyframeWithPosition(
+	keyframes   : SimObjectKeyframe[],
+	currentIndex: number
+): SimObjectKeyframe | undefined {
+	let nextIndex = currentIndex + 1
+	while (nextIndex < keyframes.length) {
+		const kf = keyframes[nextIndex]
+		if (kf?.position) {
+			return kf
+		}
+		nextIndex++
+	}
+	return undefined
+}
+
+
+function replayGetNextKeyframeWithRotation(
+	keyframes   : SimObjectKeyframe[], 
+	currentIndex: number
+): SimObjectKeyframe | undefined {
+	let nextIndex = currentIndex + 1
+	while (nextIndex < keyframes.length) {
+		const kf = keyframes[nextIndex]
+		if (kf?.rotation) {
+			return kf
+		}
+		nextIndex++
+	}
+	return undefined
+}
+
+
+function replayAdvanceTrack(
+	track    : replayKeyframes, 
+	keyframes: SimObjectKeyframe[], 
+	elapsed  : number
+): void {
+	while (track.nextPosition?.time !== undefined && track.nextPosition.time <= elapsed) {
+		track.currentPosition = track.nextPosition
+		const c = track.currentPosition
+		const idx = c !== undefined ? keyframes.indexOf(c) : 0
+		track.nextPosition = replayGetNextKeyframeWithPosition(keyframes, idx >= 0 ? idx : 0)
+	}
+	while (track.nextRotation?.time !== undefined && track.nextRotation.time <= elapsed) {
+		track.currentRotation = track.nextRotation
+		const c = track.currentRotation
+		const idx = c !== undefined ? keyframes.indexOf(c) : 0
+		track.nextRotation = replayGetNextKeyframeWithRotation(keyframes, idx >= 0 ? idx : 0)
+	}
+}
+
+
+function replaySlerpQuaternion(a: Quaternion, b: Quaternion, t: number): Quaternion {
+	let dot = Quaternion.dot(a, b)
+	let bx = b.x
+	let by = b.y
+	let bz = b.z
+	let bw = b.w
+	if (dot < 0) {
+		bx = -bx
+		by = -by
+		bz = -bz
+		bw = -bw
+		dot = -dot
+	}
+	if (dot > 0.9995) {
+		return Quaternion.normalize(Quaternion.create(
+			a.x + t * (bx - a.x),
+			a.y + t * (by - a.y),
+			a.z + t * (bz - a.z),
+			a.w + t * (bw - a.w),
+		))
+	}
+	const theta0 = Math.acos(Math.min(1, Math.max(-1, dot)))
+	const invSin0 = 1 / Math.sin(theta0)
+	const s0 = Math.sin((1 - t) * theta0) * invSin0
+	const s1 = Math.sin(t * theta0) * invSin0
+	return Quaternion.normalize(Quaternion.create(
+		a.x * s0 + bx * s1,
+		a.y * s0 + by * s1,
+		a.z * s0 + bz * s1,
+		a.w * s0 + bw * s1,
+	))
+}
+
+
+function replaySampleLaneLocal(track: replayKeyframes, elapsed: number): Vector3 {
+	const cur = track.currentPosition
+	const next = track.nextPosition
+	const p0 = cur?.position ?? Vector3.Zero()
+	if (!next?.position) return p0
+
+	const t0 = cur?.time ?? 0
+	const t1 = next.time
+	if (t1 <= t0) return next.position
+
+	let u = (elapsed - t0) / (t1 - t0)
+	if (u < 0) {
+		u = 0
+	} else if (u > 1) {
+		u = 1
+	}
+	return Vector3.lerp(p0, next.position, u)
+}
+
+
+function replaySampleRotation(track: replayKeyframes, elapsed: number): Quaternion {
+	const cur = track.currentRotation
+	const next = track.nextRotation
+	const q0 = storedRotationToQuaternion(cur?.rotation ?? DEFAULT_STORED_ROTATION)
+	if (!next?.rotation) {
+		return q0
+	}
+	const t0 = cur?.time ?? 0
+	const t1 = next.time
+	if (t1 <= t0) {
+		return storedRotationToQuaternion(next.rotation)
+	}
+	let u = (elapsed - t0) / (t1 - t0)
+	if (u < 0) {
+		u = 0
+	} else if (u > 1) {
+		u = 1
+	}
+	const q1 = storedRotationToQuaternion(next.rotation)
+	return replaySlerpQuaternion(q0, q1, u)
 }

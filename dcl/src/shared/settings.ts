@@ -1,4 +1,3 @@
-import { Quaternion, Vector3 } from '@dcl/sdk/math'
 import { lanePositions } from 'src/client/data/lanePositions'
 
 
@@ -32,12 +31,5 @@ export class GameSettings {
 	static ROLL_MAX_DURATION              = 1000 * 20
 	static ROLL_REPLAY_DURATION           = 1000 * 10
 	static ROLL_REPLAY_ANIM_DURATION      = 1000 * 7     // duration of the bowling animation which plays before the replay start - time before the animation releases the ball
-
-	// Cannon-es sim settings
-	static SIM_KEYFRAME_REDUCTION_EPSILON = 0.002
-	static SIM_FRAME_RATE                 = 6
-	static SIM_SUB_STEPS                  = 12
-	static SIM_DURATION                   = 6             // in seconds NOT in milliseconds
-	static SIM_FRAMES_WITH_NO_VELOCITY_THRESHOLD = 10
 
 }

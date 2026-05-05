@@ -12,6 +12,16 @@ import { ClearEmote, PlayBowlingAnimation } from '../emotes'
 const clientStore = ClientStore.getInstance()
 
 
+function BowlStrike() {
+	ClientMessaging.requestPlayRoll(Vector3.create(-0.07, 0.12, 0.8), Vector3.create(0, 0, 1), 1, 0)
+}
+function BowlSpare1() {
+	ClientMessaging.requestPlayRoll(Vector3.create(0.15, 0.12, 0.8), Vector3.create(0, 0, 1), 1, 0)
+}
+function BowlSpare2() {
+	ClientMessaging.requestPlayRoll(Vector3.create(-0.2, 0.12, 0.8), Vector3.create(0, 0, 1), 1, 0)
+}
+
 export function DebugUI() {
 	return (
 		<UiEntity
@@ -43,7 +53,9 @@ export function DebugUI() {
 			
 			<ButtonAction textLabel="StartGame | Lane 2" callback={() => { ClientMessaging.requestJoinLane(2) }} />
 			<ButtonAction textLabel="StartGame | Lane 3" callback={() => { ClientMessaging.requestJoinLane(3) }} />
-			<ButtonAction textLabel="Anim | Bowl (loop)" callback={() => { PlayBowlingAnimation(true) }} />
+			<ButtonAction textLabel="Bowl | Strike" callback={() => { BowlStrike() }} />
+			<ButtonAction textLabel="Bowl | Spare 1" callback={() => { BowlSpare1() }} />
+			<ButtonAction textLabel="Bowl | Spare 2" callback={() => { BowlSpare2() }} />
 			
 			
 

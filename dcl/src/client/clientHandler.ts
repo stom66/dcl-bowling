@@ -2,9 +2,8 @@ import { LaneStatus, PlayerStatus } from 'src/shared/enums';
 import { MessageType, room } from 'src/shared/room';
 import { NotifyLaneStatePayload, NotifyPlayerRollPayload } from 'src/shared/types';
 import { clockSync } from 'src/shared/utils/clockSync';
-import { eventBus } from 'src/shared/utils/eventBus';
+import { eventBus, ClientEvents } from 'src/shared/utils/eventBus';
 
-import { ClientEvents } from 'src/client/clientEvents';
 import { ClientStore } from 'src/client/clientStore';
 import { gameStateHandler } from './gameStateHandler';
 
@@ -16,12 +15,12 @@ export namespace ClientHandler {
 	export function init() {
 		room.onMessage(MessageType.NOTIFY_JOIN_GAME, (data)            => { handleNotifyJoinGame(data) })
 		room.onMessage(MessageType.NOTIFY_GAME_START, (data)           => { handleNotifyGameStart(data) })
-		room.onMessage(MessageType.NOTIFY_GAME_END, (data)           => { handleNotifyGameEnd(data) })
+		room.onMessage(MessageType.NOTIFY_GAME_END, (data)             => { handleNotifyGameEnd(data) })
 		room.onMessage(MessageType.NOTIFY_LANE_STATE, (data)           => { handleNotifyLaneState(data) })
 
 		room.onMessage(MessageType.NOTIFY_PLAYER_FRAME_START, (data)   => { handleNotifyPlayerFrameStart(data) })
 		room.onMessage(MessageType.NOTIFY_PLAYER_ROLL_START, (data)    => { handleNotifyPlayerRollStart(data) })
-		room.onMessage(MessageType.NOTIFY_PLAYER_ROLL_PLAYBACK, (data) => { handleNotifyPlayerRollPlayback(data) })
+		room.onMessage(MessageType.NOTIFY_PLAYER_ROLL_PLAYBACK, (data) => { handleNotifyPlayerRollPlaybackStart(data) })
 		room.onMessage(MessageType.NOTIFY_PLAYER_ROLL_END, (data)      => { handleNotifyPlayerRollEnd(data) })
 		room.onMessage(MessageType.NOTIFY_PLAYER_FRAME_END, (data)     => { handleNotifyPlayerFrameEnd(data) })
 		room.onMessage(MessageType.NOTIFY_SERVER_TIME, (data)          => { handleNotifyServerTime(data) })
@@ -58,6 +57,7 @@ export namespace ClientHandler {
 		console.log('ClientHandler: handleNotifyGameEnd: data', data)
 
 		clockSync.updateOffset(data.sentAt)
+		clientStore.setPlayerStatus(PlayerStatus.IDLE)
 		eventBus.emit(ClientEvents.ON_GROUP_GAME_END, data)
 	}
 
@@ -96,9 +96,9 @@ export namespace ClientHandler {
 	}
 
 	// MARK: Roll Playback
-	function handleNotifyPlayerRollPlayback(data: NotifyPlayerRollPayload) {
+	function handleNotifyPlayerRollPlaybackStart(data: NotifyPlayerRollPayload) {
 		console.log('ClientHandler: handleNotifyPlayerRollPlayback: data', data)
-		eventBus.emit(ClientEvents.ON_GROUP_ROLL_PLAYBACK, data)
+		eventBus.emit(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, data)
 	}
 
 	// MARK: Roll End

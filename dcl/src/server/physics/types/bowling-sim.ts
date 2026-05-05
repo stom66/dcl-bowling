@@ -29,8 +29,10 @@ export type SimulationInput = {
 /** One physics or compression path: ball + pin keyframes, final pin states, timing. */
 export type SimulationRunResult = {
 	ballKeyframes : SimObjectKeyframes
+	duration      : number
 	pinsKeyframes : SimObjectKeyframes[]
 	finalPinStates: boolean[]
+	gutterBall    : boolean
 	/** Wall time for this stage physics in `BowlingPhysicsSimulator.simulateRoll`, or compression in `compressSimulationResult`. */
 	computeTimeMs : number
 }
@@ -39,6 +41,8 @@ export type SimulationRunResult = {
 export type SimulationResult = {
 	original         : SimulationRunResult
 	compressed       : SimulationRunResult
+	duration         : number
+	gutterBall       : boolean
 	finalPinStates   : boolean[]
 	startingPinStates: boolean[]
 }
@@ -53,8 +57,8 @@ export type OptimizationSettings = {
 	/** Meters. Flat dedup: middle keyframe dropped if prev/mid/next equal for position, or equal for rotation (Euler) via quaternion round-trip. */
 	keyframeReductionEpsilon         : number
 	/**
-	 * R–D–P: max perpendicular distance in space from each sample to the line through segment endpoints (m). Non-finite
-	 * or negative (e.g. `-1`) disables the position term in the combined score; rotation can still drive simplification.
+	 * R–D–P: max **position** error (m) vs linear-in-time interpolation between segment endpoints — same metric as
+	 * playback lerp. Non-finite or negative (e.g. `-1`) disables the position term; rotation can still drive simplification.
 	 */
 	keyframeRdpMaxPositionErrorM     : number
 	/**
@@ -62,13 +66,14 @@ export type OptimizationSettings = {
 	 */
 	keyframeRdpMaxRotationErrorDeg   : number
 	/**
-	 * Precontact anchor: min position delta (m) from the first materialized sample to count as “motion.” Use `-1`
+	 * Precontact anchor: min **horizontal (XZ)** position delta (m) from t=0 on pin tracks to count as “motion.” Use `-1`
 	 * to ignore position (use rotation only if that is not also `-1`).
 	 */
 	keyframePrecontactMotionMinPosM  : number
 	/**
-	 * Precontact anchor: min geodesic rotation (°) from t=0. `-1` = ignore rotation (position only). If **both** this
-	 * and {@link keyframePrecontactMotionMinPosM} are `-1`, the precontact anchor pass is skipped.
+	 * Precontact anchor: min geodesic rotation (°) from t=0. Values under ~1–2° often match solver noise and fire the
+	 * anchor too early (compressed playback then lerps/slerps before the real hit). `-1` = ignore rotation (position only).
+	 * If **both** this and {@link keyframePrecontactMotionMinPosM} are `-1`, the precontact anchor pass is skipped.
 	 */
 	keyframePrecontactMotionMinRotDeg: number
 }
@@ -83,20 +88,25 @@ export type SimulationSettings = {
 	simDuration                     : number
 	/** Stop sampling after this many consecutive frames with no significant body velocity. */
 	idleFrameCap                     : number
-	ballMass                        : number
+	ballAngularDamping              : number
 	ballFriction                    : number
-	ballRestitution                 : number
+	ballLinearDamping               : number
+	ballMass                        : number
 	ballRadius                      : number
+	ballRestitution                 : number
 	/**
 	 * Magnitude of initial ball angular velocity about +Y (rad/s) when `spin` is ±1. Scales linearly: ωy = `spin` × this.
 	 */
-	maxAngularVelocity              : number
+	ballMaxAngularVelocity          : number
 	bowlSpeedMin                    : number
 	bowlSpeedMax                    : number
 	/** Overrides pin cylinder mass from collider data in the Cannon sim. */
+	pinAngularDamping               : number
 	pinMass                         : number
 	pinFriction                     : number
+	pinLinearDamping                : number
 	pinRestitution                  : number
+	
 	/**
 	 * When true, static box colliders from `physics/colliders/bumper-colliders.json` are added to the Cannon world (gutter bumpers).
 	 */

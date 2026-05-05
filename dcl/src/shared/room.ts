@@ -52,6 +52,7 @@ const rollRequestSchema = {
 	frameIndex: Schemas.Number,
 	position  : Schemas.Vector3,
 	power     : Schemas.Number,
+	spin      : Schemas.Number,
 	rollIndex : Schemas.Number,
 }
 
@@ -68,6 +69,8 @@ const rollReplaySchema = {
 			rotation: Schemas.Optional(Schemas.Vector3)
 		}))
 	}),
+	duration       : Schemas.Number,
+	gutterBall     : Schemas.Boolean,
 	pinsKeyframes    : Schemas.Array(Schemas.Map({
 		index    : Schemas.Int,
 		keyframes: Schemas.Array(Schemas.Map({

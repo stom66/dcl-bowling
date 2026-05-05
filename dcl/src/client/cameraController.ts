@@ -23,7 +23,7 @@ export namespace CameraController {
 	var cameraHeight = Vector3.create(0, 0.65, -1.2)
 	var cameraTargetOffset = Vector3.create(0, 0.2, 19)
 
-	var cameraEndOffset = Vector3.create(0, 0, 15)
+	var cameraEndOffset = Vector3.create(0, 0, 16)
 
 	const cameraTransitionDuration       = 1
 	const cameraPlaybackDuration         = 1000 * 2
@@ -32,7 +32,8 @@ export namespace CameraController {
 
 	// MARK: Init
 	export function init() {
-		//eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK, (data: { userId: string }) => { onGroupRollPlayback(data) })
+		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, (data: { userId: string }) => { onGroupRollPlaybackStart(data) })
+		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_END, (data: {}) => { onGroupRollPlaybackEnd() })
 		eventBus.on(ClientEvents.ON_MY_ROLL_START, (data: { userId: string }) => { onMyRollStart(data) })
 		eventBus.on(ClientEvents.ON_MY_ROLL_END, (data: { userId: string }) => { onMyRollEnd(data) })
 
@@ -55,10 +56,19 @@ export namespace CameraController {
 		resetCamera()
 	}
 
-	function onGroupRollPlayback(data: { userId: string }) {
-		console.log("CameraController: onGroupRollPlayback")
+	function onGroupRollPlaybackStart(data: { userId: string }) {
+		console.log("CameraController: onGroupRollPlaybackStart")
 		if (isMyTurn || PlayerSettings.CAMER_ACTIVE_FOR_OTHER_PLAYERS_ROLLS) {
 			triggerPlaybackCamera()
+		}
+	}
+
+	function onGroupRollPlaybackEnd() {
+		console.log("CameraController: onGroupRollPlaybackEnd")
+		if (isMyTurn || PlayerSettings.CAMER_ACTIVE_FOR_OTHER_PLAYERS_ROLLS) {
+			utils.timers.setTimeout(() => {
+				resetCamera()
+			}, 1000)
 		}
 	}
 

@@ -3,6 +3,8 @@ import { ColliderLayer, EasingFunction, engine, Entity, GltfContainer, GltfConta
 import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 //import { CannonSim } from "src/shared/utils/cannon-sim";
 import { ClientMessaging } from "./clientMessaging";
+import { eventBus } from "src/shared/utils/eventBus";
+import { ClientEvents } from "./clientEvents";
 
 
 enum CONTROL_TYPE {
@@ -36,6 +38,7 @@ export class BowlingControls {
 	private position : Vector3 = Vector3.create(0, 0, 0)
 	private direction: Vector3 = Vector3.create(0, 0, 0)
 	private strength : number  = 0
+	private spin     : number  = 0
 
 	private arrow: Entity
 	private pointerCollider: Entity
@@ -110,6 +113,11 @@ export class BowlingControls {
 		})
 	}
 
+	RemovePointerSystem() {
+		pointerEventsSystem.removeOnPointerDown(this.pointerCollider)
+		pointerEventsSystem.removeOnPointerUp(this.pointerCollider)
+	}
+
 	// MARK: On Arrow Interaction
 	OnArrowInteraction() {
 		switch (this.currentControlType) {
@@ -122,6 +130,9 @@ export class BowlingControls {
 				// Get the scale of the arrow
 				const arrowScale = Transform.get(this.arrow).scale
 				this.strength = arrowScale.x
+
+				// Remove the pointer system
+				this.RemovePointerSystem()
 
 				// AND NOW, WE BOWL!
 				//this.DoTheBowl()
@@ -167,7 +178,8 @@ export class BowlingControls {
 	// MARK: Request Bowl
 	RequestBowl() {
 		console.log("bowlingControls: RequestBowl", this.position, this.direction, this.strength)
-		ClientMessaging.requestPlayRoll(this.position, this.direction, this.strength)
+		ClientMessaging.requestPlayRoll(this.position, this.direction, this.strength, this.spin)
+		eventBus.emit(ClientEvents.ON_MY_ROLL_REQUEST, { position: this.position, direction: this.direction, strength: this.strength, spin: this.spin })
 	}
 
 

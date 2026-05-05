@@ -18,7 +18,7 @@ A project-level companion lives at the repo root: [`REINTEGRATION.md`](../../../
 
 **Types:** `types/bowling-sim.ts` defines `SimulationResult` (return of `getSimulationResults`), `SimulationRunResult` (one physics or compression path), `SimulationSettings`, `OptimizationSettings`, `BowlingPhysicsSimulator`, etc. `types/index.ts` re-exports those plus `Quaternion` / `Vector3` types from `@dcl/ecs` and `@dcl/sdk/math` (same as this visualiser).
 
-**Colliders:** `colliders/lane-colliders.json`, `colliders/pin-colliders.json`, `colliders/bumper-colliders.json` — loaded by `physics.cannon-sim.ts` (relative imports; keep folder structure).
+**Colliders:** `colliders/lane-colliders.json`, `colliders/pin-colliders.json`, `colliders/bumper-colliders.json` — pin rack layout (and pin cylinder authoring) comes from `physics.pin-layout.ts` reading `pin-colliders.json`; `physics.cannon-sim.ts` loads lane and bumper JSON. Keep the `colliders/` folder next to these modules.
 
 ### 2. Optional: visualizer and UI (not required for `getSimulationResults`)
 
@@ -84,6 +84,7 @@ const { original, compressed } = getSimulationResults(
 | `physics.cannon-sim.ts` | **Engine**: Cannon world, colliders, stepping, keyframe recording. |
 | `physics.utils.ts` | Engine-agnostic math and rotation wire-format helpers. |
 | `physics.keyframe-optimization.ts` | Keyframe reduction after simulation (optional). |
+| `physics.pin-layout.ts` | `PIN_LANE_LOCAL_POSITIONS` and `pinCollidersConfig` from `pin-colliders.json` (any engine can share the same rack / collider data). |
 | `colliders/*.json` | Lane / pin / bumper static collider data. |
 
 `simulateRoll` takes `optimizationSettings` so every backend shares the same call shape; Cannon ignores optimizer tunables during integration, and the client runs compression **after** `simulateRoll` when enabled.

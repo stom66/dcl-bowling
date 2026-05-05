@@ -1,6 +1,6 @@
 import { CannonBowlingPhysicsSimulator } from './physics.cannon-bowling-physics'
-import { PIN_LANE_LOCAL_POSITIONS } from './physics.cannon-sim'
 import { compressSimulationResult } from './physics.keyframe-optimization'
+import { PIN_LANE_LOCAL_POSITIONS } from './physics.pin-layout'
 import { DefaultOptimizationSettings, GameSettings } from './physics.settings'
 import type {
 	BowlingPhysicsSimulator,
@@ -47,6 +47,8 @@ export function getSimulationResults(
 	return {
 		original         : original,
 		compressed       : compressed,
+		duration         : compressed.duration,
+		gutterBall       : compressed.gutterBall,
 		finalPinStates   : [...compressed.finalPinStates],
 		startingPinStates: Array.from(
 			{ length: PIN_LANE_LOCAL_POSITIONS.length },
