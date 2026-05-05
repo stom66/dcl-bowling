@@ -17,9 +17,54 @@
 			"mesh":0,
 			"name":"bowlingBall",
 			"scale":[
-				0.1000000610947609,
-				0.10000000149011612,
-				0.1000000387430191
+				0.12500007450580597,
+				0.125,
+				0.12500004470348358
+			]
+		}
+	],
+	"animations":[
+		{
+			"channels":[
+				{
+					"sampler":0,
+					"target":{
+						"node":0,
+						"path":"translation"
+					}
+				},
+				{
+					"sampler":1,
+					"target":{
+						"node":0,
+						"path":"rotation"
+					}
+				},
+				{
+					"sampler":2,
+					"target":{
+						"node":0,
+						"path":"scale"
+					}
+				}
+			],
+			"name":"bowlingBall",
+			"samplers":[
+				{
+					"input":4,
+					"interpolation":"STEP",
+					"output":5
+				},
+				{
+					"input":4,
+					"interpolation":"STEP",
+					"output":6
+				},
+				{
+					"input":4,
+					"interpolation":"STEP",
+					"output":7
+				}
 			]
 		}
 	],
@@ -98,6 +143,36 @@
 			"componentType":5123,
 			"count":3150,
 			"type":"SCALAR"
+		},
+		{
+			"bufferView":4,
+			"componentType":5126,
+			"count":2,
+			"max":[
+				1
+			],
+			"min":[
+				0.016666666666666666
+			],
+			"type":"SCALAR"
+		},
+		{
+			"bufferView":5,
+			"componentType":5126,
+			"count":2,
+			"type":"VEC3"
+		},
+		{
+			"bufferView":6,
+			"componentType":5126,
+			"count":2,
+			"type":"VEC4"
+		},
+		{
+			"bufferView":7,
+			"componentType":5126,
+			"count":2,
+			"type":"VEC3"
 		}
 	],
 	"bufferViews":[
@@ -124,6 +199,26 @@
 			"byteLength":6300,
 			"byteOffset":18496,
 			"target":34963
+		},
+		{
+			"buffer":0,
+			"byteLength":8,
+			"byteOffset":24796
+		},
+		{
+			"buffer":0,
+			"byteLength":24,
+			"byteOffset":24804
+		},
+		{
+			"buffer":0,
+			"byteLength":32,
+			"byteOffset":24828
+		},
+		{
+			"buffer":0,
+			"byteLength":24,
+			"byteOffset":24860
 		}
 	],
 	"samplers":[
@@ -134,7 +229,7 @@
 	],
 	"buffers":[
 		{
-			"byteLength":24796,
+			"byteLength":24884,
 			"uri":"bowlingBall.bin"
 		}
 	]
