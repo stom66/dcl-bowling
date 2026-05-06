@@ -50,8 +50,8 @@ export function getFrameResults(frames: number[][]): FrameResult[] {
 
 				// Is the next frame the final frame?
 				if (nextFrame.frameNumber == 10) {
-					runningScore += nextFrame.scores[0]
-					runningScore += nextFrame.scores[1]
+					if (nextFrame.scores[0]) runningScore += nextFrame.scores[0]
+					if (nextFrame.scores[1]) runningScore += nextFrame.scores[1]
 					frameResult.runningScore = runningScore
 				}
 
@@ -61,7 +61,7 @@ export function getFrameResults(frames: number[][]): FrameResult[] {
 					// Also add the value of the next ball
 					const nextNextFrame = results[index + 2]
 					if (nextNextFrame) {
-						runningScore += nextNextFrame.scores[0]
+						if (nextNextFrame.scores[0]) runningScore += nextNextFrame.scores[0]
 						frameResult.runningScore = runningScore
 					}
 				} 
@@ -79,7 +79,7 @@ export function getFrameResults(frames: number[][]): FrameResult[] {
 			runningScore += 10
 			const nextFrame = results[index + 1]
 			if (nextFrame) {
-				runningScore += nextFrame.scores[0]
+				if (nextFrame.scores[0]) runningScore += nextFrame.scores[0]
 				frameResult.runningScore = runningScore
 			}
 		}
@@ -140,9 +140,9 @@ export function getDummyScoreData() {
 			[10],
 			[10],
 			[10],
-			[10],
-			[10],
-			[10,10,10]
+			//[10],
+			//[10],
+			//[10,10,10]
 		])
 
 		// Real-world exmaple set
