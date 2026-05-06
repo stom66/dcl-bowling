@@ -355,14 +355,22 @@ class GameManager {
 	 * gets another roll in this frame or we wrap up their frame.
 	 */
 	private afterRollEnd(laneIndex: number) {
-		const rt        = this.getRuntime(laneIndex)
-		const rollIndex = this.store.getCurrentRollIndex(laneIndex)
-		const allDown   = rt.pinStanding.every(s => !s)
+		const rt           = this.getRuntime(laneIndex)
+		const rollIndex    = this.store.getCurrentRollIndex(laneIndex)
+		const allDown      = rt.pinStanding.every(s => !s)
+		const isFinalFrame = rollIndex == (GameSettings.MAX_FRAMES_PER_GAME - 1)
+		const userId       = this.store.getCurrentFrameUserId(laneIndex) || ''
+		const frames       = this.store.getFrames(laneIndex).get(userId) || []
+		const firstRollWasAStrike = frames?.[0]?.[0] === 10
 
 		// Standard frames 0–8: two rolls unless a strike on the first.
 		// TODO: 10th-frame bonus rolls (strike/spare ⇒ up to 3 rolls).
 		if (rollIndex === 0 && !allDown) {
 			this.store.setCurrentRollIndex(laneIndex, 1)
+			this.startPlayerRoll(laneIndex)
+		}
+		else if (isFinalFrame && rollIndex === 1 && firstRollWasAStrike) {
+			this.store.setCurrentRollIndex(laneIndex, 2)
 			this.startPlayerRoll(laneIndex)
 		} else {
 			this.endPlayerFrame(laneIndex)
@@ -409,7 +417,7 @@ class GameManager {
 			frameIndex++
 		}
 
-		if (frameIndex >= 10) {
+		if (frameIndex >= GameSettings.MAX_FRAMES_PER_GAME) {
 			this.endGame(laneIndex)
 			return
 		}

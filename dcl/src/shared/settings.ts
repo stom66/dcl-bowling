@@ -22,7 +22,7 @@ export class GameSettings {
 
 	static MAX_LANES                      = 6
 	static MAX_PLAYERS_PER_GAME           = 2
-	static LANE_POSITIONS                 = [...lanePositions]
+	static MAX_FRAMES_PER_GAME            = 10
 
 	static GAME_START_COUNTDOWN_DURATION  = 1000 * 3
 	static GAME_START_INITIAL_DELAY       = 1000 * 3    // Time between starting the game, and starting the first frame
