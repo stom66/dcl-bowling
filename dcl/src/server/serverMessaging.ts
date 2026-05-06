@@ -28,9 +28,9 @@ export function notifyPlayerFrameStart(laneIndex: number, userId: string) {
 	room.send(MessageType.NOTIFY_PLAYER_FRAME_START, { userId, sentAt: Date.now() }, { to : serverStore.getLaneUserIds(laneIndex) })
 }
 
-export function notifyPlayerRollStart(laneIndex: number, userId: string, pinStanding: boolean[]) {
+export function notifyPlayerRollStart(laneIndex: number, userId: string, pinStanding: boolean[], rollStartTimestamp: number) {
 	const serverStore = ServerStore.getInstance()
-	room.send(MessageType.NOTIFY_PLAYER_ROLL_START, { userId, pinStanding, sentAt: Date.now() }, { to : serverStore.getLaneUserIds(laneIndex) })
+	room.send(MessageType.NOTIFY_PLAYER_ROLL_START, { userId, pinStanding, rollStartTimestamp, sentAt: Date.now() }, { to : serverStore.getLaneUserIds(laneIndex) })
 }
 
 export function notifyPlayerRollPlayback(laneIndex: number, payload: NotifyPlayerRollPayload) {

@@ -1,6 +1,6 @@
 import { PlayerStatus } from 'src/shared/enums';
 import { MessageType, room } from 'src/shared/room';
-import { NotifyLaneStatePayload, NotifyPlayerRollPayload } from 'src/shared/types/shared-types';
+import { NotifyLaneStatePayload, NotifyPlayerRollPayload, NotifyPlayerRollStartPayload } from 'src/shared/types/shared-types';
 import { clockSync } from 'src/shared/utils/clockSync';
 import { eventBus, ClientEvents } from 'src/shared/utils/eventBus';
 
@@ -87,11 +87,11 @@ export namespace ClientHandler {
 	}
 
 	// MARK: Roll Start
-	function handleNotifyPlayerRollStart(data: { userId: string, pinStanding: boolean[] }) {
+	function handleNotifyPlayerRollStart(data: NotifyPlayerRollStartPayload) {
 		if (data.userId === clientStore.getUserId()) {
-			eventBus.emit(ClientEvents.ON_MY_ROLL_START, { userId: data.userId, pinStanding: data.pinStanding })
+			eventBus.emit(ClientEvents.ON_MY_ROLL_START, data)
 		} else {
-			eventBus.emit(ClientEvents.ON_GROUP_ROLL_START, { userId: data.userId, pinStanding: data.pinStanding })
+			eventBus.emit(ClientEvents.ON_GROUP_ROLL_START, data)
 		}
 	}
 

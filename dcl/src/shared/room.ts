@@ -112,6 +112,7 @@ const Messages = {
 	[MessageType.NOTIFY_PLAYER_ROLL_START]   : Schemas.Map({
 		...userIdMessageBaseSchema,
 		pinStanding: Schemas.Array(Schemas.Boolean),
+		rollStartTimestamp: Schemas.Int64,
 	}),
 	[MessageType.NOTIFY_PLAYER_ROLL_PLAYBACK]: Schemas.Map({
 		...rollReplaySchema

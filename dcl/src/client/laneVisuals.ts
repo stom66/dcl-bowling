@@ -41,7 +41,7 @@ const LANE_END_Z              = 17
 const SCORE_OBJECT_POSITION   = Vector3.create(0, 0.5, 18)
 const SCORE_OBJECT_SCALE      = Vector3.create(0.6, 0.6, 0.6)
 
-
+const CHANCE_OF_PIGEON = 2 // 1 in n
 
 
 /**
@@ -58,13 +58,19 @@ export class LaneVisuals {
 	private pinEntities: (Entity | undefined)[] = new Array(PIN_COUNT).fill(undefined)
 	private ball?: Entity
 
+	private rollStartTimestamp: number = 0
+
 	/** When set, {@link runReplay} is driving ball/pin transforms each frame until cleared. */
 	private replayDriver?: (dt: number) => void
 
 
 	// MARK: Constructor
-	constructor(lanePosition: Vector3) {
+	constructor(
+		lanePosition      : Vector3,
+		rollStartTimestamp: number
+	) {
 		this.lanePosition = lanePosition
+		this.rollStartTimestamp = rollStartTimestamp
 		this.setupBall()
 	}
 
@@ -95,7 +101,12 @@ export class LaneVisuals {
 				position: worldPos,
 				scale   : Vector3.Zero(),
 			})
-			GltfContainer.create(pin, { src: "assets/models/pin.gltf" })
+
+			// Add a chance to display a pigeon pin
+			var pinFilename = "pin"
+			if (i === 0 && this.rollStartTimestamp % CHANCE_OF_PIGEON == 0) pinFilename = "pinPigeon"
+			
+			GltfContainer.create(pin, { src: `assets/models/${pinFilename}.gltf` })
 
 			const staggerMs = 50 * i
 			GltfContainerLoadingState.onChange(pin, (state) => {

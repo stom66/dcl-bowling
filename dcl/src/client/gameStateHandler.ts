@@ -1,7 +1,7 @@
 import * as utils from "@dcl-sdk/utils"
 
 import { LanePhase, PlayerStatus } from "src/shared/enums"
-import { ClientState, LaneState, NotifyJoinGamePayload, NotifyPlayerRollPayload } from "src/shared/types/shared-types"
+import { ClientState, LaneState, NotifyJoinGamePayload, NotifyPlayerRollPayload, NotifyPlayerRollStartPayload } from "src/shared/types/shared-types"
 import { eventBus } from "src/shared/utils/eventBus"
 
 import { ClientEvents } from "src/client/clientEvents"
@@ -21,10 +21,10 @@ export namespace gameStateHandler {
 	eventBus.on(ClientEvents.ON_GAME_JOINED, (data: LaneState) => { onJoinGame(data) })
 	eventBus.on(ClientEvents.ON_GROUP_GAME_START, (data: LaneState) => { onGameStart(data) })
 
-	eventBus.on(ClientEvents.ON_MY_ROLL_START, (data: { userId: string, pinStanding: boolean[] }) => { onMyRollStart(data) })
+	eventBus.on(ClientEvents.ON_MY_ROLL_START, (data: NotifyPlayerRollStartPayload) => { onMyRollStart(data) })
 	eventBus.on(ClientEvents.ON_MY_ROLL_END, (data: { userId: string }) => { onMyRollEnd(data) })
 
-	eventBus.on(ClientEvents.ON_GROUP_ROLL_START, (data: { userId: string, pinStanding: boolean[] }) => { onGroupRollStart(data) })
+	eventBus.on(ClientEvents.ON_GROUP_ROLL_START, (data: NotifyPlayerRollStartPayload) => { onGroupRollStart(data) })
 	eventBus.on(ClientEvents.ON_GROUP_ROLL_END, (data: { userId: string }) => { })
 	eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, (data: NotifyPlayerRollPayload) => { onRollPlaybackStart(data) })
 	
@@ -55,25 +55,28 @@ export namespace gameStateHandler {
 		console.log('gameStateHandler: onGameStart')
 	}
 
-	function onGroupRollStart(data: { userId: string, pinStanding: boolean[] }) {
+	function onGroupRollStart(data: NotifyPlayerRollStartPayload) {
 		console.log('gameStateHandler: onGroupRollStart: data', data)
-		
-		const laneIndex    = clientStore.getLaneIndex() ?? 0
-		const lanePosition = lanePositions[laneIndex]
-		laneVisuals?.destroy()
-		laneVisuals        = new LaneVisuals(lanePosition)
-		laneVisuals.setupPins(data.pinStanding)
+		createLaneVisuals(data)
 	}
 
-	function onMyRollStart(data: { userId: string, pinStanding: boolean[] }) {
+	function onMyRollStart(data: NotifyPlayerRollStartPayload) {
 		console.log('gameStateHandler: onMyRollStart: data', data)
+		
+		createLaneVisuals(data)
+		if (!laneVisuals) return
 		const laneIndex    = clientStore.getLaneIndex() ?? 0
 		const lanePosition = lanePositions[laneIndex]
-		laneVisuals?.destroy()
-		laneVisuals        = new LaneVisuals(lanePosition)	
-		laneVisuals.setupPins(data.pinStanding)
 		bowlingControls    = new BowlingControls(lanePosition, laneVisuals.getBall())
 	}
+
+		function createLaneVisuals(data: NotifyPlayerRollStartPayload) {
+			const laneIndex    = clientStore.getLaneIndex() ?? 0
+			const lanePosition = lanePositions[laneIndex]
+			laneVisuals?.destroy()
+			laneVisuals        = new LaneVisuals(lanePosition, data.rollStartTimestamp)
+			laneVisuals.setupPins(data.pinStanding)
+		}
 
 	function onMyRollEnd(data: { userId: string }) {
 

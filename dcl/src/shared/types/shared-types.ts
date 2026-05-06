@@ -55,6 +55,13 @@ export type LanePlayers = {
 	userId     : string
 	displayName: string
 }
+export type LaneCurrentTurn = {
+	currentFrameIndex      : number
+	currentFramePlayerIndex: number
+	currentFrameUserId     : string
+	currentRollIndex       : number
+	currentRollStartTime   : number
+}
 
 // MARK: NotifyLaneStatePayload (wire format — arrays, not Maps)
 export type NotifyLaneStatePayload = {
@@ -69,6 +76,12 @@ export type NotifyLaneStatePayload = {
 	phase                   : string
 	players                 : { userId: string, displayName: string }[]
 	sentAt                  : number
+}
+
+export type NotifyPlayerRollStartPayload = {
+	userId: string
+	pinStanding: boolean[]
+	rollStartTimestamp: number
 }
 
 export type PlayerGroup = {
