@@ -210,11 +210,12 @@ class GameManager {
 
 		console.log(`gameManager: startPlayerRoll: lane ${laneIndex}, user ${userId}, rollIndex ${rollIndex}`)
 
-		this.store.setCurrentRollStartTime(laneIndex, Date.now())
+		const rollStartTimestamp = Date.now()
+		this.store.setCurrentRollStartTime(laneIndex, rollStartTimestamp)
 
 		this.schedulePhase(laneIndex, LanePhase.ROLL_AWAITING, GameSettings.ROLL_MAX_DURATION)
 
-		ServerMessaging.notifyPlayerRollStart(laneIndex, userId, pinStanding)
+		ServerMessaging.notifyPlayerRollStart(laneIndex, userId, pinStanding, rollStartTimestamp)
 		ServerMessaging.notifyLaneStateUpdate(laneIndex)
 
 	}
