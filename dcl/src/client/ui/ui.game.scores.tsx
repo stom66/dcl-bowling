@@ -12,12 +12,6 @@ import { userProfileCache } from 'src/shared/utils/userProfileCache'
 import { FrameResult, getDummyScoreData, getFrameResults } from 'src/shared/utils/scoreCalc'
 
 
-// MARK: Event Bindings
-eventBus.on(ClientEvents.NOTIFY_LANE_STATE, (data: LaneState) => {
-
-})
-
-
 // MARK: Vars
 const clientStore = ClientStore.getInstance()
 
