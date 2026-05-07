@@ -25,7 +25,7 @@ export namespace gameStateHandler {
 
 	eventBus.on(ClientEvents.ON_GROUP_ROLL_START,         (data: NotifyPlayerRollStartPayload)  => { onGroupRollStart(data) })
 	eventBus.on(ClientEvents.ON_GROUP_ROLL_END,           (data: { userId: string })            => { })
-	eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, (data: NotifyPlayerRollPayload)      => { onRollPlaybackStart(data) })
+	eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_RECEIVED, (data: NotifyPlayerRollPayload)      => { onRollPlaybackReceived(data) })
 
 
 	// MARK: Vars
@@ -84,16 +84,15 @@ export namespace gameStateHandler {
 	}
 
 
-	function onRollPlaybackStart(data: NotifyPlayerRollPayload) {
-		console.log('gameStateHandler: onRollPlayback: replaying roll from another player')
-		// TODO: replay other player's roll	eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK, (data: NotifyPlayerRollPayload) => { handleNotifyPlayerRollPlayback(data) })
+	function onRollPlaybackReceived(data: NotifyPlayerRollPayload) {
+		console.log('gameStateHandler: onRollPlaybackReceived: userId', data.userId)
 
 		if (!laneVisuals) {
-			console.log('gameStateHandler: onRollPlayback: laneVisuals not found')
+			console.log('gameStateHandler: onRollPlaybackReceived: laneVisuals not found')
 			return
 		}
-		laneVisuals.runReplay(data, () => {
-			console.log('gameStateHandler: onRollPlayback: roll replay complete')
+		laneVisuals.queueReplay(data, () => {
+			console.log('gameStateHandler: onRollPlaybackReceived: queueReplay complete')
 		})
 	}
 

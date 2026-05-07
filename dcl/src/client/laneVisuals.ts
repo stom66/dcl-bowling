@@ -1,14 +1,15 @@
 import * as utils from "@dcl-sdk/utils"
 import { Animator, EasingFunction, engine, Entity, GltfContainer, GltfContainerLoadingState, LoadingState, Transform, Tween, TweenSequence, tweenSystem } from "@dcl/sdk/ecs"
 import { Quaternion, Vector3 } from "@dcl/sdk/math"
-import { PIN_LANE_LOCAL_POSITIONS } from 'src/server/physics/physics.pin-layout'
-import { resolveSimulationSettings } from "src/server/physics/physics.client"
-import { DEFAULT_STORED_ROTATION, storedRotationToQuaternion } from "src/server/physics/physics.utils"
 
-import { NotifyPlayerRollPayload, RollPayload, SimObjectKeyframe } from "src/shared/types/shared-types"
-import { eventBus } from "src/shared/utils/eventBus"
-import { ClientEvents } from "./clientEvents"
+import { resolveSimulationSettings } from "src/server/physics/physics.client"
+import { PIN_LANE_LOCAL_POSITIONS } from "src/server/physics/physics.pin-layout"
 import { SimObjectKeyframes } from "src/server/physics/types"
+import { DEFAULT_STORED_ROTATION, storedRotationToQuaternion } from "src/server/physics/physics.utils"
+import { NotifyPlayerRollPayload, RollPayload, SimObjectKeyframe } from "src/shared/types/shared-types"
+import { ClientEvents, eventBus } from "src/shared/utils/eventBus"
+
+import { ClientStore } from "src/client/clientStore"
 
 
 // MARK: Types
@@ -40,10 +41,13 @@ const PIN_COUNT                 = PIN_LANE_LOCAL_POSITIONS.length
 const LANE_END_Z                = 17
 const SCORE_OBJECT_POSITION     = Vector3.create(0, 0.5, 18)
 const SCORE_OBJECT_SCALE        = Vector3.create(0.6, 0.6, 0.6)
-const COUNTDOWN_OBJECT_POSITION = Vector3.create(0, 0.5, 18)
+const COUNTDOWN_OBJECT_POSITION = Vector3.create(0, 0.5, 1)
 const COUNTDOWN_OBJECT_SCALE    = Vector3.create(0.6, 0.6, 0.6)
 
 const CHANCE_OF_PIGEON = 20 // 1 in n
+
+/** Delay between countdown visuals and each replay attempt (local player's roll). */
+const REPLAY_WAIT_MS = 3000
 
 
 /**
@@ -62,8 +66,16 @@ export class LaneVisuals {
 
 	private rollStartTimestamp: number = 0
 
-	/** When set, {@link runReplay} is driving ball/pin transforms each frame until cleared. */
+	/** When set, replay system is driving ball/pin transforms each frame until cleared. */
 	private replayDriver?: (dt: number) => void
+
+	/** Payload + completion handler staged until playback runs after roll request countdown. */
+	private queuedReplay?: { data: NotifyPlayerRollPayload; onComplete?: () => void }
+
+	private awaitingReplay: boolean = false
+	private replayWaitTimer?: number
+
+	private unsubRollRequest?: () => void
 
 
 	// MARK: Constructor
@@ -74,17 +86,59 @@ export class LaneVisuals {
 		this.lanePosition = lanePosition
 		this.rollStartTimestamp = rollStartTimestamp
 		this.setupBall()
+
+		this.unsubRollRequest = eventBus.on(ClientEvents.ON_MY_ROLL_REQUEST, () => {
+			this.queuedReplay   = undefined
+			this.awaitingReplay = true
+			this.clearReplayWaitTimer()
+			this.showCountdownAnimation()
+			this.replayWaitTimer = utils.timers.setTimeout(() => {
+				this.replayWaitTimer = undefined
+				this.tryTriggerReplay()
+			}, REPLAY_WAIT_MS)
+		})
 	}
 
 
 	// MARK: Destroy
 	destroy(): void {
+		this.clearReplayWaitTimer()
+		this.unsubRollRequest?.()
+		this.unsubRollRequest = undefined
+		this.awaitingReplay = false
+		this.queuedReplay = undefined
+
 		this.detachReplayDriver()
 		this.removePins()
 		this.removeBall()
 	}
 
 
+	// MARK: clearReplayWaitTimer
+	private clearReplayWaitTimer(): void {
+		if (this.replayWaitTimer === undefined) return
+		utils.timers.clearTimeout(this.replayWaitTimer)
+		this.replayWaitTimer = undefined
+	}
+
+
+	// MARK: tryTriggerReplay
+	private tryTriggerReplay(): void {
+		const queued = this.queuedReplay
+		if (queued !== undefined) {
+			this.queuedReplay = undefined
+			this.awaitingReplay = false
+			this.playReplay(queued.data, queued.onComplete)
+			return
+		}
+		if (!this.awaitingReplay) return
+
+		this.showCountdownAnimation()
+		this.replayWaitTimer = utils.timers.setTimeout(() => {
+			this.replayWaitTimer = undefined
+			this.tryTriggerReplay()
+		}, REPLAY_WAIT_MS)
+	}
 
 	// MARK: Pins
 	setupPins(pinStates: boolean[] = new Array(PIN_COUNT).fill(true)): void {
@@ -172,6 +226,7 @@ export class LaneVisuals {
 		const countdownEntity = engine.addEntity()
 		Transform.create(countdownEntity, {
 			position: Vector3.add(this.lanePosition, COUNTDOWN_OBJECT_POSITION),
+			rotation: Quaternion.fromEulerDegrees(0, 180, 0),
 			scale: COUNTDOWN_OBJECT_SCALE,
 		})
 		GltfContainer.create(countdownEntity, { src: "assets/models/Info_Countdown_3.gltf" })
@@ -284,14 +339,9 @@ export class LaneVisuals {
 	// =========================================================================
 	// MARK: Replay
 	// =========================================================================
-	/**
-	 * Play back a roll. Ball and any currently-displayed pins are animated
-	 * frame-by-frame from the payload's keyframe tracks. Pins not present in
-	 * `pinEntities` (already knocked from a prior roll) are left untouched.
-	 *
-	 * The replay ends when keyframes run out; `onComplete` (if supplied) is
-	 * invoked exactly once. Call `stopReplay()` to abort early.
-	 */
+
+
+	// MARK: onReplayEnd
 	onReplayEnd(): void {
 		console.log("laneVisuals: onReplayEnd()")
 
@@ -325,11 +375,53 @@ export class LaneVisuals {
 		}, 2000)
 	}
 
-	runReplay(data: NotifyPlayerRollPayload, onComplete?: () => void): void {
+	// MARK: queueReplay
+	/**
+	 * Stages server roll playback. After {@link ClientEvents.ON_MY_ROLL_REQUEST}, repeats a
+	 * {@link REPLAY_WAIT_MS} ms countdown until replay payload arrives. Other players' replays
+	 * play immediately.
+	 */
+	queueReplay(data: NotifyPlayerRollPayload, onComplete?: () => void): void {
+		console.log("laneVisuals: queueReplay(): userId", data.userId)
+		const localUserId = ClientStore.getInstance().getUserId()
+		const isMyReplay  = data.userId === localUserId
 
-		console.log("laneVisuals: runReplay(): data", data)
+		if (!isMyReplay) {
+			this.clearReplayWaitTimer()
+			this.awaitingReplay = false
+			this.queuedReplay = undefined
+			this.playReplay(data, onComplete)
+			return
+		}
+
+		if (!this.awaitingReplay) {
+			this.playReplay(data, onComplete)
+			return
+		}
+
+		this.queuedReplay = { data, onComplete }
+	}
+
+
+	// MARK: playReplay
+	/**
+	 * Play back a roll. Ball and any currently-displayed pins are animated
+	 * frame-by-frame from the payload's keyframe tracks. Pins not present in
+	 * `pinEntities` (already knocked from a prior roll) are left untouched.
+	 *
+	 * The replay ends when keyframes run out; `onComplete` (if supplied) is
+	 * invoked exactly once.
+	 */
+	private playReplay(data: NotifyPlayerRollPayload, onComplete?: () => void): void {
+
+		console.log("laneVisuals: playReplay(): data", data)
+		this.clearReplayWaitTimer()
+		this.awaitingReplay = false
+
 		this.rollPayload = data
 		this.detachReplayDriver()
+
+		eventBus.emit(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, data)
 
 		const replayState: ReplayState = {
 			elapsed                 : 0,
@@ -355,7 +447,7 @@ export class LaneVisuals {
 		// Make sure the ball exists before we start driving its transform.
 		if (this.ball === undefined) this.setupBall()
 		if (!this.ball) {
-			console.log("laneVisuals: runReplay(): ball not found")
+			console.log("laneVisuals: playReplay(): ball not found")
 			return
 		}
 
@@ -407,7 +499,7 @@ export class LaneVisuals {
 	// MARK: detachReplayDriver
 	/**
 	 * Unregisters the replay system so per-frame keyframe writes stop. Call before clearing pins or
-	 * starting a new replay, otherwise transforms fight tweens and entities never leave the scene cleanly.
+	 * starting a new replay via {@link playReplay}, otherwise transforms fight tweens and entities never leave the scene cleanly.
 	 */
 	private detachReplayDriver(): void {
 		if (this.replayDriver === undefined) {

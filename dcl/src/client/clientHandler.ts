@@ -15,7 +15,7 @@ export namespace ClientHandler {
 	export function init() {
 		room.onMessage(MessageType.NOTIFY_JOIN_GAME,            (data) => { handleNotifyJoinGame(data) })
 		room.onMessage(MessageType.NOTIFY_PLAYER_ROLL_START,    (data) => { handleNotifyPlayerRollStart(data) })
-		room.onMessage(MessageType.NOTIFY_PLAYER_ROLL_PLAYBACK, (data) => { handleNotifyPlayerRollPlaybackStart(data) })
+		room.onMessage(MessageType.NOTIFY_PLAYER_ROLL_PLAYBACK, (data) => { handleNotifyPlayerRollReceived(data) })
 		room.onMessage(MessageType.NOTIFY_SERVER_TIME,          (data) => { handleNotifyServerTime(data) })
 	}
 
@@ -48,12 +48,12 @@ export namespace ClientHandler {
 	}
 
 
-	// MARK: handleNotifyPlayerRollPlaybackStart
+	// MARK: handleNotifyPlayerRollReceived
 	/** Roll playback carries the keyframe payload that's far too big for a synced component. */
-	function handleNotifyPlayerRollPlaybackStart(data: NotifyPlayerRollPayload) {
-		console.log('ClientHandler: handleNotifyPlayerRollPlaybackStart: data', data)
+	function handleNotifyPlayerRollReceived(data: NotifyPlayerRollPayload) {
+		console.log('ClientHandler: handleNotifyPlayerRollReceived: data', data)
 		clockSync.updateOffset(data.sentAt)
-		eventBus.emit(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, data)
+		eventBus.emit(ClientEvents.ON_GROUP_ROLL_PLAYBACK_RECEIVED, data)
 	}
 
 

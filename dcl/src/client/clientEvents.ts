@@ -11,13 +11,14 @@ export enum ClientEvents {
 	ON_GROUP_GAME_END      = "onGroupGameEnd",    // When the group game ends
 	
 	
-	ON_MY_FRAME_START            = "onMyFrameStart",      // When the local player starts their frame
-	ON_MY_FRAME_END              = "onMyFrameEnd",        // When the local player ends their frame
-	ON_MY_ROLL_START             = "onMyRollStart",       // When the local player starts their roll
-	ON_MY_ROLL_REQUEST           = "onMyRollRequest",     // When the local player requests a roll
-	ON_GROUP_ROLL_PLAYBACK_START = "onRollPlaybackStart", // When a roll playback begins
-	ON_GROUP_ROLL_PLAYBACK_END   = "onRollPlaybackEnd",   // When a roll playback begins
-	ON_MY_ROLL_END               = "onMyRollEnd",         // When the local player ends their roll
+	ON_MY_FRAME_START               = "onMyFrameStart",              // When the local player starts their frame
+	ON_MY_FRAME_END                 = "onMyFrameEnd",                // When the local player ends their frame
+	ON_MY_ROLL_START                = "onMyRollStart",               // When the local player starts their roll
+	ON_MY_ROLL_REQUEST              = "onMyRollRequest",             // When the local player requests a roll
+	ON_GROUP_ROLL_PLAYBACK_RECEIVED = "onGroupRollPlaybackReceived", // Server sent roll playback payload (room message)
+	ON_GROUP_ROLL_PLAYBACK_START    = "onRollPlaybackStart",         // Lane visuals began driving keyframe playback
+	ON_GROUP_ROLL_PLAYBACK_END      = "onRollPlaybackEnd",           // Lane visuals finished playback / teardown tick
+	ON_MY_ROLL_END                  = "onMyRollEnd",                 // When the local player ends their roll
 
 
 	//ON_GROUP_TURN_START    =  "onGroupTurnStart", // When someone else in the group starts their turn
