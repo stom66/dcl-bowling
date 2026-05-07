@@ -20,18 +20,12 @@ export namespace LaneStore {
 
 
 	// MARK: getLaneSnapshot
-	/**
-	 * Builds a read-only snapshot of the lane's current synced state, transforming
-	 * `players` and `scores` into Maps. This is the
-	 * canonical shape emitted on the `eventBus` for state-bearing events. Throws
-	 * if the lane entity hasn't been discovered yet (see
-	 * `ComponentManager.getLaneEntity`).
-	 */
 	export function getLaneSnapshot(laneIndex: number): LaneSnapshot {
 		const entity      = ComponentManager.getLaneEntity(laneIndex)
-		const phase       = LaneComponent.LanePhaseEnum.get(entity)
+
 		const currentTurn = LaneComponent.LaneCurrentTurn.get(entity)
 		const gameData    = LaneComponent.LaneGameData.get(entity)
+		const phase       = LaneComponent.LanePhaseEnum.get(entity)
 		const scores      = LaneComponent.LaneScores.get(entity)
 
 		const players = new Map<string, string>(
@@ -57,7 +51,6 @@ export namespace LaneStore {
 
 
 	// MARK: findLaneByUserId
-	/** Returns the lane index containing this player, or undefined if they're not on any lane. */
 	export function findLaneByUserId(userId: string): number | undefined {
 		let result: number | undefined = undefined
 		ComponentManager.forEachLane((laneIndex, entity) => {
@@ -70,12 +63,6 @@ export namespace LaneStore {
 
 
 	// MARK: resetLane
-	/**
-	 * Server-only: resets every component on a lane to its default "no game"
-	 * state. The defaults themselves live on the manager
-	 * (`ComponentManager.seedLaneDefaults`); this is the store-side wrapper that
-	 * gameplay code (e.g. `gameManager.endGame`) calls.
-	 */
 	export function resetLane(laneIndex: number): void {
 		if (!isServer()) return
 		ComponentManager.seedLaneDefaults(laneIndex)
@@ -83,11 +70,6 @@ export namespace LaneStore {
 
 
 	// MARK: initLaneScorecards
-	/**
-	 * Server-only: seeds `LaneScores.scores` with one empty 10-frame array per
-	 * player on the lane. Call at game start so `addScore` can index into the
-	 * right slots.
-	 */
 	export function initLaneScorecards(laneIndex: number): void {
 		if (!isServer()) return
 
@@ -206,15 +188,18 @@ export namespace LaneStore {
 		const c = LaneComponent.LaneGameData.get(ComponentManager.getLaneEntity(laneIndex))
 		return c?.players?.map((p) => ({ userId: p.userId, displayName: p.displayName })) ?? []
 	}
+
 	export function getPlayersMap(laneIndex: number): Map<string, string> {
 		const players = getPlayers(laneIndex)
 		return new Map(players.map((p) => [p.userId, p.displayName]))
 	}
+
 	/** Returns the `userId` of every player on the given lane. */
 	export function getLaneUserIds(laneIndex: number): string[] {
 		const data = LaneComponent.LaneGameData.get(ComponentManager.getLaneEntity(laneIndex))
 		return (data?.players ?? []).map((p) => p.userId)
 	}
+
 
 	export function setPlayers(
 		laneIndex: number,
@@ -224,6 +209,7 @@ export namespace LaneStore {
 		const c = LaneComponent.LaneGameData.getMutable(ComponentManager.getLaneEntity(laneIndex))
 		c.players = players
 	}
+
 	export function addPlayer(
 		laneIndex  : number,
 		userId     : string,
@@ -234,6 +220,7 @@ export namespace LaneStore {
 		// Reassign rather than push so the component definitely marks dirty for sync.
 		c.players = [...(c.players ?? []), { userId, displayName }]
 	}
+
 	export function removePlayer(
 		laneIndex: number,
 		userId   : string
@@ -242,6 +229,7 @@ export namespace LaneStore {
 		const c = LaneComponent.LaneGameData.getMutable(ComponentManager.getLaneEntity(laneIndex))
 		c.players = (c.players ?? []).filter((p) => p.userId !== userId)
 	}
+	
 	/** Server-only: removes the player from every lane's `LaneGameData.players` list. */
 	export function removePlayerFromAllLanes(userId: string): void {
 		if (!isServer()) return
@@ -259,6 +247,26 @@ export namespace LaneStore {
 		const c = LaneComponent.LanePhaseEnum.get(ComponentManager.getLaneEntity(laneIndex))
 		return c?.phase ?? LanePhase.NONE
 	}
+
+
+	// MARK: subscribeLanePhase
+	/**
+	 * Runs `listener` whenever the synced `LanePhase` component updates on `laneIndex`.
+	 * Same primitive as `MyLane`: {@link LaneComponent.LanePhaseEnum.onChange} on the
+	 * lane entity — CRDT pushes updates only when the server writes; nothing polls each frame.
+	 * Requires {@link ComponentManager.onClientReady} first so lane entities exist.
+	 */
+	export function subscribeLanePhase(
+		laneIndex: number,
+		listener : (phase: LanePhase) => void,
+	): void {
+		const entity = ComponentManager.getLaneEntity(laneIndex)
+		LaneComponent.LanePhaseEnum.onChange(entity, () => {
+			listener(getPhase(laneIndex))
+		})
+	}
+
+
 	export function setPhase(
 		laneIndex: number,
 		phase    : LanePhase
