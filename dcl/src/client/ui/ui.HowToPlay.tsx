@@ -3,7 +3,7 @@ import { Color4, Vector3 } from '@dcl/sdk/math'
 
 import { ClientStore } from 'src/client/clientStore'
 
-import { Divider, SectionHeader } from 'src/client/ui/ui.components'
+import { Divider, SectionHeader } from 'src/client/ui/utils/components'
 
 const clientStore = ClientStore.getInstance()
 

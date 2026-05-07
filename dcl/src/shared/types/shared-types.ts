@@ -15,35 +15,26 @@ export type Outfit = {
 }
 
 
-// MARK: ClientState
-export type ClientState = {
-	userId           : string
-	displayName      : string
-	enrolledInGame   : boolean
-	laneState        : LaneState | undefined
-}
-
-
-// MARK: ServerState
-export type ServerState = {
-	lanes: LaneState[]
-	groups: PlayerGroup[]
-}
-
-export type LaneState = {
+// MARK: LaneSnapshot
+/**
+ * Read-only view of a single lane's synced-component state, transformed into the
+ * shape consumers want (Maps instead of arrays). Built by `LaneStore.getLaneSnapshot`
+ * and emitted on the `eventBus` by `MyLane`. Replaces the old `LaneState` mirror that
+ * `ClientStore` used to hold.
+ */
+export type LaneSnapshot = {
 	currentFrameIndex       : number
 	currentFramePlayerIndex : number
-	currentFrameUserId?     : string
+	currentFrameUserId      : string
 	currentRollIndex        : number
-	currentRollStartTime?   : number | undefined
-	frames                  : Map<string, number[][]>, // userId -> scores
-	gameStartTime           : number,
-	laneIndex               : number,
-	//laneStatus              : LaneStatus
+	currentRollStartTime    : number
+	frames                  : Map<string, number[][]>  // userId -> frames
+	gameStartTime           : number
+	laneIndex               : number
 	phase                   : LanePhase
-	players                 : Map<string, string>,     // userId -> displayName
-	//groupId                 :  string | undefined
+	players                 : Map<string, string>      // userId -> displayName
 }
+
 
 // MARK: LaneComponents
 
@@ -63,25 +54,11 @@ export type LaneCurrentTurn = {
 	currentRollStartTime   : number
 }
 
-// MARK: NotifyLaneStatePayload (wire format — arrays, not Maps)
-export type NotifyLaneStatePayload = {
-	currentFrameIndex?      : number
-	currentFramePlayerIndex?: number
-	currentFrameUserId?     : string
-	currentRollIndex?       : number
-	currentRollStartTime?   : number
-	frames                  : { userId: string, frames: number[][] }[]
-	gameStartTime           : number
-	laneIndex               : number
-	phase                   : string
-	players                 : { userId: string, displayName: string }[]
-	sentAt                  : number
-}
-
 export type NotifyPlayerRollStartPayload = {
-	userId: string
-	pinStanding: boolean[]
+	userId            : string
+	pinStanding       : boolean[]
 	rollStartTimestamp: number
+	sentAt            : number
 }
 
 export type PlayerGroup = {
@@ -94,7 +71,7 @@ export type PlayerGroup = {
 
 export type NotifyJoinGamePayload = {
 	laneIndex: number
-	gameStartTime: number
+	sentAt   : number
 }
 
 

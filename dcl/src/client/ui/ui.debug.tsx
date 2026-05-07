@@ -1,15 +1,60 @@
 import ReactEcs, { Button, UiEntity} from '@dcl/sdk/react-ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
-
-import { ClientStore } from 'src/client/clientStore'
-
-import { ButtonAction, Divider, InfoRow, SectionHeader } from 'src/client/ui/ui.components'
 import { movePlayerTo } from '~system/RestrictedActions'
-import { ClientMessaging } from '../clientMessaging'
+
+import { ComponentManager } from 'src/shared/components/componentManager'
+import { LaneStore } from 'src/shared/laneStore'
+import { GameSettings } from 'src/shared/settings'
 import { newPlayer, perfectGame } from 'src/shared/utils/discord-webhooks'
-import { ClearEmote, PlayBowlingAnimation } from '../emotes'
+
+import { ClientMessaging } from 'src/client/clientMessaging'
+import { ClientStore } from 'src/client/clientStore'
+import { ClearEmote, PlayBowlingAnimation } from 'src/client/emotes'
+
+import { ButtonAction, Divider, InfoRow, SectionHeader } from 'src/client/ui/utils/components'
+import { tweenValue } from './utils/tweens'
 
 const clientStore = ClientStore.getInstance()
+
+const PANEL_HIDDEN  = -300
+const PANEL_VISIBLE = 40
+const BTN_HIDDEN    = -84
+const BTN_VISIBLE   = 250
+var btnRight        : number = BTN_VISIBLE
+var panelLeft       : number = PANEL_VISIBLE
+
+
+
+// MARK: GetAllLanesRows
+/**
+ * Builds one InfoRow per lane summarising its current component values:
+ * `phase | players count | current turn userId`. Reads through `ComponentManager`
+ * so it always reflects the latest synced state. Renders a "syncing..." row
+ * during the brief window before CRDT sync has populated all lane entities.
+ */
+function GetAllLanesRows() {
+	if (!ComponentManager.isReady()) {
+		return [
+			<UiEntity key="debug_lane_syncing" uiTransform={{ width: '100%', height: 'auto' }}>
+				<InfoRow label="Lanes" value="syncing..." fontSize={10} />
+			</UiEntity>,
+		]
+	}
+
+	const rows: ReactEcs.JSX.Element[] = []
+	for (let i = 0; i < GameSettings.MAX_LANES; i++) {
+		const phase    = LaneStore.getPhase(i)
+		const players  = LaneStore.getLaneUserIds(i)
+		const turnUser = LaneStore.getCurrentFrameUserId(i)
+		const summary  = `${phase} | ${players.length}p${turnUser ? ` | ${turnUser.slice(0, 4)}...${turnUser.slice(turnUser.length - 4, turnUser.length)}` : ''}`
+		rows.push(
+			<UiEntity key={`debug_lane_${i}`} uiTransform={{ width: '100%', height: 'auto' }}>
+				<InfoRow label={`Lane ${i}`} value={summary} fontSize={10} />
+			</UiEntity>
+		)
+	}
+	return rows
+}
 
 
 function BowlStrike() {
@@ -25,38 +70,85 @@ function BowlSpare2() {
 export function DebugUI() {
 	return (
 		<UiEntity
-		key="ui_debug_root"
-		uiTransform={{
-			width         : 300,
-			height        : 640,
-			flexDirection : 'column',
-			alignItems    : 'flex-start',
-			justifyContent: 'space-between',
-			margin        : { top: '-220px', right: '50px' },
-			padding       : '10px',
-			position      : { left: 50, top: 350 },
-			positionType: "absolute",
-			borderRadius  : { topLeft: 8, topRight: 24, bottomLeft: 8, bottomRight: 24 },
-			borderColor   : Color4.fromHexString("#4C9581FF"),
-			borderWidth   : 3
-		}}
-		uiBackground={{ color: Color4.fromHexString("#4C958166") }}
+			key="ui_debug_root"
+			uiTransform={{
+				width         : 300,
+				height        : 720,
+				flexDirection : 'column',
+				alignItems    : 'flex-start',
+				justifyContent: 'space-between',
+				padding       : '10px',
+				position      : { left: panelLeft, top: 132 },
+				positionType: "absolute",
+				borderRadius  : { topLeft: 8, topRight: 24, bottomLeft: 8, bottomRight: 24 },
+				borderColor   : Color4.fromHexString("#4C9581FF"),
+				borderWidth   : 3
+			}}
+			uiBackground={{ color: Color4.fromHexString("#4C958166") }}
 		>
-		
-		<SectionHeader title="Debug Menu" />
-		
-		<ButtonAction textLabel="GoTo Lobby" callback={() => { 
-			movePlayerTo({ 
-				newRelativePosition: Vector3.create(16, 0, 11),
-				cameraTarget: Vector3.create(16, 1, 15),
-			}) }} />
+
+		<UiEntity 
+				uiTransform={{ 
+					width: '48', 
+					height: '32',
+					borderRadius: 16,
+					borderWidth: 3,
+					borderColor: Color4.fromHexString("#44B596FF"),
+					positionType: 'absolute',
+					position: { top: -36, right: btnRight },
+					}}
+				uiText={{
+					value: "<-->",
+					fontSize: 14,
+				}}
+				onMouseDown={() => {
+					if (panelLeft > PANEL_HIDDEN) {
+						tweenValue(btnRight, BTN_HIDDEN, 0.2, (v) => btnRight = v)
+						tweenValue(panelLeft, PANEL_HIDDEN, 0.2, (v) => panelLeft = v)
+					} else {
+						tweenValue(panelLeft, PANEL_VISIBLE, 0.2, (v) => panelLeft = v)
+						tweenValue(btnRight, BTN_VISIBLE, 0.2, (v) => btnRight = v)
+					}
+				}}
+			/>
 			
-			<ButtonAction textLabel="StartGame | Lane 2" callback={() => { ClientMessaging.requestJoinLane(2) }} />
-			<ButtonAction textLabel="StartGame | Lane 3" callback={() => { ClientMessaging.requestJoinLane(3) }} />
-			<ButtonAction textLabel="Bowl | Strike" callback={() => { BowlStrike() }} />
-			<ButtonAction textLabel="Bowl | Spare 1" callback={() => { BowlSpare1() }} />
-			<ButtonAction textLabel="Bowl | Spare 2" callback={() => { BowlSpare2() }} />
+			<SectionHeader title="Debug Menu" />
 			
+			<ButtonAction textLabel="GoTo Lobby" callback={() => { 
+				movePlayerTo({ 
+					newRelativePosition: Vector3.create(16, 0, 11),
+					cameraTarget: Vector3.create(16, 1, 15),
+				}) }} />
+				
+			<UiEntity
+				uiTransform={{ 
+					width: '100%', 
+					height: 'auto',
+					flexDirection: 'row',
+					justifyContent: 'space-between',
+					alignItems: 'center',
+					padding: { top: 16, bottom: 10, left: 0, right: 0 },
+				}}
+				>
+
+				<ButtonAction textLabel="StartGame Lane 2" callback={() => { ClientMessaging.requestJoinLane(2) }} />
+				<ButtonAction textLabel="StartGame Lane 3" callback={() => { ClientMessaging.requestJoinLane(3) }} />
+				<ButtonAction textLabel="StartGame Lane 6" callback={() => { ClientMessaging.requestJoinLane(6) }} />
+			</UiEntity>
+			<UiEntity
+				uiTransform={{ 
+					width: '100%', 
+					height: 'auto',
+					flexDirection: 'row',
+					justifyContent: 'space-between',
+					alignItems: 'center',
+					padding: { top: 16, bottom: 10, left: 0, right: 0 },
+				}}
+				>
+				<ButtonAction textLabel="Strike" callback={() => { BowlStrike() }} />
+				<ButtonAction textLabel="Spare 1" callback={() => { BowlSpare1() }} />
+				<ButtonAction textLabel="Spare 2" callback={() => { BowlSpare2() }} />
+			</UiEntity>
 			
 
 			
@@ -78,21 +170,24 @@ export function DebugUI() {
 			<InfoRow label = "playerStatus"                value = {clientStore.getPlayerStatus().toString()} />
 			
 			<Divider />
-			<SectionHeader title="laneState" />
+			<SectionHeader title="My Lane (components)" />
 
-			<InfoRow label = "currentFrameIndex"         value = {clientStore.getCurrentFrameIndex()?.toString() ?? ''} />
-			<InfoRow label = "currentFramePlayerIndex"   value = {clientStore.getCurrentFramePlayerIndex()?.toString() ?? ''} />
-			<InfoRow label = "currentFrameUserId"        value = {clientStore.getCurrentFrameUserId() ?? ''} fontSize = {10} />
-			<InfoRow label = "currentRollIndex"          value = {clientStore.getCurrentRollIndex()?.toString() ?? ''} />
-			<InfoRow label = "currentRollStartTime"      value = {clientStore.getCurrentRollStartTime()?.toString() ?? ''} />
-			<InfoRow label = "frames"                    value = {clientStore.getFrames()?.size.toString() ?? ''} />
-			<InfoRow label = "lanePhase"                 value = {clientStore.getLanePhase()?.toString() ?? ''} />
-			<InfoRow label = "laneIndex"                 value = {clientStore.getLaneIndex()?.toString() ?? ''} />
-			<InfoRow label = "players"                   value = {clientStore.getPlayers()?.size.toString() ?? ''} />
-			<InfoRow label = "gameStartTime"             value = {clientStore.getGameStartTime()?.toString() ?? ''} />
-			
-			
-			
-			</UiEntity>
-		)
-	}
+			<InfoRow label = "laneIndex"                 value = {clientStore.getLaneIndex()?.toString() ?? '-'} />
+			<InfoRow label = "lanePhase"                 value = {clientStore.getLanePhase()?.toString() ?? '-'} />
+			<InfoRow label = "gameStartTime"             value = {clientStore.getGameStartTime()?.toString() ?? '-'} />
+			<InfoRow label = "currentFrameIndex"         value = {clientStore.getCurrentFrameIndex()?.toString() ?? '-'} />
+			<InfoRow label = "currentFramePlayerIndex"   value = {clientStore.getCurrentFramePlayerIndex()?.toString() ?? '-'} />
+			<InfoRow label = "currentFrameUserId"        value = {clientStore.getCurrentFrameUserId() ?? '-'} fontSize = {10} />
+			<InfoRow label = "currentRollIndex"          value = {clientStore.getCurrentRollIndex()?.toString() ?? '-'} />
+			<InfoRow label = "currentRollStartTime"      value = {clientStore.getCurrentRollStartTime()?.toString() ?? '-'} />
+			<InfoRow label = "players"                   value = {clientStore.getPlayers()?.size.toString() ?? '-'} />
+			<InfoRow label = "frames"                    value = {clientStore.getFrames()?.size.toString() ?? '-'} />
+
+			<Divider />
+			<SectionHeader title="All Lanes (components)" />
+
+			{GetAllLanesRows()}
+
+		</UiEntity>
+	)
+}

@@ -3,47 +3,28 @@ import { Schemas } from '@dcl/sdk/ecs'
 import { ReadWriteByteBuffer } from '@dcl/ecs/dist/serialization/ByteBuffer'
 
 // MARK: MessageType enum
+/**
+ * State-bearing messages have been dropped: NOTIFY_LANE_STATE, NOTIFY_GAME_START,
+ * NOTIFY_GAME_END, NOTIFY_PLAYER_FRAME_START, NOTIFY_PLAYER_FRAME_END, and
+ * NOTIFY_PLAYER_ROLL_END. Their data lives on synced lane components and the
+ * client's `MyLane` module derives the equivalent eventBus events from phase
+ * transitions on those components.
+ */
 export enum MessageType {
 	REQUEST_JOIN_GAME           = 'requestJoinGame',
 	REQUEST_PLAY_ROLL           = 'requestPlayRoll',
 
 	NOTIFY_SERVER_TIME          = 'notifyServerTime',
-	NOTIFY_LANE_STATE           = 'notifyLaneState',
-	
+
 	NOTIFY_JOIN_GAME            = 'notifyJoinGame',
-	NOTIFY_GAME_START           = 'notifyGameStart',
-	NOTIFY_PLAYER_FRAME_START   = 'notifyPlayerFrameStart',
 	NOTIFY_PLAYER_ROLL_START    = 'notifyPlayerRollStart',
 	NOTIFY_PLAYER_ROLL_PLAYBACK = 'notifyPlayerRollPlayback',
-	NOTIFY_PLAYER_ROLL_END      = 'notifyPlayerRollEnd',
-	NOTIFY_PLAYER_FRAME_END     = 'notifyPlayerFrameEnd',
-	NOTIFY_GAME_END             = 'notifyGameEnd',
 }
 
 // MARK: Message schemas
-const notifyLaneStateSchema = Schemas.Map({
-	currentFrameIndex      : Schemas.Optional(Schemas.Int),
-	currentFramePlayerIndex: Schemas.Optional(Schemas.Int),
-	currentFrameUserId     : Schemas.Optional(Schemas.String),
-	currentRollIndex       : Schemas.Optional(Schemas.Int),
-	currentRollStartTime   : Schemas.Optional(Schemas.Int64),
-	frames                 : Schemas.Array(
-		Schemas.Map({
-			userId               : Schemas.String,
-			frames               : Schemas.Array(Schemas.Array(Schemas.Number))
-		})
-	),
-	gameStartTime          : Schemas.Int64,
-	//groupId                : Schemas.String,
-	laneIndex              : Schemas.Int,
-	phase                  : Schemas.String,
-	players                : Schemas.Array(
-		Schemas.Map({
-			userId               : Schemas.String,
-			displayName          : Schemas.String
-		})
-	),
-	sentAt                 : Schemas.Int64,
+const notifyJoinGameSchema = Schemas.Map({
+	laneIndex: Schemas.Int,
+	sentAt   : Schemas.Int64,
 })
 
 const rollRequestSchema = {
@@ -102,13 +83,8 @@ const Messages = {
 
 	[MessageType.NOTIFY_SERVER_TIME]         : Schemas.Int64,
 
-	[MessageType.NOTIFY_LANE_STATE]          : notifyLaneStateSchema,
-	[MessageType.NOTIFY_JOIN_GAME]           : notifyLaneStateSchema,
-	[MessageType.NOTIFY_GAME_START]          : notifyLaneStateSchema,
+	[MessageType.NOTIFY_JOIN_GAME]           : notifyJoinGameSchema,
 
-	[MessageType.NOTIFY_PLAYER_FRAME_START]  : Schemas.Map({
-		...userIdMessageBaseSchema,
-	}),
 	[MessageType.NOTIFY_PLAYER_ROLL_START]   : Schemas.Map({
 		...userIdMessageBaseSchema,
 		pinStanding: Schemas.Array(Schemas.Boolean),
@@ -117,13 +93,6 @@ const Messages = {
 	[MessageType.NOTIFY_PLAYER_ROLL_PLAYBACK]: Schemas.Map({
 		...rollReplaySchema
 	}),
-	[MessageType.NOTIFY_PLAYER_ROLL_END]     : Schemas.Map({
-		...userIdMessageBaseSchema,
-	}),
-	[MessageType.NOTIFY_PLAYER_FRAME_END]    : Schemas.Map({
-		...userIdMessageBaseSchema,
-	}),
-	[MessageType.NOTIFY_GAME_END]          : notifyLaneStateSchema,
 }
 
 const CUSTOM_EVENT_WRAPPER_BYTES = 1

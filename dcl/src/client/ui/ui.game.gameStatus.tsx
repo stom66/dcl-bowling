@@ -3,17 +3,18 @@ import { Color4 } from '@dcl/sdk/math'
 
 import { LanePhase, PlayerStatus } from 'src/shared/enums'
 import { GameSettings } from 'src/shared/settings'
+import { LaneSnapshot } from 'src/shared/types/shared-types'
 import { clockSync } from 'src/shared/utils/clockSync'
 import { eventBus, ClientEvents } from 'src/shared/utils/eventBus'
+import { userProfileCache } from 'src/shared/utils/userProfileCache'
 
 import { ClientStore } from 'src/client/clientStore'
-import { LaneState, NotifyLaneStatePayload } from 'src/shared/types/shared-types'
-import { userProfileCache } from 'src/shared/utils/userProfileCache'
-import { InfoRow } from './ui.components'
+
+import { InfoRow } from './utils/components'
 
 
 // MARK: Event Bindings
-eventBus.on(ClientEvents.NOTIFY_LANE_STATE, (data: LaneState) => {
+eventBus.on(ClientEvents.NOTIFY_LANE_STATE, (data: LaneSnapshot) => {
 	// Player name
 	if (data.currentFrameUserId) {
 		userProfileCache.getDisplayName(data.currentFrameUserId).then(displayName => {

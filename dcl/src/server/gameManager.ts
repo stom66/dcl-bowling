@@ -2,16 +2,17 @@ import * as utils from "@dcl-sdk/utils"
 import { engine } from "@dcl/sdk/ecs"
 import { Quaternion, Vector3 } from "@dcl/sdk/math"
 
+import { LaneStore } from "src/shared/laneStore"
 import { LanePhase } from "src/shared/enums"
 import { GameSettings } from "src/shared/settings"
 import { NotifyPlayerRollPayload, RequestPlayRollPayload, RollPayload } from "src/shared/types/shared-types"
+import { userProfileCache } from "src/shared/utils/userProfileCache"
 
 import { PIN_LANE_LOCAL_POSITIONS } from 'src/server/physics/physics.pin-layout'
 import { getSimulationResults } from "src/server/physics/physics.client"
 import { GameSettings as PhysicsSimulationSettings } from "src/server/physics/physics.settings"
 import { SimulationInput, SimulationResult } from "src/server/physics/types"
 import * as ServerMessaging from "src/server/serverMessaging"
-import { ServerStore } from "src/server/serverStore"
 
 
 /** Per-lane runtime state that lives only on the server (not part of the wire payload). */
@@ -25,14 +26,11 @@ type LaneRuntime = {
 class GameManager {
 	static instance: GameManager
 
-	private readonly store: ServerStore
 	private readonly runtime = new Map<number, LaneRuntime>()
 
 	private frameWatcherSystemActive: boolean = false
 
-	constructor() {
-		this.store = ServerStore.getInstance()
-	}
+	constructor() { }
 
 
 	// MARK: Init
@@ -60,27 +58,28 @@ class GameManager {
 			return
 		}
 
-		if (this.store.getPlayers(laneIndex).has(userId)) {
+		if (LaneStore.getLaneUserIds(laneIndex).includes(userId)) {
 			console.log('gameManager: onPlayerRequestJoin: player already in game, ignoring')
 			return
 		}
 
-		if (this.store.getLanePhase(laneIndex) !== LanePhase.NONE && this.store.getLanePhase(laneIndex) !== LanePhase.GAME_STARTING) {
+		const phase = LaneStore.getPhase(laneIndex)
+		if (phase !== LanePhase.NONE && phase !== LanePhase.GAME_STARTING) {
 			console.log('gameManager: onPlayerRequestJoin: game already started, ignoring')
 			return
 		}
 
-		const isFirstPlayer = this.store.getPlayers(laneIndex).size === 0
+		const isFirstPlayer = LaneStore.getLaneUserIds(laneIndex).length === 0
 
 		// await so profile fetch completes before notifies / any follow-up logic
-		await this.store.addPlayer(userId, laneIndex)
+		const displayName = await userProfileCache.getDisplayName(userId)
+		LaneStore.addPlayer(laneIndex, userId, displayName)
 
 		ServerMessaging.notifyJoinGame(userId, laneIndex)
-		ServerMessaging.notifyLaneStateUpdate(laneIndex)
 
 		// Starting the countdown is what transitions a brand-new lane into the
 		// game lifecycle. Only the first joiner triggers it.
-		if (isFirstPlayer && this.store.getLanePhase(laneIndex) === LanePhase.NONE) {
+		if (isFirstPlayer && LaneStore.getPhase(laneIndex) === LanePhase.NONE) {
 			this.startGameCountdown(laneIndex)
 		}
 	}
@@ -93,10 +92,8 @@ class GameManager {
 	private startGameCountdown(laneIndex: number) {
 		console.log('gameManager: startGameCountdown: laneIndex', laneIndex)
 
-		this.store.setLanePhase(laneIndex, LanePhase.GAME_STARTING)
-		this.store.setGameStartTime(laneIndex, Date.now() + GameSettings.GAME_START_COUNTDOWN_DURATION)
-
-		ServerMessaging.notifyLaneStateUpdate(laneIndex)
+		LaneStore.setPhase(laneIndex, LanePhase.GAME_STARTING)
+		LaneStore.setGameStartTime(laneIndex, Date.now() + GameSettings.GAME_START_COUNTDOWN_DURATION)
 
 		utils.timers.setTimeout(() => {
 			this.startGame(laneIndex)
@@ -116,20 +113,16 @@ class GameManager {
 		console.log('gameManager: startGame: laneIndex', laneIndex)
 
 		// Everyone left during the countdown — bail out cleanly.
-		if (this.store.getPlayers(laneIndex).size === 0) {
+		if (LaneStore.getLaneUserIds(laneIndex).length === 0) {
 			console.log('gameManager: startGame: no players, aborting')
 			this.resetLane(laneIndex)
 			return
 		}
 
-		this.store.setCurrentFrameIndex(laneIndex, 0)
-		this.store.setCurrentFramePlayerIndex(laneIndex, 0)
-		this.store.setCurrentRollIndex(laneIndex, 0)
-		this.store.setCurrentFrameUserId(laneIndex, undefined)
-		this.store.setCurrentRollStartTime(laneIndex, undefined)
-		this.store.initLaneScorecards(laneIndex)
+		LaneStore.setCurrentTurn(laneIndex, 0, 0, '', 0, 0)
+		LaneStore.initLaneScorecards(laneIndex)
 
-		this.store.setLanePhase(laneIndex, LanePhase.WAITING)
+		LaneStore.setPhase(laneIndex, LanePhase.WAITING)
 
 		this.runtime.set(laneIndex, {
 			phase       : LanePhase.WAITING,
@@ -137,12 +130,10 @@ class GameManager {
 			pinStanding : newFullPinRack(),
 		})
 
-		ServerMessaging.notifyGameStart(laneIndex)
-
 		this.ensureFrameWatcherRunning()
 
 		// Kick off the first frame for the first player. The extra delay here
-		// gives clients time to react to the NOTIFY_GAME_START before the first
+		// gives clients time to react to phase=WAITING before the first
 		// frame-start notification goes out.
 		this.startPlayerFrame(laneIndex, 0, 0, GameSettings.GAME_START_INITIAL_DELAY)
 	}
@@ -152,8 +143,9 @@ class GameManager {
 	// MARK: Phase 4 — Start Player Frame
 	// =========================================================================
 	/**
-	 * Begin a frame for a specific player. Resets pin rack + roll index, sends
-	 * NOTIFY_PLAYER_FRAME_START and schedules the FRAME_START_DELAY phase.
+	 * Begin a frame for a specific player. Resets pin rack + roll index and
+	 * schedules the FRAME_START_DELAY phase. The phase change auto-fires
+	 * `ON_MY_FRAME_START` / `ON_GROUP_FRAME_START` on each client via `MyLane`.
 	 */
 	private startPlayerFrame(
 		laneIndex   : number,
@@ -161,7 +153,7 @@ class GameManager {
 		frameIndex  : number,
 		delayMs     : number = GameSettings.FRAME_DELAY_BEFORE_ROLL_START,
 	) {
-		const players = Array.from(this.store.getPlayers(laneIndex).keys())
+		const players = LaneStore.getLaneUserIds(laneIndex)
 		if (players.length === 0) {
 			console.log('gameManager: startPlayerFrame: no players, ending game')
 			this.endGame(laneIndex)
@@ -176,19 +168,12 @@ class GameManager {
 
 		console.log(`gameManager: startPlayerFrame: lane ${laneIndex}, frame ${frameIndex}, playerIdx ${playerIndex}, userId ${userId}`)
 
-		this.store.setCurrentFrameIndex(laneIndex, frameIndex)
-		this.store.setCurrentFramePlayerIndex(laneIndex, playerIndex)
-		this.store.setCurrentFrameUserId(laneIndex, userId)
-		this.store.setCurrentRollIndex(laneIndex, 0)
-		this.store.setCurrentRollStartTime(laneIndex, undefined)
+		LaneStore.setCurrentTurn(laneIndex, frameIndex, playerIndex, userId, 0, 0)
 
 		const rt = this.getRuntime(laneIndex)
 		rt.pinStanding = newFullPinRack()
 
 		this.schedulePhase(laneIndex, LanePhase.FRAME_START, delayMs)
-		
-		ServerMessaging.notifyPlayerFrameStart(laneIndex, userId)
-		ServerMessaging.notifyLaneStateUpdate(laneIndex)
 	}
 
 
@@ -201,23 +186,23 @@ class GameManager {
 	 * REQUEST_PLAY_ROLL within ROLL_MAX_DURATION.
 	 */
 	private startPlayerRoll(laneIndex: number) {
-		const userId = this.store.getCurrentFrameUserId(laneIndex)
+		const userId = LaneStore.getCurrentFrameUserId(laneIndex)
 		if (!userId) return
 
-		const rollIndex = this.store.getCurrentRollIndex(laneIndex)
+		const rollIndex = LaneStore.getCurrentRollIndex(laneIndex)
 		const rt = this.getRuntime(laneIndex)
 		const pinStanding = rt.pinStanding.slice()
 
 		console.log(`gameManager: startPlayerRoll: lane ${laneIndex}, user ${userId}, rollIndex ${rollIndex}`)
 
 		const rollStartTimestamp = Date.now()
-		this.store.setCurrentRollStartTime(laneIndex, rollStartTimestamp)
+		LaneStore.setCurrentRollStartTime(laneIndex, rollStartTimestamp)
 
 		this.schedulePhase(laneIndex, LanePhase.ROLL_AWAITING, GameSettings.ROLL_MAX_DURATION)
 
+		// Roll-start carries transient pinStanding + timestamp that aren't on a
+		// synced component, so this stays as a directed room message.
 		ServerMessaging.notifyPlayerRollStart(laneIndex, userId, pinStanding, rollStartTimestamp)
-		ServerMessaging.notifyLaneStateUpdate(laneIndex)
-
 	}
 
 
@@ -232,12 +217,12 @@ class GameManager {
 	onPlayerRequestPlayRoll(userId: string, data: RequestPlayRollPayload) {
 		console.log('gameManager: onPlayerRequestPlayRoll: userId', userId)
 
-		const laneIndex = this.store.findLaneByUserId(userId)
+		const laneIndex = LaneStore.findLaneByUserId(userId)
 		if (laneIndex === undefined) {
 			console.log('gameManager: onPlayerRequestPlayRoll: user not in any lane')
 			return
 		}
-		if (this.store.getCurrentFrameUserId(laneIndex) !== userId) {
+		if (LaneStore.getCurrentFrameUserId(laneIndex) !== userId) {
 			console.log('gameManager: onPlayerRequestPlayRoll: not this player\'s turn, ignoring')
 			return
 		}
@@ -259,8 +244,8 @@ class GameManager {
 	private simulateAndPlaybackRoll(laneIndex: number, userId: string, data: RequestPlayRollPayload) {
 		const simStartTime      = Date.now()
 
-		const frameIndex        = this.store.getCurrentFrameIndex(laneIndex)
-		const rollIndex         = this.store.getCurrentRollIndex(laneIndex)
+		const frameIndex        = LaneStore.getCurrentFrameIndex(laneIndex)
+		const rollIndex         = LaneStore.getCurrentRollIndex(laneIndex)
 		const rt                = this.getRuntime(laneIndex)
 		const startingPinStates = rt.pinStanding.slice()
 
@@ -284,12 +269,13 @@ class GameManager {
 
 		// Update lane runtime + scorecard from the simulation result.
 		rt.pinStanding = simResults.finalPinStates
-		this.store.addScore(laneIndex, frameIndex, userId, score)
+		LaneStore.addScore(laneIndex, frameIndex, userId, score)
 
 		this.schedulePhase(laneIndex, LanePhase.ROLL_PLAYBACK, GameSettings.ROLL_REPLAY_DURATION)
 
+		// Roll-playback carries the keyframe payload that's far too big for a
+		// synced component, so this stays as a directed room message.
 		ServerMessaging.notifyPlayerRollPlayback(laneIndex, payload)
-		ServerMessaging.notifyLaneStateUpdate(laneIndex)
 	}
 
 
@@ -327,27 +313,25 @@ class GameManager {
 	/**
 	 * End the current roll. Called either after ROLL_PLAYBACK completes, or
 	 * when the ROLL_AWAITING timer elapses without a request (timedOut=true).
-	 * Emits NOTIFY_PLAYER_ROLL_END and enters the ROLL_END_DELAY phase.
+	 * Enters the ROLL_END_DELAY phase; the phase change auto-fires
+	 * `ON_MY_ROLL_END` / `ON_GROUP_ROLL_END` on each client via `MyLane`.
 	 */
 	private endRoll(laneIndex: number, timedOut: boolean) {
-		const userId = this.store.getCurrentFrameUserId(laneIndex)
+		const userId = LaneStore.getCurrentFrameUserId(laneIndex)
 		if (!userId) return
 
 		if (timedOut) {
 			// No request arrived within ROLL_MAX_DURATION — count as 0-pin roll.
 			console.log(`gameManager: endRoll: lane ${laneIndex}, user ${userId} — TIMEOUT`)
-			const frameIndex = this.store.getCurrentFrameIndex(laneIndex)
-			this.store.getFrames(laneIndex).get(userId)?.[frameIndex]?.push(0)
+			const frameIndex = LaneStore.getCurrentFrameIndex(laneIndex)
+			LaneStore.addScore(laneIndex, frameIndex, userId, 0)
 		} else {
 			console.log(`gameManager: endRoll: lane ${laneIndex}, user ${userId}`)
 		}
 
-		this.store.setCurrentRollStartTime(laneIndex, undefined)
+		LaneStore.setCurrentRollStartTime(laneIndex, 0)
 
 		this.schedulePhase(laneIndex, LanePhase.ROLL_END, GameSettings.FRAME_DELAY_BETWEEN_TURNS)
-
-		ServerMessaging.notifyPlayerRollEnd(laneIndex, userId)
-		ServerMessaging.notifyLaneStateUpdate(laneIndex)
 	}
 
 
@@ -357,21 +341,21 @@ class GameManager {
 	 */
 	private afterRollEnd(laneIndex: number) {
 		const rt           = this.getRuntime(laneIndex)
-		const rollIndex    = this.store.getCurrentRollIndex(laneIndex)
+		const rollIndex    = LaneStore.getCurrentRollIndex(laneIndex)
 		const allDown      = rt.pinStanding.every(s => !s)
 		const isFinalFrame = rollIndex == (GameSettings.MAX_FRAMES_PER_GAME - 1)
-		const userId       = this.store.getCurrentFrameUserId(laneIndex) || ''
-		const frames       = this.store.getFrames(laneIndex).get(userId) || []
+		const userId       = LaneStore.getCurrentFrameUserId(laneIndex) || ''
+		const frames       = LaneStore.getScoresMap(laneIndex).get(userId) || []
 		const firstRollWasAStrike = frames?.[0]?.[0] === 10
 
 		// Standard frames 0–8: two rolls unless a strike on the first.
 		// TODO: 10th-frame bonus rolls (strike/spare ⇒ up to 3 rolls).
 		if (rollIndex === 0 && !allDown) {
-			this.store.setCurrentRollIndex(laneIndex, 1)
+			LaneStore.setCurrentRollIndex(laneIndex, 1)
 			this.startPlayerRoll(laneIndex)
 		}
 		else if (isFinalFrame && rollIndex === 1 && firstRollWasAStrike) {
-			this.store.setCurrentRollIndex(laneIndex, 2)
+			LaneStore.setCurrentRollIndex(laneIndex, 2)
 			this.startPlayerRoll(laneIndex)
 		} else {
 			this.endPlayerFrame(laneIndex)
@@ -382,17 +366,17 @@ class GameManager {
 	// =========================================================================
 	// MARK: Phase 8 — End Player Frame
 	// =========================================================================
-	/** Emit NOTIFY_PLAYER_FRAME_END and enter FRAME_END_DELAY before next player. */
+	/**
+	 * Enter FRAME_END_DELAY before next player; the phase change auto-fires
+	 * `ON_MY_FRAME_END` / `ON_GROUP_FRAME_END` on each client via `MyLane`.
+	 */
 	private endPlayerFrame(laneIndex: number) {
-		const userId = this.store.getCurrentFrameUserId(laneIndex)
+		const userId = LaneStore.getCurrentFrameUserId(laneIndex)
 		if (!userId) return
 
 		console.log(`gameManager: endPlayerFrame: lane ${laneIndex}, user ${userId}`)
 
 		this.schedulePhase(laneIndex, LanePhase.FRAME_END, GameSettings.FRAME_DELAY_BETWEEN_TURNS)
-		
-		ServerMessaging.notifyPlayerFrameEnd(laneIndex, userId)
-		ServerMessaging.notifyLaneStateUpdate(laneIndex)
 	}
 
 
@@ -404,14 +388,14 @@ class GameManager {
 	 * first player, advance the frame index. After 10 frames we end the game.
 	 */
 	private advanceToNextPlayerFrame(laneIndex: number) {
-		const players = Array.from(this.store.getPlayers(laneIndex).keys())
+		const players = LaneStore.getLaneUserIds(laneIndex)
 		if (players.length === 0) {
 			this.endGame(laneIndex)
 			return
 		}
 
-		let playerIndex = this.store.getCurrentFramePlayerIndex(laneIndex) + 1
-		let frameIndex  = this.store.getCurrentFrameIndex(laneIndex)
+		let playerIndex = LaneStore.getCurrentFramePlayerIndex(laneIndex) + 1
+		let frameIndex  = LaneStore.getCurrentFrameIndex(laneIndex)
 
 		if (playerIndex >= players.length) {
 			playerIndex = 0
@@ -433,9 +417,9 @@ class GameManager {
 	private endGame(laneIndex: number) {
 		console.log(`gameManager: endGame: lane ${laneIndex}`)
 
-		this.store.setLanePhase(laneIndex, LanePhase.NONE)
-
-		ServerMessaging.notifyGameEnd(laneIndex)
+		// Setting phase=NONE is the trigger clients use (via MyLane) to fire
+		// ON_GROUP_GAME_END and clear their local laneIndex.
+		LaneStore.setPhase(laneIndex, LanePhase.NONE)
 
 		this.resetLane(laneIndex)
 	}
@@ -443,9 +427,7 @@ class GameManager {
 
 	private resetLane(laneIndex: number) {
 		this.runtime.delete(laneIndex)
-		this.store.setLanePhase(laneIndex, LanePhase.NONE)
-		this.store.resetLaneState(laneIndex)
-		ServerMessaging.notifyLaneStateUpdate(laneIndex)
+		LaneStore.resetLane(laneIndex)
 	}
 
 
@@ -462,7 +444,7 @@ class GameManager {
 		const now = Date.now()
 
 		for (let laneIndex = 0; laneIndex < GameSettings.MAX_LANES; laneIndex++) {
-			if (this.store.getLanePhase(laneIndex) === LanePhase.NONE) continue
+			if (LaneStore.getPhase(laneIndex) === LanePhase.NONE) continue
 
 			activeGameCount++
 
@@ -526,7 +508,7 @@ class GameManager {
 		runtime.phase        = phase
 		runtime.phaseEndTime = Date.now() + durationMs
 		
-		this.store.setLanePhase(laneIndex, phase)
+		LaneStore.setPhase(laneIndex, phase)
 	}
 
 	private getRuntime(laneIndex: number): LaneRuntime {

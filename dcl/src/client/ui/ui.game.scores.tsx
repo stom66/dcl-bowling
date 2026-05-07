@@ -5,10 +5,10 @@ import { PlayerStatus } from 'src/shared/enums'
 import { GameSettings } from 'src/shared/settings'
 import { clockSync } from 'src/shared/utils/clockSync'
 import { eventBus, ClientEvents } from 'src/shared/utils/eventBus'
+import { userProfileCache } from 'src/shared/utils/userProfileCache'
 
 import { ClientStore } from 'src/client/clientStore'
-import { LaneState, NotifyLaneStatePayload } from 'src/shared/types/shared-types'
-import { userProfileCache } from 'src/shared/utils/userProfileCache'
+
 import { FrameResult, getDummyScoreData, getFrameResults } from 'src/shared/utils/scoreCalc'
 
 
