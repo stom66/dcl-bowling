@@ -33,15 +33,17 @@ type ReplayState = {
 
 // MARK: Constants
 
-const BALL_SPAWN_LANE_LOCAL_Y = 0.32
-const PIN_GLTF_MESH_OFFSET_Y  = 0.18949292600154877
-const PIN_VISUAL_SCALE        = 1.5
-const PIN_COUNT               = PIN_LANE_LOCAL_POSITIONS.length
-const LANE_END_Z              = 17
-const SCORE_OBJECT_POSITION   = Vector3.create(0, 0.5, 18)
-const SCORE_OBJECT_SCALE      = Vector3.create(0.6, 0.6, 0.6)
+const BALL_SPAWN_LANE_LOCAL_Y   = 0.32
+const PIN_GLTF_MESH_OFFSET_Y    = 0.18949292600154877
+const PIN_VISUAL_SCALE          = 1.5
+const PIN_COUNT                 = PIN_LANE_LOCAL_POSITIONS.length
+const LANE_END_Z                = 17
+const SCORE_OBJECT_POSITION     = Vector3.create(0, 0.5, 18)
+const SCORE_OBJECT_SCALE        = Vector3.create(0.6, 0.6, 0.6)
+const COUNTDOWN_OBJECT_POSITION = Vector3.create(0, 0.5, 18)
+const COUNTDOWN_OBJECT_SCALE    = Vector3.create(0.6, 0.6, 0.6)
 
-const CHANCE_OF_PIGEON = 2 // 1 in n
+const CHANCE_OF_PIGEON = 20 // 1 in n
 
 
 /**
@@ -88,17 +90,28 @@ export class LaneVisuals {
 	setupPins(pinStates: boolean[] = new Array(PIN_COUNT).fill(true)): void {
 		this.removePins()
 
+		const tweenDurationMs = 500
+		const staggerMs       = 50
+		const scaleEnd = Vector3.create(PIN_VISUAL_SCALE, PIN_VISUAL_SCALE, PIN_VISUAL_SCALE)
+
 		const id = Quaternion.Identity()
 		for (let i = 0; i < PIN_COUNT; i++) {
 			if (!pinStates[i]) continue
 
 			const rest = PIN_LANE_LOCAL_POSITIONS[i]!
 			const laneLocal = Vector3.create(rest[0]!, rest[1]!, rest[2]!)
-			const worldPos  = this.pinPivotWorldFromSimBody(laneLocal, id)
+			const endPos  = this.pinPivotWorldFromSimBody(laneLocal, id)
+			const startPos = Vector3.add(endPos, Vector3.create(0, 2, 0))
 
-			const pin = engine.addEntity()
-			Transform.create(pin, {
-				position: worldPos,
+			const pinPos = engine.addEntity()
+			Transform.create(pinPos, {
+				position: startPos,
+				scale   : Vector3.One(),
+			})
+
+			const pinScale = engine.addEntity()
+			Transform.create(pinScale, {
+				parent: pinPos,
 				scale   : Vector3.Zero(),
 			})
 
@@ -106,23 +119,17 @@ export class LaneVisuals {
 			var pinFilename = "pin"
 			if (i === 0 && this.rollStartTimestamp % CHANCE_OF_PIGEON == 0) pinFilename = "pinPigeon"
 			
-			GltfContainer.create(pin, { src: `assets/models/${pinFilename}.gltf` })
+			GltfContainer.create(pinScale, { src: `assets/models/${pinFilename}.gltf` })
 
-			const staggerMs = 50 * i
-			GltfContainerLoadingState.onChange(pin, (state) => {
+			GltfContainerLoadingState.onChange(pinScale, (state) => {
 				if (state?.currentState !== LoadingState.FINISHED) return
 				utils.timers.setTimeout(() => {
-					Tween.setScale(
-						pin,
-						Vector3.Zero(),
-						Vector3.create(PIN_VISUAL_SCALE, PIN_VISUAL_SCALE, PIN_VISUAL_SCALE),
-						0.7,
-						EasingFunction.EF_EASEINCUBIC,
-					)
-				}, staggerMs)
+					Tween.setScale(pinScale, Vector3.Zero(), scaleEnd, tweenDurationMs, EasingFunction.EF_EASEBOUNCE)
+					Tween.setMove(pinPos, startPos, endPos, tweenDurationMs, EasingFunction.EF_EASEBOUNCE)
+				}, staggerMs * i)
 			})
 
-			this.pinEntities[i] = pin
+			this.pinEntities[i] = pinPos
 		}
 	}
 
@@ -159,8 +166,37 @@ export class LaneVisuals {
 	}
 
 
-	// MARK: Score Animations
+	// MARK: Countdown animation
+	showCountdownAnimation(): void {
+		console.log("laneVisuals: showCountdownAnimation()")
+		const countdownEntity = engine.addEntity()
+		Transform.create(countdownEntity, {
+			position: Vector3.add(this.lanePosition, COUNTDOWN_OBJECT_POSITION),
+			scale: COUNTDOWN_OBJECT_SCALE,
+		})
+		GltfContainer.create(countdownEntity, { src: "assets/models/Info_Countdown_3.gltf" })
+		Animator.create(countdownEntity, {
+			states: [
+				{
+					clip: "Info_Countdown_3",
+					playing: false,
+					loop: false,
+				}
+			]
+		})
+		GltfContainerLoadingState.onChange(countdownEntity, (state) => {
+			if (state?.currentState !== LoadingState.FINISHED) return
+			Tween.setScale(countdownEntity, Vector3.Zero(), COUNTDOWN_OBJECT_SCALE, 0.1, EasingFunction.EF_EASEINCUBIC)
+			
+			Animator.playSingleAnimation(countdownEntity, "Info_Countdown_3", true)
+			utils.timers.setTimeout(() => {
+				engine.removeEntity(countdownEntity)
+			}, 4000)
+		})
+	}
 
+
+	// MARK: Score Animations
 	showScoreNumber(score: number): void {
 		console.log("laneVisuals: showScoreNumber(): score", score)
 		score = Math.min(9, Math.max(1, score))
