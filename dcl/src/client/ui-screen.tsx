@@ -1,12 +1,12 @@
 import { ReactEcsRenderer } from '@dcl/sdk/react-ecs'
 import { NpcUtilsUi } from 'dcl-npc-toolkit'
 
-import { DebugUI } from 'src/client/ui/ui.debug'
+import { DebugUI } from 'src/client/ui-screen/ui.debug'
 
-import { GameStatusUI } from 'src/client/ui/ui.game.gameStatus'
-import { ScoresUI } from 'src/client/ui/ui.game.scores'
-import { VersionUI } from './ui/ui.version'
-import { HowToPlay } from './ui/ui.HowToPlay'
+import { GameStatusUI } from 'src/client/ui-screen/ui.game.gameStatus'
+import { ScoresUI } from 'src/client/ui-screen/ui.game.scores'
+import { VersionUI } from './ui-screen/ui.version'
+import { HowToPlay } from './ui-screen/ui.HowToPlay'
 
 
 // MARK: Vars
@@ -33,6 +33,6 @@ const uiComponent = () => [
 	//SHOW_DEBUG ? DebugUI() : null
 ]
 
-export function SetupUI() {
+export function SetupScreenUI() {
 	ReactEcsRenderer.setUiRenderer(uiComponent)
 }

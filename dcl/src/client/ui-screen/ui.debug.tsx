@@ -11,7 +11,7 @@ import { ClientMessaging } from 'src/client/clientMessaging'
 import { ClientStore } from 'src/client/clientStore'
 import { ClearEmote, PlayBowlingAnimation } from 'src/client/emotes'
 
-import { ButtonAction, Divider, InfoRow, SectionHeader } from 'src/client/ui/utils/components'
+import { ButtonAction, Divider, InfoRow, SectionHeader } from 'src/client/ui-screen/utils/components'
 import { tweenValue } from './utils/tweens'
 
 const clientStore = ClientStore.getInstance()
