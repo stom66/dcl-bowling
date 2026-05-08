@@ -1,8 +1,10 @@
+import * as utils from "@dcl-sdk/utils"
 import { MessageType, room } from 'src/shared/room'
 import { GameSettings } from 'src/shared/settings'
 import { RequestPlayRollPayload } from 'src/shared/types/shared-types'
 
 import { gameManager } from 'src/server/gameManager'
+import { notifyPlayerRollRequestReceived } from './serverMessaging'
 
 
 export namespace serverHandler {
@@ -44,6 +46,12 @@ export namespace serverHandler {
 	export async function handleRequestPlayRoll(data: RequestPlayRollPayload, context: any) {
 		const userId = getUserId(context)
 		console.log('serverHandler: handleRequestPlayRoll: userId', userId)
-		gameManager.onPlayerRequestPlayRoll(userId, data)
+
+		// Notify every client before sim + playback so countdown / UX can start before results arrive.
+		notifyPlayerRollRequestReceived(userId, Date.now())
+
+		utils.timers.setTimeout(() => {
+			gameManager.onPlayerRequestPlayRoll(userId, data)
+		}, 0)
 	}
 }

@@ -1,133 +1,91 @@
-import { PlayerStatus } from 'src/shared/enums';
-import { MessageType, room } from 'src/shared/room';
-import { NotifyLaneStatePayload, NotifyPlayerRollPayload, NotifyPlayerRollStartPayload } from 'src/shared/types/shared-types';
-import { clockSync } from 'src/shared/utils/clockSync';
-import { eventBus, ClientEvents } from 'src/shared/utils/eventBus';
+import { MessageType, room } from 'src/shared/room'
+import { NotifyJoinGamePayload, NotifyPlayerRollPayload, NotifyPlayerRollStartPayload } from 'src/shared/types/shared-types'
+import { clockSync } from 'src/shared/utils/clockSync'
+import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 
-import { ClientStore } from 'src/client/clientStore';
-import { gameStateHandler } from './gameStateHandler';
+import { ClientStore } from 'src/client/clientStore'
+import { LaneStore } from 'src/shared/laneStore'
 
 
 const clientStore = ClientStore.getInstance()
 
 
 export namespace ClientHandler {
+
+	// MARK: init
 	export function init() {
-		room.onMessage(MessageType.NOTIFY_JOIN_GAME, (data)            => { handleNotifyJoinGame(data) })
-		room.onMessage(MessageType.NOTIFY_GAME_START, (data)           => { handleNotifyGameStart(data) })
-		room.onMessage(MessageType.NOTIFY_GAME_END, (data)             => { handleNotifyGameEnd(data) })
-		room.onMessage(MessageType.NOTIFY_LANE_STATE, (data)           => { handleNotifyLaneState(data) })
-
-		room.onMessage(MessageType.NOTIFY_PLAYER_FRAME_START, (data)   => { handleNotifyPlayerFrameStart(data) })
-		room.onMessage(MessageType.NOTIFY_PLAYER_ROLL_START, (data)    => { handleNotifyPlayerRollStart(data) })
-		room.onMessage(MessageType.NOTIFY_PLAYER_ROLL_PLAYBACK, (data) => { handleNotifyPlayerRollPlaybackStart(data) })
-		room.onMessage(MessageType.NOTIFY_PLAYER_ROLL_END, (data)      => { handleNotifyPlayerRollEnd(data) })
-		room.onMessage(MessageType.NOTIFY_PLAYER_FRAME_END, (data)     => { handleNotifyPlayerFrameEnd(data) })
-		room.onMessage(MessageType.NOTIFY_SERVER_TIME, (data)          => { handleNotifyServerTime(data) })
+		room.onMessage(MessageType.NOTIFY_JOIN_GAME,            (data)         => { handleNotifyJoinGame(data) })
+		room.onMessage(MessageType.NOTIFY_PLAYER_ROLL_START,    (data)         => { handleNotifyPlayerRollStart(data) })
+		room.onMessage(MessageType.NOTIFY_PLAYER_ROLL_PLAYBACK, (data)         => { handleNotifyPlayerRollPlayback(data) })
+		room.onMessage(MessageType.NOTIFY_PLAYER_ROLL_REQUEST_RECEIVED, (data) => { handleNotifyPlayerRollRequestReceived(data) })
+		room.onMessage(MessageType.NOTIFY_SERVER_TIME,          (data)         => { handleNotifyServerTime(data) })
 	}
 
 
-	// MARK: Join Game
-	function handleNotifyJoinGame(data: NotifyLaneStatePayload) {
+	// MARK: handleNotifyJoinGame
+	/**
+	 * Sets the local player's lane index. `MyLane.onMyLaneIndexChanged` then re-binds
+	 * to the new lane and emits `ON_GAME_JOINED` + `NOTIFY_LANE_STATE` with the
+	 * current snapshot, so consumers don't need to react to this message directly.
+	 * Also refreshes `clockSync` off the embedded `sentAt` — every state-bearing
+	 * server message piggybacks a clock-sync sample to keep the offset fresh
+	 * between dedicated `NOTIFY_SERVER_TIME` heartbeats.
+	 */
+	function handleNotifyJoinGame(data: NotifyJoinGamePayload) {
 		console.log('ClientHandler: handleNotifyJoinGame: data', data)
-
 		clockSync.updateOffset(data.sentAt)
-
-		clientStore.setPlayerStatus(PlayerStatus.WAITING_FOR_GAME_START)
-		clientStore.setLaneState(data)
-
-		eventBus.emit(ClientEvents.ON_GAME_JOINED, clientStore.getLaneState())
-	}
-
-	// MARK: Game Start
-	function handleNotifyGameStart(data: NotifyLaneStatePayload) {
-		console.log('ClientHandler: handleNotifyGameStart: data', data)
-
-		clockSync.updateOffset(data.sentAt)
-
-		clientStore.setPlayerStatus(PlayerStatus.IN_GAME_WAITING)
-		clientStore.setLaneState(data)
-
-		eventBus.emit(ClientEvents.ON_GROUP_GAME_START, data)
-	}
-	
-
-	// MARK: Game End
-	function handleNotifyGameEnd(data: NotifyLaneStatePayload) {
-		console.log('ClientHandler: handleNotifyGameEnd: data', data)
-
-		clockSync.updateOffset(data.sentAt)
-		clientStore.setPlayerStatus(PlayerStatus.IDLE)
-		eventBus.emit(ClientEvents.ON_GROUP_GAME_END, data)
+		clientStore.setLaneIndex(data.laneIndex)
 	}
 
 
-	// MARK: Lane State
-	function handleNotifyLaneState(data: NotifyLaneStatePayload) {
-		console.log('ClientHandler: handleNotifyState: state', data)
-
-		clockSync.updateOffset(data.sentAt)
-		clientStore.setLaneState(data)
-
-		eventBus.emit(ClientEvents.NOTIFY_LANE_STATE, clientStore.getLaneState())
-	}
-
-	
-
-	// MARK: Frame Start
-	function handleNotifyPlayerFrameStart(data: { userId: string }) {
-		console.log('ClientHandler: handleNotifyPlayerFrameStart: data', data)
-
-		if (data.userId === clientStore.getUserId()) {
-			clientStore.setPlayerStatus(PlayerStatus.IN_GAME_PLAYING)
-			eventBus.emit(ClientEvents.ON_MY_FRAME_START, data)
-		} else {
-			eventBus.emit(ClientEvents.ON_GROUP_FRAME_START, data)
-		}
-	}
-
-	// MARK: Roll Start
+	// MARK: handleNotifyPlayerRollStart
+	/** Roll start carries `pinStanding` + `rollStartTimestamp`, neither on a synced component. */
 	function handleNotifyPlayerRollStart(data: NotifyPlayerRollStartPayload) {
+		clockSync.updateOffset(data.sentAt)
 		if (data.userId === clientStore.getUserId()) {
 			eventBus.emit(ClientEvents.ON_MY_ROLL_START, data)
 		} else {
-			eventBus.emit(ClientEvents.ON_GROUP_ROLL_START, data)
+			const laneIndex = LaneStore.findLaneByUserId(data.userId) ?? -1
+			if (laneIndex == clientStore.getLaneIndex()) {
+				eventBus.emit(ClientEvents.ON_GROUP_ROLL_START, data)
+			} else {
+				eventBus.emit(ClientEvents.ON_NON_GROUP_ROLL_START, data)
+			}
 		}
 	}
 
-	// MARK: Roll Playback
-	function handleNotifyPlayerRollPlaybackStart(data: NotifyPlayerRollPayload) {
+
+	// MARK: handleNotifyPlayerRollRequestReceived
+	function handleNotifyPlayerRollRequestReceived(data: { userId: string, sentAt: number }) {
+		console.log('ClientHandler: handleNotifyPlayerRollRequestReceived: data', data)
+		clockSync.updateOffset(data.sentAt)
+
+		const laneIndex = LaneStore.findLaneByUserId(data.userId) ?? -1
+		if (laneIndex == clientStore.getLaneIndex()) {
+			eventBus.emit(ClientEvents.ON_GROUP_ROLL_REQUEST, data)
+		} else {
+			eventBus.emit(ClientEvents.ON_NON_GROUP_ROLL_REQUEST, data)
+		}
+	}
+
+	// MARK: handleNotifyPlayerRollPlayback
+	/** Roll playback carries the keyframe payload that's far too big for a synced component. */
+	function handleNotifyPlayerRollPlayback(data: NotifyPlayerRollPayload) {
 		console.log('ClientHandler: handleNotifyPlayerRollPlayback: data', data)
-		eventBus.emit(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, data)
-	}
+		clockSync.updateOffset(data.sentAt)
 
-	// MARK: Roll End
-	function handleNotifyPlayerRollEnd(data: { userId: string }) {
-		if (data.userId === clientStore.getUserId()) {
-			eventBus.emit(ClientEvents.ON_MY_ROLL_END, data)
+		const laneIndex = LaneStore.findLaneByUserId(data.userId) ?? 0
+
+		if (laneIndex === clientStore.getLaneIndex()) {
+			eventBus.emit(ClientEvents.ON_GROUP_ROLL_PLAYBACK_RECEIVED, data)
 		} else {
-			eventBus.emit(ClientEvents.ON_GROUP_ROLL_END, data)
+			eventBus.emit(ClientEvents.ON_NON_GROUP_ROLL_PLAYBACK_RECEIVED, data)
 		}
 	}
 
 
-	// MARK: Frame End
-	function handleNotifyPlayerFrameEnd(data: { userId: string }) {
-		console.log('ClientHandler: handleNotifyPlayerFrameEnd: data', data)
-
-		if (data.userId === clientStore.getUserId()) {
-			clientStore.setPlayerStatus(PlayerStatus.IN_GAME_WAITING)
-			eventBus.emit(ClientEvents.ON_MY_FRAME_END, data)
-		} else {
-			eventBus.emit(ClientEvents.ON_GROUP_FRAME_END, data)
-		}
-	}
-
-
-
-	// MARK: Server Time
+	// MARK: handleNotifyServerTime
 	function handleNotifyServerTime(serverTime: number) {
-		//console.log('ClientHandler: handleNotifyServerTime: serverTime', serverTime)
 		clockSync.updateOffset(serverTime)
 	}
 }

@@ -1,31 +1,25 @@
-import { Color3 } from '@dcl/sdk/math'
-
+import { LaneStore } from 'src/shared/laneStore'
 import { LanePhase, PlayerStatus } from 'src/shared/enums'
-import { LaneState, NotifyLaneStatePayload } from 'src/shared/types/shared-types'
-import { eventBus, ClientEvents } from 'src/shared/utils/eventBus'
 import { userProfileCache } from 'src/shared/utils/userProfileCache'
 
-import { clockSync } from 'src/shared/utils/clockSync'
+import { MyLane } from 'src/client/myLane'
 
-// MARK: Type
-export type ClientState = {
-	userId        : string
-	displayName   : string
-	laneState     : LaneState | undefined
-	playerStatus  : PlayerStatus
-}
 
 // MARK: ClientStore
+/**
+ * Client-only store. Holds the local player's identity and the index of the lane
+ * they're currently enrolled in (if any). Lane state itself lives on synced
+ * components; the getters below act as adapters that read through `LaneStore`
+ * so existing call sites keep working without each having to know about the
+ * component layer.
+ */
 export class ClientStore {
 	private static instance: ClientStore | undefined
 
-	private clientState: ClientState = {
-		userId           : "",
-		displayName      : "",
-		laneState        : undefined,
-		playerStatus     : PlayerStatus.IDLE,
-	}
-	
+	private userId     : string             = ""
+	private displayName: string             = ""
+	private laneIndex  : number | undefined = undefined
+
 	private constructor() {
 		console.log('ClientStore: constructor')
 	}
@@ -36,18 +30,18 @@ export class ClientStore {
 		console.log('ClientStore: init')
 		const data = await userProfileCache.getUserProfile()
 		if (!data) {
-			console.error('ClientStore: fetchUserProfile: no data')
+			console.error('ClientStore: init: no profile data')
 			return
 		}
 		const record = data.avatars?.[0]
 		if (!record || !record.name || !record.userId) {
-			console.error('ClientStore: fetchUserProfile: no record/name/userId')
+			console.error('ClientStore: init: no record/name/userId')
 			return
 		}
 		this.setUserId(record.userId)
 		this.setDisplayName(record.name)
 
-		console.log('ClientStore: fetchUserProfile: success. userId:', this.getUserId(), 'displayName:', this.getDisplayName())
+		console.log('ClientStore: init: success. userId:', this.getUserId(), 'displayName:', this.getDisplayName())
 	}
 
 
@@ -58,118 +52,113 @@ export class ClientStore {
 	}
 
 
-	// MARK: ClientState
-
+	// MARK: Identity
 	setUserId(value: string) {
-		this.clientState.userId = value
+		this.userId = value
 	}
 		getUserId(): string {
-			return this.clientState.userId
+			return this.userId
 		}
 
 	setDisplayName(value: string) {
-		this.clientState.displayName = value
+		this.displayName = value
 	}
 		getDisplayName(): string {
-			return this.clientState.displayName
-		}
-
-	setLaneState(data: NotifyLaneStatePayload): void {
-		this.clientState.laneState = {
-			currentFrameIndex      : data.currentFrameIndex ?? 0,
-			currentFramePlayerIndex: data.currentFramePlayerIndex ?? 0,
-			currentFrameUserId     : data.currentFrameUserId,
-			currentRollIndex       : data.currentRollIndex ?? 0,
-			currentRollStartTime   : data.currentRollStartTime,
-			gameStartTime          : data.gameStartTime,
-			laneIndex              : data.laneIndex,
-			phase                  : data.phase as LanePhase,
-			players                : new Map<string, string>(data.players.map(p => [p.userId, p.displayName])),
-			frames                 : new Map<string, number[][]>(data.frames.map(f => [f.userId, f.frames])),
-		}
-	}
-		getLaneState(): LaneState | undefined {
-			return this.clientState.laneState
-		}
-
-	setLanePhase(value: LanePhase) {
-		if (this.clientState.laneState) this.clientState.laneState.phase = value
-	}
-		getLanePhase(): LanePhase {
-			return this.clientState.laneState?.phase ?? LanePhase.NONE
-		}
-
-	setPlayerStatus(status: PlayerStatus): void {
-		this.clientState.playerStatus = status
-	}
-		getPlayerStatus(): PlayerStatus {
-			return this.clientState.playerStatus
+			return this.displayName
 		}
 
 
-	// MARK: LaneState
-
-	setCurrentFrameIndex(value: number) {
-		if (this.clientState.laneState) this.clientState.laneState.currentFrameIndex = value
-	}
-		getCurrentFrameIndex(): number | undefined {
-			return this.clientState.laneState?.currentFrameIndex
-		}
-
-	setCurrentFramePlayerIndex(value: number) {
-		if (this.clientState.laneState) this.clientState.laneState.currentFramePlayerIndex = value
-	}
-		getCurrentFramePlayerIndex(): number | undefined {
-			return this.clientState.laneState?.currentFramePlayerIndex
-		}
-
-	setCurrentFrameUserId(value: string | undefined) {
-		if (this.clientState.laneState) this.clientState.laneState.currentFrameUserId = value
-	}
-		getCurrentFrameUserId(): string | undefined {
-			return this.clientState.laneState?.currentFrameUserId
-		}
-
-	setCurrentRollIndex(value: number) {
-		if (this.clientState.laneState) this.clientState.laneState.currentRollIndex = value
-	}
-		getCurrentRollIndex(): number | undefined {
-			return this.clientState.laneState?.currentRollIndex
-		}
-
-	setCurrentRollStartTime(value: number | undefined) {
-		if (this.clientState.laneState) this.clientState.laneState.currentRollStartTime = value
-	}
-		getCurrentRollStartTime(): number | undefined {
-			return this.clientState.laneState?.currentRollStartTime
-		}
-
-	setFrames(value: Map<string, number[][]>) {
-		if (this.clientState.laneState) this.clientState.laneState.frames = value
-	}
-		getFrames(): Map<string, number[][]> | undefined {
-			return this.clientState.laneState?.frames
-		}
-
-	setGameStartTime(value: number) {
-		if (this.clientState.laneState) this.clientState.laneState.gameStartTime = value
-	}
-		getGameStartTime(): number {
-			return this.clientState.laneState?.gameStartTime ?? 0
-		}
-
-	setLaneIndex(value: number) {
-		if (this.clientState.laneState) this.clientState.laneState.laneIndex = value
+	// MARK: LaneIndex
+	/**
+	 * Sets the lane this player is enrolled in (or `undefined` to leave). Notifies
+	 * `MyLane` so it can swap which lane it watches and emit a fresh snapshot.
+	 */
+	setLaneIndex(value: number | undefined) {
+		if (this.laneIndex === value) return
+		this.laneIndex = value
+		MyLane.onMyLaneIndexChanged(value)
 	}
 		getLaneIndex(): number | undefined {
-			return this.clientState.laneState?.laneIndex
+			return this.laneIndex
 		}
 
-	setPlayers(value: Map<string, string>) {
-		if (this.clientState.laneState) this.clientState.laneState.players = value
+
+	// MARK: PlayerStatus (derived)
+	/**
+	 * Player status is derived from the current lane index and the lane's synced
+	 * components. There's no setter — change the underlying state and the result
+	 * follows.
+	 */
+	getPlayerStatus(): PlayerStatus {
+		if (this.laneIndex === undefined) return PlayerStatus.IDLE
+
+		const phase  = LaneStore.getPhase(this.laneIndex)
+		const turnId = LaneStore.getCurrentFrameUserId(this.laneIndex)
+
+		if (phase === LanePhase.NONE || phase === LanePhase.GAME_STARTING) return PlayerStatus.WAITING_FOR_GAME_START
+
+		const turnPhases = (
+			phase === LanePhase.FRAME_START ||
+			phase === LanePhase.ROLL_AWAITING ||
+			phase === LanePhase.ROLL_PROCESSING ||
+			phase === LanePhase.ROLL_PLAYBACK
+		)
+		if (turnPhases && turnId === this.userId) return PlayerStatus.IN_GAME_PLAYING
+
+		return PlayerStatus.IN_GAME_WAITING
 	}
-		getPlayers(): Map<string, string> | undefined {
-			return this.clientState.laneState?.players
-		}
 
+
+	// MARK: LaneSnapshot adapters
+	/**
+	 * The remaining getters are read-through adapters into `LaneStore`. They
+	 * exist so existing call sites (e.g. debug UI, scores UI, clientMessaging) don't
+	 * each have to know about the component layer. All return `undefined` when the
+	 * player isn't on a lane.
+	 */
+
+	getLanePhase(): LanePhase {
+		if (this.laneIndex === undefined) return LanePhase.NONE
+		return LaneStore.getPhase(this.laneIndex)
+	}
+
+	getCurrentFrameIndex(): number | undefined {
+		if (this.laneIndex === undefined) return undefined
+		return LaneStore.getCurrentFrameIndex(this.laneIndex)
+	}
+
+	getCurrentFramePlayerIndex(): number | undefined {
+		if (this.laneIndex === undefined) return undefined
+		return LaneStore.getCurrentFramePlayerIndex(this.laneIndex)
+	}
+
+	getCurrentFrameUserId(): string | undefined {
+		if (this.laneIndex === undefined) return undefined
+		return LaneStore.getCurrentFrameUserId(this.laneIndex)
+	}
+
+	getCurrentRollIndex(): number | undefined {
+		if (this.laneIndex === undefined) return undefined
+		return LaneStore.getCurrentRollIndex(this.laneIndex)
+	}
+
+	getCurrentRollStartTime(): number | undefined {
+		if (this.laneIndex === undefined) return undefined
+		return LaneStore.getCurrentRollStartTime(this.laneIndex)
+	}
+
+	getFrames(): Map<string, number[][]> | undefined {
+		if (this.laneIndex === undefined) return undefined
+		return LaneStore.getScoresMap(this.laneIndex)
+	}
+
+	getGameStartTime(): number {
+		if (this.laneIndex === undefined) return 0
+		return LaneStore.getGameStartTime(this.laneIndex)
+	}
+
+	getPlayers(): Map<string, string> | undefined {
+		if (this.laneIndex === undefined) return undefined
+		return LaneStore.getPlayersMap(this.laneIndex)
+	}
 }

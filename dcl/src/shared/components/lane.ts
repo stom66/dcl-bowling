@@ -1,30 +1,16 @@
 import { engine, Schemas } from "@dcl/sdk/ecs";
 import { LanePhase } from "../enums";
 
-export const LaneIndex = engine.defineComponent(
-	'LaneIndex',
-	{
-		index: Schemas.Int,
-	}
-)
 
-export const LaneGameStartTime = engine.defineComponent(
-	'LaneGameStartTime',
+export const LaneGameData = engine.defineComponent(
+	'LaneGameData',
 	{
+		// Stable lane index. Used by the client to map synced entities back to
+		// their slot in `ComponentManager.laneComponentEntities[]` — the client
+		// doesn't call `engine.addEntity` / `syncEntity` itself in authoritative-
+		// server mode, so it identifies lanes via this field on the synced data.
+		laneIndex: Schemas.Int,
 		startTime: Schemas.Int64,
-	}
-)
-
-export const LanePhaseEnum = engine.defineComponent(
-	'LanePhase',
-	{
-		phase: Schemas.EnumString<LanePhase>(LanePhase, LanePhase.NONE),
-	}
-)
-
-export const LanePlayers = engine.defineComponent(
-	'LanePlayers',
-	{
 		players: Schemas.Optional(
 			Schemas.Array(
 				Schemas.Map({
@@ -33,6 +19,13 @@ export const LanePlayers = engine.defineComponent(
 				})
 			)
 		)
+	}
+)
+
+export const LanePhaseEnum = engine.defineComponent(
+	'LanePhase',
+	{
+		phase: Schemas.EnumString<LanePhase>(LanePhase, LanePhase.NONE),
 	}
 )
 

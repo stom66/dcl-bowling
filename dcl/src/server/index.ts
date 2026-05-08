@@ -1,19 +1,20 @@
 import { onEnterScene, onLeaveScene } from "@dcl/sdk/players"
 import * as utils from "@dcl-sdk/utils"
 
+import { ComponentManager } from "src/shared/components/componentManager"
+import { LaneStore } from "src/shared/laneStore"
 import { GameSettings } from "src/shared/settings"
 
 import { gameManager } from "src/server/gameManager"
 import { serverHandler } from "src/server/serverHandler"
 import { notifyServerTime } from "src/server/serverMessaging"
-import { ServerStore } from "src/server/serverStore"
 
 
 export async function initServer(): Promise<void> {
 	console.log("Server: initServer()")
 
-	const serverStore = ServerStore.getInstance() // Initialize the store
-	
+	ComponentManager.init()
+
 	serverHandler.init()
 	gameManager.init()
 
@@ -29,6 +30,6 @@ export async function initServer(): Promise<void> {
 		// Placeholder
 	})
 	onLeaveScene((userId) => {
-		serverStore.removePlayer(userId)
+		LaneStore.removePlayerFromAllLanes(userId)
 	})
 }

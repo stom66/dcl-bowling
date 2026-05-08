@@ -6,6 +6,7 @@ import { ClientStore } from "./clientStore"
 import { lanePositions } from "./data/lanePositions"
 import { GetRandomPointInCircle } from "src/shared/utils/math"
 import { movePlayerTo } from "~system/RestrictedActions"
+import { engine, InputModifier } from "@dcl/sdk/ecs"
 
 export namespace playerMover {
 
@@ -28,21 +29,37 @@ export namespace playerMover {
 		const randomPoint = GetRandomPointInCircle(circlePosition, 1.5)
 
 		movePlayerTo({ newRelativePosition: randomPoint })
+		unblockInput()
 	}
 
 
 	function movePlayerToStartOfLane() {
 		// move the player to the start of the lane
 		const lanePosition   = lanePositions[clientStore.getLaneIndex() ?? 0]
-		const playerOffset   = Vector3.create(-1, 0, 0)
+		const playerOffset   = Vector3.create(-1, 0, -0.2)
 		const targetPosition = Vector3.add(lanePosition, playerOffset)
 		const faceForward    = Vector3.create(0, 0, 10)
 		movePlayerTo({ newRelativePosition: targetPosition, cameraTarget: Vector3.add(targetPosition, faceForward) })
+		blockInput()
 	}
 
 
 	function movePlayerToLobby() {
 		const randomPoint = GetRandomPointInCircle(Vector3.create(16, 0, 4), 1.5)
 		movePlayerTo({ newRelativePosition: randomPoint })
+		unblockInput()
+	}
+
+
+	function blockInput() {
+		InputModifier.createOrReplace(engine.PlayerEntity, {
+			mode: InputModifier.Mode.Standard({
+				disableAll: true,
+			}),
+		})
+	}
+
+	function unblockInput() {
+		InputModifier.deleteFrom(engine.PlayerEntity)
 	}
 }

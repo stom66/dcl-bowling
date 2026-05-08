@@ -1,14 +1,17 @@
 import * as utils from "@dcl-sdk/utils"
 import { Animator, EasingFunction, engine, Entity, GltfContainer, GltfContainerLoadingState, LoadingState, Transform, Tween, TweenSequence, tweenSystem } from "@dcl/sdk/ecs"
 import { Quaternion, Vector3 } from "@dcl/sdk/math"
-import { PIN_LANE_LOCAL_POSITIONS } from 'src/server/physics/physics.pin-layout'
-import { resolveSimulationSettings } from "src/server/physics/physics.client"
-import { DEFAULT_STORED_ROTATION, storedRotationToQuaternion } from "src/server/physics/physics.utils"
 
-import { NotifyPlayerRollPayload, RollPayload, SimObjectKeyframe } from "src/shared/types/shared-types"
-import { eventBus } from "src/shared/utils/eventBus"
-import { ClientEvents } from "./clientEvents"
+import { resolveSimulationSettings } from "src/server/physics/physics.client"
+import { PIN_LANE_LOCAL_POSITIONS } from "src/server/physics/physics.pin-layout"
 import { SimObjectKeyframes } from "src/server/physics/types"
+import { DEFAULT_STORED_ROTATION, storedRotationToQuaternion } from "src/server/physics/physics.utils"
+import { NotifyPlayerRollPayload, RollPayload, SimObjectKeyframe } from "src/shared/types/shared-types"
+import { ClientEvents, eventBus } from "src/shared/utils/eventBus"
+
+import { ClientStore } from "src/client/clientStore"
+import { LaneStore } from "src/shared/laneStore"
+import { sfx, SoundManager } from "./soundManager"
 
 
 // MARK: Types
@@ -33,15 +36,20 @@ type ReplayState = {
 
 // MARK: Constants
 
-const BALL_SPAWN_LANE_LOCAL_Y = 0.32
-const PIN_GLTF_MESH_OFFSET_Y  = 0.18949292600154877
-const PIN_VISUAL_SCALE        = 1.5
-const PIN_COUNT               = PIN_LANE_LOCAL_POSITIONS.length
-const LANE_END_Z              = 17
-const SCORE_OBJECT_POSITION   = Vector3.create(0, 0.5, 18)
-const SCORE_OBJECT_SCALE      = Vector3.create(0.6, 0.6, 0.6)
+const BALL_SPAWN_LANE_LOCAL_Y   = 0.32
+const PIN_GLTF_MESH_OFFSET_Y    = 0.18949292600154877
+const PIN_VISUAL_SCALE          = 1.5
+const PIN_COUNT                 = PIN_LANE_LOCAL_POSITIONS.length
+const LANE_END_Z                = 17
+const SCORE_OBJECT_POSITION     = Vector3.create(0, 0.5, 18)
+const SCORE_OBJECT_SCALE        = Vector3.create(0.6, 0.6, 0.6)
+const COUNTDOWN_OBJECT_POSITION = Vector3.create(0, 0.5, 1)
+const COUNTDOWN_OBJECT_SCALE    = Vector3.create(0.6, 0.6, 0.6)
 
-const CHANCE_OF_PIGEON = 2 // 1 in n
+const CHANCE_OF_PIGEON = 20 // 1 in n
+
+/** Delay between countdown visuals and each replay attempt (local player's roll). */
+const REPLAY_WAIT_MS = 3000
 
 
 /**
@@ -60,33 +68,129 @@ export class LaneVisuals {
 
 	private rollStartTimestamp: number = 0
 
-	/** When set, {@link runReplay} is driving ball/pin transforms each frame until cleared. */
+	/** When set, replay system is driving ball/pin transforms each frame until cleared. */
 	private replayDriver?: (dt: number) => void
+
+	/** Payload + completion handler staged until playback runs after roll request countdown. */
+	private queuedReplay?: { data: NotifyPlayerRollPayload; onComplete?: () => void }
+
+	private awaitingReplay: boolean = false
+	private replayWaitTimer?: number
+
+	/** Unsubs for roll-request countdown sources (local emit + server broadcast per lane). */
+	private rollRequestUnsubs: Array<() => void> = []
+
+	private readonly rollOwnerUserId: string
 
 
 	// MARK: Constructor
 	constructor(
-		lanePosition      : Vector3,
-		rollStartTimestamp: number
+		lanePosition       : Vector3,
+		rollStartTimestamp : number,
+		rollOwnerUserId    : string
 	) {
-		this.lanePosition = lanePosition
+		this.lanePosition       = lanePosition
 		this.rollStartTimestamp = rollStartTimestamp
+		this.rollOwnerUserId    = rollOwnerUserId
 		this.setupBall()
+
+		this.bindRollRequestCountdownHandlers()
 	}
 
 
 	// MARK: Destroy
 	destroy(): void {
+		this.clearReplayWaitTimer()
+		for (const unsub of this.rollRequestUnsubs) {
+			unsub()
+		}
+		this.rollRequestUnsubs.length = 0
+		this.awaitingReplay = false
+		this.queuedReplay = undefined
+
 		this.detachReplayDriver()
 		this.removePins()
 		this.removeBall()
 	}
 
 
+	// MARK: clearReplayWaitTimer
+	private clearReplayWaitTimer(): void {
+		if (this.replayWaitTimer === undefined) return
+		utils.timers.clearTimeout(this.replayWaitTimer)
+		this.replayWaitTimer = undefined
+	}
+
+
+	// MARK: bindRollRequestCountdownHandlers
+	/**
+	 * Local bowler: {@link ClientEvents.ON_MY_ROLL_REQUEST}. Same-lane group members:
+	 * {@link ClientEvents.ON_GROUP_ROLL_REQUEST}. Spectators on other lanes:
+	 * {@link ClientEvents.ON_NON_GROUP_ROLL_REQUEST}. Each lane instance only runs when
+	 * `userId` matches this visuals' roller to avoid reacting on the wrong lane.
+	 */
+	private bindRollRequestCountdownHandlers(): void {
+		this.rollRequestUnsubs.push(
+			eventBus.on(ClientEvents.ON_MY_ROLL_REQUEST, () => {
+				if (ClientStore.getInstance().getUserId() !== this.rollOwnerUserId) return
+				this.beginRollRequestCountdownPipeline()
+			})
+		)
+
+		this.rollRequestUnsubs.push(
+			eventBus.on(ClientEvents.ON_GROUP_ROLL_REQUEST, (data: { userId: string }) => {
+				if (data.userId !== this.rollOwnerUserId) return
+				if (data.userId === ClientStore.getInstance().getUserId()) return
+				this.beginRollRequestCountdownPipeline()
+			})
+		)
+
+		this.rollRequestUnsubs.push(
+			eventBus.on(ClientEvents.ON_NON_GROUP_ROLL_REQUEST, (data: { userId: string }) => {
+				if (data.userId !== this.rollOwnerUserId) return
+				this.beginRollRequestCountdownPipeline()
+			})
+		)
+	}
+
+
+	// MARK: beginRollRequestCountdownPipeline
+	private beginRollRequestCountdownPipeline(): void {
+		this.awaitingReplay = true
+		this.clearReplayWaitTimer()
+		this.showCountdownAnimation()
+		this.replayWaitTimer = utils.timers.setTimeout(() => {
+			this.replayWaitTimer = undefined
+			this.tryTriggerReplay()
+		}, REPLAY_WAIT_MS)
+	}
+
+
+	// MARK: tryTriggerReplay
+	private tryTriggerReplay(): void {
+		const queued = this.queuedReplay
+		if (queued !== undefined) {
+			this.queuedReplay = undefined
+			this.awaitingReplay = false
+			this.playReplay(queued.data, queued.onComplete)
+			return
+		}
+		if (!this.awaitingReplay) return
+
+		this.showCountdownAnimation()
+		this.replayWaitTimer = utils.timers.setTimeout(() => {
+			this.replayWaitTimer = undefined
+			this.tryTriggerReplay()
+		}, REPLAY_WAIT_MS)
+	}
 
 	// MARK: Pins
 	setupPins(pinStates: boolean[] = new Array(PIN_COUNT).fill(true)): void {
 		this.removePins()
+
+		const tweenDurationMs = 500
+		const staggerMs       = 50
+		const scaleEnd = Vector3.create(PIN_VISUAL_SCALE, PIN_VISUAL_SCALE, PIN_VISUAL_SCALE)
 
 		const id = Quaternion.Identity()
 		for (let i = 0; i < PIN_COUNT; i++) {
@@ -94,11 +198,18 @@ export class LaneVisuals {
 
 			const rest = PIN_LANE_LOCAL_POSITIONS[i]!
 			const laneLocal = Vector3.create(rest[0]!, rest[1]!, rest[2]!)
-			const worldPos  = this.pinPivotWorldFromSimBody(laneLocal, id)
+			const endPos  = this.pinPivotWorldFromSimBody(laneLocal, id)
+			const startPos = Vector3.add(endPos, Vector3.create(0, 2, 0))
 
-			const pin = engine.addEntity()
-			Transform.create(pin, {
-				position: worldPos,
+			const pinPos = engine.addEntity()
+			Transform.create(pinPos, {
+				position: startPos,
+				scale   : Vector3.One(),
+			})
+
+			const pinScale = engine.addEntity()
+			Transform.create(pinScale, {
+				parent: pinPos,
 				scale   : Vector3.Zero(),
 			})
 
@@ -106,23 +217,17 @@ export class LaneVisuals {
 			var pinFilename = "pin"
 			if (i === 0 && this.rollStartTimestamp % CHANCE_OF_PIGEON == 0) pinFilename = "pinPigeon"
 			
-			GltfContainer.create(pin, { src: `assets/models/${pinFilename}.gltf` })
+			GltfContainer.create(pinScale, { src: `assets/models/${pinFilename}.gltf` })
 
-			const staggerMs = 50 * i
-			GltfContainerLoadingState.onChange(pin, (state) => {
+			GltfContainerLoadingState.onChange(pinScale, (state) => {
 				if (state?.currentState !== LoadingState.FINISHED) return
 				utils.timers.setTimeout(() => {
-					Tween.setScale(
-						pin,
-						Vector3.Zero(),
-						Vector3.create(PIN_VISUAL_SCALE, PIN_VISUAL_SCALE, PIN_VISUAL_SCALE),
-						0.7,
-						EasingFunction.EF_EASEINCUBIC,
-					)
-				}, staggerMs)
+					Tween.setScale(pinScale, Vector3.Zero(), scaleEnd, tweenDurationMs, EasingFunction.EF_EASEBOUNCE)
+					Tween.setMove(pinPos, startPos, endPos, tweenDurationMs, EasingFunction.EF_EASEBOUNCE)
+				}, staggerMs * i)
 			})
 
-			this.pinEntities[i] = pin
+			this.pinEntities[i] = pinPos
 		}
 	}
 
@@ -159,28 +264,63 @@ export class LaneVisuals {
 	}
 
 
-	// MARK: Score Animations
+	// MARK: Countdown animation
+	showCountdownAnimation(): void {
+		console.log("laneVisuals: showCountdownAnimation()")
+		const countdownEntity = engine.addEntity()
+		Transform.create(countdownEntity, {
+			position: Vector3.add(this.lanePosition, COUNTDOWN_OBJECT_POSITION),
+			rotation: Quaternion.fromEulerDegrees(0, 180, 0),
+			scale: COUNTDOWN_OBJECT_SCALE,
+		})
+		GltfContainer.create(countdownEntity, { src: "assets/models/Info_Countdown_3.gltf" })
+		Animator.create(countdownEntity, {
+			states: [
+				{
+					clip: "Info_Countdown_3",
+					playing: false,
+					loop: false,
+				}
+			]
+		})
+		GltfContainerLoadingState.onChange(countdownEntity, (state) => {
+			if (state?.currentState !== LoadingState.FINISHED) return
+			Tween.setScale(countdownEntity, Vector3.Zero(), COUNTDOWN_OBJECT_SCALE, 0.1, EasingFunction.EF_EASEINCUBIC)
+			
+			Animator.playSingleAnimation(countdownEntity, "Info_Countdown_3", true)
+			utils.timers.setTimeout(() => {
+				engine.removeEntity(countdownEntity)
+			}, 4000)
+		})
+	}
 
+
+	// MARK: Score Animations
 	showScoreNumber(score: number): void {
 		console.log("laneVisuals: showScoreNumber(): score", score)
 		score = Math.min(9, Math.max(1, score))
 		this.showScoreObject("Score_Score_" + score.toString())
+		SoundManager.playSound(sfx.bowl_result_good)
 	}
 
 	showScoreStrike() {
 		this.showScoreObject("Score_Strike")
+		SoundManager.playSound(sfx.bowl_result_great)
 	}
 
 	showScoreSpare() {
 		this.showScoreObject("Score_Spare")
+		SoundManager.playSound(sfx.bowl_result_good)
 	}
 
 	showScoreZero() {
 		this.showScoreObject("Score_Zero")
+		SoundManager.playSound(sfx.bowl_result_bad)
 	}
 
 	showScoreGutterBall() { 
 		this.showScoreObject("Score_GutterBall")
+		SoundManager.playSound(sfx.bowl_result_bad)
 	}
 
 	showScoreObject(filename: string) {
@@ -248,14 +388,9 @@ export class LaneVisuals {
 	// =========================================================================
 	// MARK: Replay
 	// =========================================================================
-	/**
-	 * Play back a roll. Ball and any currently-displayed pins are animated
-	 * frame-by-frame from the payload's keyframe tracks. Pins not present in
-	 * `pinEntities` (already knocked from a prior roll) are left untouched.
-	 *
-	 * The replay ends when keyframes run out; `onComplete` (if supplied) is
-	 * invoked exactly once. Call `stopReplay()` to abort early.
-	 */
+
+
+	// MARK: onReplayEnd
 	onReplayEnd(): void {
 		console.log("laneVisuals: onReplayEnd()")
 
@@ -285,15 +420,83 @@ export class LaneVisuals {
 
 		utils.timers.setTimeout(() => {
 			this.replayDriver = undefined
-			eventBus.emit(ClientEvents.ON_GROUP_ROLL_PLAYBACK_END, {})
+			this.emitPlaybackEndByMembership()
 		}, 2000)
 	}
 
-	runReplay(data: NotifyPlayerRollPayload, onComplete?: () => void): void {
+	// MARK: queueReplay
+	/**
+	 * Holds playback until the roll-request countdown pipeline finishes. Playback may arrive
+	 * before or after {@link ClientEvents.ON_GROUP_ROLL_REQUEST} / local request events; we always
+	 * stash here and only {@link playReplay} from {@link tryTriggerReplay} once {@link awaitingReplay}
+	 * has been started and {@link REPLAY_WAIT_MS} has elapsed (possibly after repeated countdowns).
+	 */
+	queueReplay(data: NotifyPlayerRollPayload, onComplete?: () => void): void {
+		console.log("laneVisuals: queueReplay(): userId", data.userId)
 
-		console.log("laneVisuals: runReplay(): data", data)
+		if (data.userId !== this.rollOwnerUserId) {
+			console.log(
+				"laneVisuals: queueReplay: ignoring replay wrong roller rollOwnerUserId",
+				this.rollOwnerUserId,
+				"payloadUserId",
+				data.userId,
+			)
+			return
+		}
+
+		this.queuedReplay = { data, onComplete }
+	}
+
+
+	// MARK: emitPlaybackStartByMembership
+	private emitPlaybackStartByMembership(data: NotifyPlayerRollPayload): void {
+		const laneIndex   = LaneStore.findLaneByUserId(data.userId) ?? 0
+		const myLaneIndex = ClientStore.getInstance().getLaneIndex()
+		if (laneIndex == myLaneIndex) {
+			eventBus.emit(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, data)
+		} else {
+			eventBus.emit(ClientEvents.ON_NON_GROUP_ROLL_PLAYBACK_START, data)
+		}
+	}
+
+
+	// MARK: emitPlaybackEndByMembership
+	private emitPlaybackEndByMembership(): void {
+		const userId = this.rollPayload?.userId
+		if (userId === undefined) {
+			console.log("laneVisuals: emitPlaybackEndByMembership: missing rollPayload userId")
+			return
+		}
+
+		const laneIndex = LaneStore.findLaneByUserId(userId) ?? -1
+		const myLane     = ClientStore.getInstance().getLaneIndex()
+		if (laneIndex == myLane) {
+			eventBus.emit(ClientEvents.ON_GROUP_ROLL_PLAYBACK_END, {})
+		} else {
+			eventBus.emit(ClientEvents.ON_NON_GROUP_ROLL_PLAYBACK_END, {})
+		}
+	}
+
+
+	// MARK: playReplay
+	/**
+	 * Play back a roll. Ball and any currently-displayed pins are animated
+	 * frame-by-frame from the payload's keyframe tracks. Pins not present in
+	 * `pinEntities` (already knocked from a prior roll) are left untouched.
+	 *
+	 * The replay ends when keyframes run out; `onComplete` (if supplied) is
+	 * invoked exactly once.
+	 */
+	private playReplay(data: NotifyPlayerRollPayload, onComplete?: () => void): void {
+
+		console.log("laneVisuals: playReplay(): data", data)
+		this.clearReplayWaitTimer()
+		this.awaitingReplay = false
+
 		this.rollPayload = data
 		this.detachReplayDriver()
+
+		this.emitPlaybackStartByMembership(data)
 
 		const replayState: ReplayState = {
 			elapsed                 : 0,
@@ -319,7 +522,7 @@ export class LaneVisuals {
 		// Make sure the ball exists before we start driving its transform.
 		if (this.ball === undefined) this.setupBall()
 		if (!this.ball) {
-			console.log("laneVisuals: runReplay(): ball not found")
+			console.log("laneVisuals: playReplay(): ball not found")
 			return
 		}
 
@@ -371,7 +574,7 @@ export class LaneVisuals {
 	// MARK: detachReplayDriver
 	/**
 	 * Unregisters the replay system so per-frame keyframe writes stop. Call before clearing pins or
-	 * starting a new replay, otherwise transforms fight tweens and entities never leave the scene cleanly.
+	 * starting a new replay via {@link playReplay}, otherwise transforms fight tweens and entities never leave the scene cleanly.
 	 */
 	private detachReplayDriver(): void {
 		if (this.replayDriver === undefined) {

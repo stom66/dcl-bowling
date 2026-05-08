@@ -1,68 +1,89 @@
+import { LaneStore } from "src/shared/laneStore"
 import { getMessagePayloadSizeBytes, MessageType, room } from "src/shared/room"
+import { GameSettings } from "src/shared/settings"
 import { NotifyPlayerRollPayload } from "src/shared/types/shared-types"
 
-import { ServerStore } from "src/server/serverStore"
 
-
-export function notifyLaneStateUpdate(laneIndex: number) {
-	const serverStore = ServerStore.getInstance()
-	const laneStatePayload = serverStore.getLaneStatePayload(laneIndex)
-	const to = serverStore.getLaneUserIds(laneIndex)
-	room.send(MessageType.NOTIFY_LANE_STATE, laneStatePayload, { to : to })
+// MARK: notifyJoinGame
+/**
+ * Tells a single player they've been enrolled on a lane. The client uses this to
+ * set its `ClientStore.laneIndex`; lane state itself comes from synced components,
+ * so the payload only needs the lane index. `sentAt` is included so the client
+ * can refresh its `clockSync` offset off this message.
+ */
+export function notifyJoinGame(
+	userId    : string,
+	laneIndex : number
+): void {
+	room.send(MessageType.NOTIFY_JOIN_GAME, { laneIndex, sentAt: Date.now() }, { to : [userId] })
 }
 
-export function notifyJoinGame(userId: string, laneIndex: number) {
-	const serverStore = ServerStore.getInstance()
-	const laneStatePayload = serverStore.getLaneStatePayload(laneIndex)
-	room.send(MessageType.NOTIFY_JOIN_GAME, laneStatePayload, { to : [userId] })
+
+// MARK: notifyPlayerRollStart
+/**
+ * Roll-start carries `pinStanding` and `rollStartTimestamp`, neither of which is
+ * on a synced component, so this stays as a directed room message.
+ *
+ * When {@link GameSettings.SHOW_NON_GROUP_ROLL_VISUALS} is on, broadcasts to every
+ * client so lane meshes can be spawned for games you're not enrolled in (same scope
+ * as {@link notifyPlayerRollPlayback}); otherwise only players on that lane receive it.
+ */
+export function notifyPlayerRollStart(
+	laneIndex          : number,
+	userId             : string,
+	pinStanding        : boolean[],
+	rollStartTimestamp : number
+): void {
+	const payload = {
+		userId,
+		pinStanding,
+		rollStartTimestamp,
+		sentAt: Date.now(),
+	}
+
+	if (GameSettings.SHOW_NON_GROUP_ROLL_VISUALS) {
+		room.send(MessageType.NOTIFY_PLAYER_ROLL_START, payload, { to: undefined })
+		return
+	}
+
+	const to = LaneStore.getLaneUserIds(laneIndex)
+	room.send(MessageType.NOTIFY_PLAYER_ROLL_START, payload, { to: to })
 }
 
-export function notifyGameStart(laneIndex: number) {
-	const serverStore = ServerStore.getInstance()
-	const laneStatePayload = serverStore.getLaneStatePayload(laneIndex)
-	room.send(MessageType.NOTIFY_GAME_START, laneStatePayload, { to : serverStore.getLaneUserIds(laneIndex) })
+
+// MARK: notifyPlayerRollRequestReceived
+/**
+ * Tells all players that a player has sent in a roll request
+ */
+export function notifyPlayerRollRequestReceived(
+	userId    : string,
+	sentAt    : number
+): void {
+	room.send(MessageType.NOTIFY_PLAYER_ROLL_REQUEST_RECEIVED, { userId, sentAt }, { to : undefined })
 }
 
-export function notifyPlayerFrameStart(laneIndex: number, userId: string) {
-	const serverStore = ServerStore.getInstance()
-	room.send(MessageType.NOTIFY_PLAYER_FRAME_START, { userId, sentAt: Date.now() }, { to : serverStore.getLaneUserIds(laneIndex) })
-}
-
-export function notifyPlayerRollStart(laneIndex: number, userId: string, pinStanding: boolean[], rollStartTimestamp: number) {
-	const serverStore = ServerStore.getInstance()
-	room.send(MessageType.NOTIFY_PLAYER_ROLL_START, { userId, pinStanding, rollStartTimestamp, sentAt: Date.now() }, { to : serverStore.getLaneUserIds(laneIndex) })
-}
-
-export function notifyPlayerRollPlayback(laneIndex: number, payload: NotifyPlayerRollPayload) {
-	const serverStore = ServerStore.getInstance()
-	const to = serverStore.getLaneUserIds(laneIndex)
+// MARK: notifyPlayerRollPlayback
+/**
+ * Roll-playback carries the keyframe arrays, which are far too large to put on a
+ * synced component, so this stays as a directed room message.
+ */
+export function notifyPlayerRollPlayback(
+	laneIndex : number,
+	payload   : NotifyPlayerRollPayload
+): void {
+	const to               = GameSettings.SHOW_NON_GROUP_ROLL_VISUALS ? undefined: LaneStore.getLaneUserIds(laneIndex)
 	const payloadSizeBytes = getMessagePayloadSizeBytes(MessageType.NOTIFY_PLAYER_ROLL_PLAYBACK, payload)
-	const totalBytes = payloadSizeBytes * to.length
-
+	const totalBytes       = payloadSizeBytes * (to?.length ?? 0)
 	console.log(
-		`serverMessaging: notifyPlayerRollPlayback: lane ${laneIndex}, recipients ${to.length}, payload ${payloadSizeBytes} bytes (${(payloadSizeBytes / 1024).toFixed(2)} KB), total ${totalBytes} bytes (${(totalBytes / 1024).toFixed(2)} KB)`
+		`serverMessaging: notifyPlayerRollPlayback: lane ${laneIndex}, recipients ${to?.length ?? 0 > 0 ? to?.length ?? 0 : 'all'}, payload ${payloadSizeBytes} bytes (${(payloadSizeBytes / 1024).toFixed(2)} KB), total ${totalBytes} bytes (${(totalBytes / 1024).toFixed(2)} KB)`
 	)
-
-	room.send(MessageType.NOTIFY_PLAYER_ROLL_PLAYBACK, payload, { to: to })
-}
-
-export function notifyPlayerRollEnd(laneIndex: number, userId: string) {
-	const serverStore = ServerStore.getInstance()
-	room.send(MessageType.NOTIFY_PLAYER_ROLL_END, { userId, sentAt: Date.now() }, { to : serverStore.getLaneUserIds(laneIndex) })
-}
-
-export function notifyPlayerFrameEnd(laneIndex: number, userId: string) {
-	const serverStore = ServerStore.getInstance()
-	room.send(MessageType.NOTIFY_PLAYER_FRAME_END, { userId, sentAt: Date.now() }, { to : serverStore.getLaneUserIds(laneIndex) })
-}
-
-export function notifyGameEnd(laneIndex: number) {
-	const serverStore = ServerStore.getInstance()
-	const laneStatePayload = serverStore.getLaneStatePayload(laneIndex)
-	room.send(MessageType.NOTIFY_GAME_END, laneStatePayload, { to : serverStore.getLaneUserIds(laneIndex) })
+	
+	room.send(MessageType.NOTIFY_PLAYER_ROLL_PLAYBACK, payload, { to: to ? to : undefined })
 }
 
 
-export function notifyServerTime() {
+// MARK: notifyServerTime
+/** Broadcasts current server time to every connected client for `clockSync`. */
+export function notifyServerTime(): void {
 	room.send(MessageType.NOTIFY_SERVER_TIME, Date.now())
 }

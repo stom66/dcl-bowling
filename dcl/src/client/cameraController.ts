@@ -32,10 +32,10 @@ export namespace CameraController {
 
 	// MARK: Init
 	export function init() {
-		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, (data: { userId: string }) => { onGroupRollPlaybackStart(data) })
-		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_END, (data: {}) => { onGroupRollPlaybackEnd() })
 		eventBus.on(ClientEvents.ON_MY_ROLL_START, (data: { userId: string }) => { onMyRollStart(data) })
 		eventBus.on(ClientEvents.ON_MY_ROLL_END, (data: { userId: string }) => { onMyRollEnd(data) })
+		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, (data: { userId: string }) => { onGroupRollPlaybackStart(data) })
+		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_END, (data: {}) => { onGroupRollPlaybackEnd() })
 
 		camera = engine.addEntity()
 		Transform.create(camera, { position: Vector3.create(0, 0, 0) })
@@ -71,6 +71,7 @@ export namespace CameraController {
 			}, 1000)
 		}
 	}
+
 
 
 	function setCameraView(startPosition: Vector3, targetPosition: Vector3): boolean {
