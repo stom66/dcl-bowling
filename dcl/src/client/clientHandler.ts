@@ -4,6 +4,7 @@ import { clockSync } from 'src/shared/utils/clockSync'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 
 import { ClientStore } from 'src/client/clientStore'
+import { LaneStore } from 'src/shared/laneStore'
 
 
 const clientStore = ClientStore.getInstance()
@@ -13,10 +14,11 @@ export namespace ClientHandler {
 
 	// MARK: init
 	export function init() {
-		room.onMessage(MessageType.NOTIFY_JOIN_GAME,            (data) => { handleNotifyJoinGame(data) })
-		room.onMessage(MessageType.NOTIFY_PLAYER_ROLL_START,    (data) => { handleNotifyPlayerRollStart(data) })
-		room.onMessage(MessageType.NOTIFY_PLAYER_ROLL_PLAYBACK, (data) => { handleNotifyPlayerRollReceived(data) })
-		room.onMessage(MessageType.NOTIFY_SERVER_TIME,          (data) => { handleNotifyServerTime(data) })
+		room.onMessage(MessageType.NOTIFY_JOIN_GAME,            (data)         => { handleNotifyJoinGame(data) })
+		room.onMessage(MessageType.NOTIFY_PLAYER_ROLL_START,    (data)         => { handleNotifyPlayerRollStart(data) })
+		room.onMessage(MessageType.NOTIFY_PLAYER_ROLL_PLAYBACK, (data)         => { handleNotifyPlayerRollPlayback(data) })
+		room.onMessage(MessageType.NOTIFY_PLAYER_ROLL_REQUEST_RECEIVED, (data) => { handleNotifyPlayerRollRequestReceived(data) })
+		room.onMessage(MessageType.NOTIFY_SERVER_TIME,          (data)         => { handleNotifyServerTime(data) })
 	}
 
 
@@ -43,17 +45,42 @@ export namespace ClientHandler {
 		if (data.userId === clientStore.getUserId()) {
 			eventBus.emit(ClientEvents.ON_MY_ROLL_START, data)
 		} else {
-			eventBus.emit(ClientEvents.ON_GROUP_ROLL_START, data)
+			const laneIndex = LaneStore.findLaneByUserId(data.userId) ?? -1
+			if (laneIndex == clientStore.getLaneIndex()) {
+				eventBus.emit(ClientEvents.ON_GROUP_ROLL_START, data)
+			} else {
+				eventBus.emit(ClientEvents.ON_NON_GROUP_ROLL_START, data)
+			}
 		}
 	}
 
 
-	// MARK: handleNotifyPlayerRollReceived
-	/** Roll playback carries the keyframe payload that's far too big for a synced component. */
-	function handleNotifyPlayerRollReceived(data: NotifyPlayerRollPayload) {
-		console.log('ClientHandler: handleNotifyPlayerRollReceived: data', data)
+	// MARK: handleNotifyPlayerRollRequestReceived
+	function handleNotifyPlayerRollRequestReceived(data: { userId: string, sentAt: number }) {
+		console.log('ClientHandler: handleNotifyPlayerRollRequestReceived: data', data)
 		clockSync.updateOffset(data.sentAt)
-		eventBus.emit(ClientEvents.ON_GROUP_ROLL_PLAYBACK_RECEIVED, data)
+
+		const laneIndex = LaneStore.findLaneByUserId(data.userId) ?? -1
+		if (laneIndex == clientStore.getLaneIndex()) {
+			eventBus.emit(ClientEvents.ON_GROUP_ROLL_REQUEST, data)
+		} else {
+			eventBus.emit(ClientEvents.ON_NON_GROUP_ROLL_REQUEST, data)
+		}
+	}
+
+	// MARK: handleNotifyPlayerRollPlayback
+	/** Roll playback carries the keyframe payload that's far too big for a synced component. */
+	function handleNotifyPlayerRollPlayback(data: NotifyPlayerRollPayload) {
+		console.log('ClientHandler: handleNotifyPlayerRollPlayback: data', data)
+		clockSync.updateOffset(data.sentAt)
+
+		const laneIndex = LaneStore.findLaneByUserId(data.userId) ?? 0
+
+		if (laneIndex === clientStore.getLaneIndex()) {
+			eventBus.emit(ClientEvents.ON_GROUP_ROLL_PLAYBACK_RECEIVED, data)
+		} else {
+			eventBus.emit(ClientEvents.ON_NON_GROUP_ROLL_PLAYBACK_RECEIVED, data)
+		}
 	}
 
 

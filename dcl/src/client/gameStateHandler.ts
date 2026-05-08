@@ -12,6 +12,7 @@ import { BowlingControls } from "src/client/bowlingControls"
 import { ClientStore } from "src/client/clientStore"
 import { lanePositions } from "src/client/data/lanePositions"
 import { LaneVisuals } from "src/client/laneVisuals"
+import { LaneStore } from "src/shared/laneStore"
 
 
 export namespace gameStateHandler {
@@ -24,20 +25,36 @@ export namespace gameStateHandler {
 	eventBus.on(ClientEvents.ON_MY_ROLL_END,              (data: { userId: string })            => { onMyRollEnd(data) })
 
 	eventBus.on(ClientEvents.ON_GROUP_ROLL_START,         (data: NotifyPlayerRollStartPayload)  => { onGroupRollStart(data) })
-	eventBus.on(ClientEvents.ON_GROUP_ROLL_END,           (data: { userId: string })            => { })
 	eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_RECEIVED, (data: NotifyPlayerRollPayload)      => { onRollPlaybackReceived(data) })
+
+	eventBus.on(ClientEvents.ON_NON_GROUP_ROLL_START,         (data: NotifyPlayerRollStartPayload)  => { onNonGroupRollStart(data) })
+	eventBus.on(ClientEvents.ON_NON_GROUP_ROLL_PLAYBACK_RECEIVED, (data: NotifyPlayerRollPayload)      => { onRollPlaybackReceived(data) })
 
 
 	// MARK: Vars
 	const clientStore = ClientStore.getInstance()
 
 	var bowlingControls: BowlingControls | undefined
-	var laneVisuals    : LaneVisuals | undefined
+	var laneVisuals    : LaneVisuals[] = [] // array of visuals, indexed matches laneIndex
 
 
 	// MARK: Init
 	export function init() {
 
+	}
+
+	function createLaneVisuals(
+		data     : NotifyPlayerRollStartPayload,
+		laneIndex: number
+	) {
+		if (laneVisuals[laneIndex]) laneVisuals[laneIndex]?.destroy()
+			
+		const pos = lanePositions[laneIndex]
+		const lv = new LaneVisuals(pos, data.rollStartTimestamp, data.userId)
+		lv.setupPins(data.pinStanding)
+
+		laneVisuals[laneIndex] = lv
+		return lv
 	}
 
 
@@ -52,31 +69,32 @@ export namespace gameStateHandler {
 		console.log('gameStateHandler: onGameStart')
 	}
 
+	function onNonGroupRollStart(data: NotifyPlayerRollStartPayload) {
+		console.log('gameStateHandler: onNonGroupRollStart: data', data)
+
+		const laneIndex = LaneStore.findLaneByUserId(data.userId) ?? 0
+		createLaneVisuals(data, laneIndex)
+	}
+
 	function onGroupRollStart(data: NotifyPlayerRollStartPayload) {
 		console.log('gameStateHandler: onGroupRollStart: data', data)
-		createLaneVisuals(data)
+
+		const laneIndex = LaneStore.findLaneByUserId(data.userId) ?? 0
+		createLaneVisuals(data, laneIndex)
 	}
 
 	function onMyRollStart(data: NotifyPlayerRollStartPayload) {
 		console.log('gameStateHandler: onMyRollStart: data', data)
 		
-		createLaneVisuals(data)
-		if (!laneVisuals) return
-		const laneIndex    = clientStore.getLaneIndex() ?? 0
+		const laneIndex = LaneStore.findLaneByUserId(data.userId) ?? 0
+		const lv = createLaneVisuals(data,laneIndex)
+
+		if (!lv) return
 		const lanePosition = lanePositions[laneIndex]
-		bowlingControls    = new BowlingControls(lanePosition, laneVisuals.getBall())
+		bowlingControls    = new BowlingControls(lanePosition, lv.getBall())
 	}
 
-		function createLaneVisuals(data: NotifyPlayerRollStartPayload) {
-			const laneIndex    = clientStore.getLaneIndex() ?? 0
-			const lanePosition = lanePositions[laneIndex]
-			laneVisuals?.destroy()
-			laneVisuals        = new LaneVisuals(lanePosition, data.rollStartTimestamp)
-			laneVisuals.setupPins(data.pinStanding)
-		}
-
 	function onMyRollEnd(data: { userId: string }) {
-
 		if (bowlingControls) {
 			bowlingControls.Destroy()
 			bowlingControls = undefined
@@ -87,11 +105,15 @@ export namespace gameStateHandler {
 	function onRollPlaybackReceived(data: NotifyPlayerRollPayload) {
 		console.log('gameStateHandler: onRollPlaybackReceived: userId', data.userId)
 
-		if (!laneVisuals) {
+		
+		const laneIndex = LaneStore.findLaneByUserId(data.userId) ?? 0
+		const lv = laneVisuals[laneIndex]
+
+		if (!lv) {
 			console.log('gameStateHandler: onRollPlaybackReceived: laneVisuals not found')
 			return
 		}
-		laneVisuals.queueReplay(data, () => {
+		lv.queueReplay(data, () => {
 			console.log('gameStateHandler: onRollPlaybackReceived: queueReplay complete')
 		})
 	}

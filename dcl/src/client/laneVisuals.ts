@@ -10,6 +10,8 @@ import { NotifyPlayerRollPayload, RollPayload, SimObjectKeyframe } from "src/sha
 import { ClientEvents, eventBus } from "src/shared/utils/eventBus"
 
 import { ClientStore } from "src/client/clientStore"
+import { LaneStore } from "src/shared/laneStore"
+import { sfx, SoundManager } from "./soundManager"
 
 
 // MARK: Types
@@ -75,36 +77,34 @@ export class LaneVisuals {
 	private awaitingReplay: boolean = false
 	private replayWaitTimer?: number
 
-	private unsubRollRequest?: () => void
+	/** Unsubs for roll-request countdown sources (local emit + server broadcast per lane). */
+	private rollRequestUnsubs: Array<() => void> = []
+
+	private readonly rollOwnerUserId: string
 
 
 	// MARK: Constructor
 	constructor(
-		lanePosition      : Vector3,
-		rollStartTimestamp: number
+		lanePosition       : Vector3,
+		rollStartTimestamp : number,
+		rollOwnerUserId    : string
 	) {
-		this.lanePosition = lanePosition
+		this.lanePosition       = lanePosition
 		this.rollStartTimestamp = rollStartTimestamp
+		this.rollOwnerUserId    = rollOwnerUserId
 		this.setupBall()
 
-		this.unsubRollRequest = eventBus.on(ClientEvents.ON_MY_ROLL_REQUEST, () => {
-			this.queuedReplay   = undefined
-			this.awaitingReplay = true
-			this.clearReplayWaitTimer()
-			this.showCountdownAnimation()
-			this.replayWaitTimer = utils.timers.setTimeout(() => {
-				this.replayWaitTimer = undefined
-				this.tryTriggerReplay()
-			}, REPLAY_WAIT_MS)
-		})
+		this.bindRollRequestCountdownHandlers()
 	}
 
 
 	// MARK: Destroy
 	destroy(): void {
 		this.clearReplayWaitTimer()
-		this.unsubRollRequest?.()
-		this.unsubRollRequest = undefined
+		for (const unsub of this.rollRequestUnsubs) {
+			unsub()
+		}
+		this.rollRequestUnsubs.length = 0
 		this.awaitingReplay = false
 		this.queuedReplay = undefined
 
@@ -119,6 +119,50 @@ export class LaneVisuals {
 		if (this.replayWaitTimer === undefined) return
 		utils.timers.clearTimeout(this.replayWaitTimer)
 		this.replayWaitTimer = undefined
+	}
+
+
+	// MARK: bindRollRequestCountdownHandlers
+	/**
+	 * Local bowler: {@link ClientEvents.ON_MY_ROLL_REQUEST}. Same-lane group members:
+	 * {@link ClientEvents.ON_GROUP_ROLL_REQUEST}. Spectators on other lanes:
+	 * {@link ClientEvents.ON_NON_GROUP_ROLL_REQUEST}. Each lane instance only runs when
+	 * `userId` matches this visuals' roller to avoid reacting on the wrong lane.
+	 */
+	private bindRollRequestCountdownHandlers(): void {
+		this.rollRequestUnsubs.push(
+			eventBus.on(ClientEvents.ON_MY_ROLL_REQUEST, () => {
+				if (ClientStore.getInstance().getUserId() !== this.rollOwnerUserId) return
+				this.beginRollRequestCountdownPipeline()
+			})
+		)
+
+		this.rollRequestUnsubs.push(
+			eventBus.on(ClientEvents.ON_GROUP_ROLL_REQUEST, (data: { userId: string }) => {
+				if (data.userId !== this.rollOwnerUserId) return
+				if (data.userId === ClientStore.getInstance().getUserId()) return
+				this.beginRollRequestCountdownPipeline()
+			})
+		)
+
+		this.rollRequestUnsubs.push(
+			eventBus.on(ClientEvents.ON_NON_GROUP_ROLL_REQUEST, (data: { userId: string }) => {
+				if (data.userId !== this.rollOwnerUserId) return
+				this.beginRollRequestCountdownPipeline()
+			})
+		)
+	}
+
+
+	// MARK: beginRollRequestCountdownPipeline
+	private beginRollRequestCountdownPipeline(): void {
+		this.awaitingReplay = true
+		this.clearReplayWaitTimer()
+		this.showCountdownAnimation()
+		this.replayWaitTimer = utils.timers.setTimeout(() => {
+			this.replayWaitTimer = undefined
+			this.tryTriggerReplay()
+		}, REPLAY_WAIT_MS)
 	}
 
 
@@ -256,22 +300,27 @@ export class LaneVisuals {
 		console.log("laneVisuals: showScoreNumber(): score", score)
 		score = Math.min(9, Math.max(1, score))
 		this.showScoreObject("Score_Score_" + score.toString())
+		SoundManager.playSound(sfx.bowl_result_good)
 	}
 
 	showScoreStrike() {
 		this.showScoreObject("Score_Strike")
+		SoundManager.playSound(sfx.bowl_result_great)
 	}
 
 	showScoreSpare() {
 		this.showScoreObject("Score_Spare")
+		SoundManager.playSound(sfx.bowl_result_good)
 	}
 
 	showScoreZero() {
 		this.showScoreObject("Score_Zero")
+		SoundManager.playSound(sfx.bowl_result_bad)
 	}
 
 	showScoreGutterBall() { 
 		this.showScoreObject("Score_GutterBall")
+		SoundManager.playSound(sfx.bowl_result_bad)
 	}
 
 	showScoreObject(filename: string) {
@@ -371,35 +420,61 @@ export class LaneVisuals {
 
 		utils.timers.setTimeout(() => {
 			this.replayDriver = undefined
-			eventBus.emit(ClientEvents.ON_GROUP_ROLL_PLAYBACK_END, {})
+			this.emitPlaybackEndByMembership()
 		}, 2000)
 	}
 
 	// MARK: queueReplay
 	/**
-	 * Stages server roll playback. After {@link ClientEvents.ON_MY_ROLL_REQUEST}, repeats a
-	 * {@link REPLAY_WAIT_MS} ms countdown until replay payload arrives. Other players' replays
-	 * play immediately.
+	 * Holds playback until the roll-request countdown pipeline finishes. Playback may arrive
+	 * before or after {@link ClientEvents.ON_GROUP_ROLL_REQUEST} / local request events; we always
+	 * stash here and only {@link playReplay} from {@link tryTriggerReplay} once {@link awaitingReplay}
+	 * has been started and {@link REPLAY_WAIT_MS} has elapsed (possibly after repeated countdowns).
 	 */
 	queueReplay(data: NotifyPlayerRollPayload, onComplete?: () => void): void {
 		console.log("laneVisuals: queueReplay(): userId", data.userId)
-		const localUserId = ClientStore.getInstance().getUserId()
-		const isMyReplay  = data.userId === localUserId
 
-		if (!isMyReplay) {
-			this.clearReplayWaitTimer()
-			this.awaitingReplay = false
-			this.queuedReplay = undefined
-			this.playReplay(data, onComplete)
-			return
-		}
-
-		if (!this.awaitingReplay) {
-			this.playReplay(data, onComplete)
+		if (data.userId !== this.rollOwnerUserId) {
+			console.log(
+				"laneVisuals: queueReplay: ignoring replay wrong roller rollOwnerUserId",
+				this.rollOwnerUserId,
+				"payloadUserId",
+				data.userId,
+			)
 			return
 		}
 
 		this.queuedReplay = { data, onComplete }
+	}
+
+
+	// MARK: emitPlaybackStartByMembership
+	private emitPlaybackStartByMembership(data: NotifyPlayerRollPayload): void {
+		const laneIndex   = LaneStore.findLaneByUserId(data.userId) ?? 0
+		const myLaneIndex = ClientStore.getInstance().getLaneIndex()
+		if (laneIndex == myLaneIndex) {
+			eventBus.emit(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, data)
+		} else {
+			eventBus.emit(ClientEvents.ON_NON_GROUP_ROLL_PLAYBACK_START, data)
+		}
+	}
+
+
+	// MARK: emitPlaybackEndByMembership
+	private emitPlaybackEndByMembership(): void {
+		const userId = this.rollPayload?.userId
+		if (userId === undefined) {
+			console.log("laneVisuals: emitPlaybackEndByMembership: missing rollPayload userId")
+			return
+		}
+
+		const laneIndex = LaneStore.findLaneByUserId(userId) ?? -1
+		const myLane     = ClientStore.getInstance().getLaneIndex()
+		if (laneIndex == myLane) {
+			eventBus.emit(ClientEvents.ON_GROUP_ROLL_PLAYBACK_END, {})
+		} else {
+			eventBus.emit(ClientEvents.ON_NON_GROUP_ROLL_PLAYBACK_END, {})
+		}
 	}
 
 
@@ -421,7 +496,7 @@ export class LaneVisuals {
 		this.rollPayload = data
 		this.detachReplayDriver()
 
-		eventBus.emit(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, data)
+		this.emitPlaybackStartByMembership(data)
 
 		const replayState: ReplayState = {
 			elapsed                 : 0,

@@ -1,5 +1,6 @@
 import { LaneStore } from "src/shared/laneStore"
 import { getMessagePayloadSizeBytes, MessageType, room } from "src/shared/room"
+import { GameSettings } from "src/shared/settings"
 import { NotifyPlayerRollPayload } from "src/shared/types/shared-types"
 
 
@@ -22,6 +23,10 @@ export function notifyJoinGame(
 /**
  * Roll-start carries `pinStanding` and `rollStartTimestamp`, neither of which is
  * on a synced component, so this stays as a directed room message.
+ *
+ * When {@link GameSettings.SHOW_NON_GROUP_ROLL_VISUALS} is on, broadcasts to every
+ * client so lane meshes can be spawned for games you're not enrolled in (same scope
+ * as {@link notifyPlayerRollPlayback}); otherwise only players on that lane receive it.
  */
 export function notifyPlayerRollStart(
 	laneIndex          : number,
@@ -29,14 +34,33 @@ export function notifyPlayerRollStart(
 	pinStanding        : boolean[],
 	rollStartTimestamp : number
 ): void {
+	const payload = {
+		userId,
+		pinStanding,
+		rollStartTimestamp,
+		sentAt: Date.now(),
+	}
+
+	if (GameSettings.SHOW_NON_GROUP_ROLL_VISUALS) {
+		room.send(MessageType.NOTIFY_PLAYER_ROLL_START, payload, { to: undefined })
+		return
+	}
+
 	const to = LaneStore.getLaneUserIds(laneIndex)
-	room.send(
-		MessageType.NOTIFY_PLAYER_ROLL_START,
-		{ userId, pinStanding, rollStartTimestamp, sentAt: Date.now() },
-		{ to: to }
-	)
+	room.send(MessageType.NOTIFY_PLAYER_ROLL_START, payload, { to: to })
 }
 
+
+// MARK: notifyPlayerRollRequestReceived
+/**
+ * Tells all players that a player has sent in a roll request
+ */
+export function notifyPlayerRollRequestReceived(
+	userId    : string,
+	sentAt    : number
+): void {
+	room.send(MessageType.NOTIFY_PLAYER_ROLL_REQUEST_RECEIVED, { userId, sentAt }, { to : undefined })
+}
 
 // MARK: notifyPlayerRollPlayback
 /**
@@ -47,15 +71,14 @@ export function notifyPlayerRollPlayback(
 	laneIndex : number,
 	payload   : NotifyPlayerRollPayload
 ): void {
-	const to               = LaneStore.getLaneUserIds(laneIndex)
+	const to               = GameSettings.SHOW_NON_GROUP_ROLL_VISUALS ? undefined: LaneStore.getLaneUserIds(laneIndex)
 	const payloadSizeBytes = getMessagePayloadSizeBytes(MessageType.NOTIFY_PLAYER_ROLL_PLAYBACK, payload)
-	const totalBytes       = payloadSizeBytes * to.length
-
+	const totalBytes       = payloadSizeBytes * (to?.length ?? 0)
 	console.log(
-		`serverMessaging: notifyPlayerRollPlayback: lane ${laneIndex}, recipients ${to.length}, payload ${payloadSizeBytes} bytes (${(payloadSizeBytes / 1024).toFixed(2)} KB), total ${totalBytes} bytes (${(totalBytes / 1024).toFixed(2)} KB)`
+		`serverMessaging: notifyPlayerRollPlayback: lane ${laneIndex}, recipients ${to?.length ?? 0 > 0 ? to?.length ?? 0 : 'all'}, payload ${payloadSizeBytes} bytes (${(payloadSizeBytes / 1024).toFixed(2)} KB), total ${totalBytes} bytes (${(totalBytes / 1024).toFixed(2)} KB)`
 	)
-
-	room.send(MessageType.NOTIFY_PLAYER_ROLL_PLAYBACK, payload, { to: to })
+	
+	room.send(MessageType.NOTIFY_PLAYER_ROLL_PLAYBACK, payload, { to: to ? to : undefined })
 }
 
 
