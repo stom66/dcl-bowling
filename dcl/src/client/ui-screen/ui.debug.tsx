@@ -13,6 +13,7 @@ import { ClearEmote, PlayBowlingAnimation } from 'src/client/emotes'
 
 import { ButtonAction, Divider, InfoRow, SectionHeader } from 'src/client/ui-screen/utils/components'
 import { tweenValue } from './utils/tweens'
+import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 
 
 // MARK: Vars
@@ -69,13 +70,18 @@ function GetAllLanesRows() {
 
 
 function BowlStrike() {
-	ClientMessaging.requestPlayRoll(Vector3.create(-0.07, 0.12, 0.8), Vector3.create(0, 0, 1), 1, 0)
+	DoBowl(Vector3.create(-0.07, 0.12, 0.8), Vector3.create(0, 0, 1), 1, 0)
 }
 function BowlSpare1() {
-	ClientMessaging.requestPlayRoll(Vector3.create(0.15, 0.12, 0.8), Vector3.create(0, 0, 1), 1, 0)
+	DoBowl(Vector3.create(0.15, 0.12, 0.8), Vector3.create(0, 0, 1), 1, 0)
 }
 function BowlSpare2() {
-	ClientMessaging.requestPlayRoll(Vector3.create(-0.2, 0.12, 0.8), Vector3.create(0, 0, 1), 1, 0)
+	DoBowl(Vector3.create(-0.2, 0.12, 0.8), Vector3.create(0, 0, 1), 1, 0)
+}
+
+function DoBowl(position: Vector3, direction: Vector3, strength: number, spin: number) {
+	ClientMessaging.requestPlayRoll(position, direction, strength, spin)
+	eventBus.emit(ClientEvents.ON_MY_ROLL_REQUEST, { position: position, direction: direction, strength: strength, spin: spin })
 }
 
 export function DebugUI() {
