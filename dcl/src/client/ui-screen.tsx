@@ -16,7 +16,8 @@ declare var process: {
 	}
 }
 const env = process.env.NODE_ENV
-const SHOW_DEBUG = env == "development"
+const SHOW_DEV = env == "development"
+const SHOW_DEBUG = true
 
 
 // MARK: Main
