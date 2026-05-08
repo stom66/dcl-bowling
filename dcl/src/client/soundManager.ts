@@ -16,7 +16,7 @@ export namespace SoundManager {
 
 	// MARK: settings
 	const FADE_DURATION          = 3.0                                // Duration when fading music in/out
-	const BGM_VOLUME             = 0.5                                // Volume when music is fully faded in
+	const BGM_VOLUME             = 0.35                               // Volume when music is fully faded in
 	const SFX_ENTITY_VOLUME      = 1.0                                // Volume on preloaded one-shot entities (retrigger uses this as baseline)
 	const COUNTDOWN_LAST_SECONDS = 5                                  // How many of the last seconds to play countdown sounds for
 
@@ -59,6 +59,19 @@ export namespace SoundManager {
 		preloadSfx()
 
 		engine.addSystem(systemUpdateSound)
+
+		// Bind the game joined event to start the background music
+		eventBus.on(ClientEvents.ON_GAME_JOINED, () => {
+			startBgm()
+		})
+
+		eventBus.on(ClientEvents.ON_MY_ROLL_START, () => {
+			playSound(sfx.alert)
+		})
+
+		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, () => {
+			playSound(sfx.swish)
+		})
 	}
 
 
