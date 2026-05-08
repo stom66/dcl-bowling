@@ -14,14 +14,25 @@ import { ClearEmote, PlayBowlingAnimation } from 'src/client/emotes'
 import { ButtonAction, Divider, InfoRow, SectionHeader } from 'src/client/ui-screen/utils/components'
 import { tweenValue } from './utils/tweens'
 
+
+// MARK: Vars
+declare var process: {
+	env: {
+		NODE_ENV: string
+	}
+}
+const env = process.env.NODE_ENV
+const SHOW_DEV = env == "development"
+const SHOW_DEBUG = true
+
 const clientStore = ClientStore.getInstance()
 
 const PANEL_HIDDEN  = -300
-const PANEL_VISIBLE = 40
-const BTN_HIDDEN    = -84
-const BTN_VISIBLE   = 250
-var btnRight        : number = BTN_VISIBLE
-var panelLeft       : number = PANEL_VISIBLE
+const PANEL_VISIBLE = 48
+const BTN_HIDDEN    = -110
+const BTN_VISIBLE   = 240
+var btnRight        : number = SHOW_DEV? BTN_VISIBLE : BTN_HIDDEN
+var panelLeft       : number = SHOW_DEV? PANEL_VISIBLE : PANEL_HIDDEN
 
 
 
@@ -78,7 +89,7 @@ export function DebugUI() {
 				alignItems    : 'flex-start',
 				justifyContent: 'space-between',
 				padding       : '10px',
-				position      : { left: panelLeft, top: 132 },
+				position      : { left: panelLeft, top: 148 },
 				positionType: "absolute",
 				borderRadius  : { topLeft: 8, topRight: 24, bottomLeft: 8, bottomRight: 24 },
 				borderColor   : Color4.fromHexString("#4C9581FF"),
@@ -89,17 +100,17 @@ export function DebugUI() {
 
 		<UiEntity 
 				uiTransform={{ 
-					width: '48', 
-					height: '32',
+					width       : '58', 
+					height      : '32',
 					borderRadius: 16,
-					borderWidth: 3,
-					borderColor: Color4.fromHexString("#44B596FF"),
+					borderWidth : 3,
+					borderColor : Color4.fromHexString("#44B596FF"),
 					positionType: 'absolute',
-					position: { top: -36, right: btnRight },
-					}}
+					position    : { top: -36, right: btnRight },
+				}}
 				uiText={{
-					value: "<-->",
-					fontSize: 14,
+					value: "[debug]",
+					fontSize: 10,
 				}}
 				onMouseDown={() => {
 					if (panelLeft > PANEL_HIDDEN) {
@@ -112,55 +123,65 @@ export function DebugUI() {
 				}}
 			/>
 			
-			<SectionHeader title="Debug Menu" />
-			
-			<ButtonAction textLabel="GoTo Lobby" callback={() => { 
-				movePlayerTo({ 
-					newRelativePosition: Vector3.create(16, 0, 11),
-					cameraTarget: Vector3.create(16, 1, 15),
-				}) }} />
+			<UiEntity
+				uiTransform={{
+					width         : '100%',
+					height        : 'auto',
+					flexDirection : 'column',
+					display       : SHOW_DEV ? 'flex' : 'none',
+				}}
+			>
+				<SectionHeader title="Debug Menu" />
 				
-			<UiEntity
-				uiTransform={{ 
-					width: '100%', 
-					height: 'auto',
-					flexDirection: 'row',
-					justifyContent: 'space-between',
-					alignItems: 'center',
-					padding: { top: 16, bottom: 10, left: 0, right: 0 },
-				}}
-				>
+				<ButtonAction textLabel="GoTo Lobby" callback={() => { 
+					movePlayerTo({ 
+						newRelativePosition: Vector3.create(16, 0, 11),
+						cameraTarget: Vector3.create(16, 1, 15),
+					}) }} />
+					
+				<UiEntity
+					uiTransform={{ 
+						width: '100%', 
+						height: 'auto',
+						flexDirection: 'row',
+						justifyContent: 'space-between',
+						alignItems: 'center',
+						padding: { top: 16, bottom: 10, left: 0, right: 0 },
+					}}
+					>
 
-				<ButtonAction textLabel="StartGame Lane 2" callback={() => { ClientMessaging.requestJoinLane(2) }} />
-				<ButtonAction textLabel="StartGame Lane 3" callback={() => { ClientMessaging.requestJoinLane(3) }} />
-				<ButtonAction textLabel="StartGame Lane 6" callback={() => { ClientMessaging.requestJoinLane(6) }} />
-			</UiEntity>
-			<UiEntity
-				uiTransform={{ 
-					width: '100%', 
-					height: 'auto',
-					flexDirection: 'row',
-					justifyContent: 'space-between',
-					alignItems: 'center',
-					padding: { top: 16, bottom: 10, left: 0, right: 0 },
-				}}
-				>
-				<ButtonAction textLabel="Strike" callback={() => { BowlStrike() }} />
-				<ButtonAction textLabel="Spare 1" callback={() => { BowlSpare1() }} />
-				<ButtonAction textLabel="Spare 2" callback={() => { BowlSpare2() }} />
+					<ButtonAction textLabel="StartGame Lane 2" callback={() => { ClientMessaging.requestJoinLane(2) }} />
+					<ButtonAction textLabel="StartGame Lane 3" callback={() => { ClientMessaging.requestJoinLane(3) }} />
+					<ButtonAction textLabel="StartGame Lane 6" callback={() => { ClientMessaging.requestJoinLane(6) }} />
+				</UiEntity>
+				<UiEntity
+					uiTransform={{ 
+						width: '100%', 
+						height: 'auto',
+						flexDirection: 'row',
+						justifyContent: 'space-between',
+						alignItems: 'center',
+						padding: { top: 16, bottom: 10, left: 0, right: 0 },
+					}}
+					>
+					<ButtonAction textLabel="Strike" callback={() => { BowlStrike() }} />
+					<ButtonAction textLabel="Spare 1" callback={() => { BowlSpare1() }} />
+					<ButtonAction textLabel="Spare 2" callback={() => { BowlSpare2() }} />
+				</UiEntity>
+
+				{/* 			
+				<Divider />
+				<ButtonAction textLabel="Discord | newPlayer()" callback={() => { newPlayer(clientStore.getDisplayName(), clientStore.getUserId()) }} />
+				<ButtonAction textLabel="playerWateredPlants(stom, 60)" callback={() => { playerWateredPlants("stom", 60) }} /> 
+				<ButtonAction textLabel="Discord | perfectGame(stom)" callback={() => { perfectGame("stom") }} />
+				*/}
+				
+				
+				<Divider />
 			</UiEntity>
 			
 
 			
-			{/* 			
-			<Divider />
-			<ButtonAction textLabel="Discord | newPlayer()" callback={() => { newPlayer(clientStore.getDisplayName(), clientStore.getUserId()) }} />
-			<ButtonAction textLabel="playerWateredPlants(stom, 60)" callback={() => { playerWateredPlants("stom", 60) }} /> 
-			<ButtonAction textLabel="Discord | perfectGame(stom)" callback={() => { perfectGame("stom") }} />
-			*/}
-			
-			
-			<Divider />
 			
 			
 			<SectionHeader title="ClientState" />
