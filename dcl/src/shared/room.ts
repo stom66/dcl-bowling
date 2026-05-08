@@ -19,6 +19,7 @@ export enum MessageType {
 	NOTIFY_JOIN_GAME            = 'notifyJoinGame',
 	NOTIFY_PLAYER_ROLL_START    = 'notifyPlayerRollStart',
 	NOTIFY_PLAYER_ROLL_PLAYBACK = 'notifyPlayerRollPlayback',
+	NOTIFY_PLAYER_ROLL_REQUEST_RECEIVED = 'notifyPlayerRollRequestReceived',
 }
 
 // MARK: Message schemas
@@ -34,6 +35,11 @@ const rollRequestSchema = {
 	power     : Schemas.Number,
 	spin      : Schemas.Number,
 	rollIndex : Schemas.Number,
+}
+
+const notifyRollRequestReceivedSchema = {
+	userId: Schemas.String,
+	sentAt: Schemas.Int64,
 }
 
 const rollReplaySchema = {
@@ -89,6 +95,9 @@ const Messages = {
 		...userIdMessageBaseSchema,
 		pinStanding: Schemas.Array(Schemas.Boolean),
 		rollStartTimestamp: Schemas.Int64,
+	}),
+	[MessageType.NOTIFY_PLAYER_ROLL_REQUEST_RECEIVED]   : Schemas.Map({
+		...notifyRollRequestReceivedSchema
 	}),
 	[MessageType.NOTIFY_PLAYER_ROLL_PLAYBACK]: Schemas.Map({
 		...rollReplaySchema
