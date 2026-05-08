@@ -29,7 +29,7 @@ const SHOW_DEBUG = true
 const clientStore = ClientStore.getInstance()
 
 const PANEL_HIDDEN  = -300
-const PANEL_VISIBLE = 48
+const PANEL_VISIBLE = 64
 const BTN_HIDDEN    = -110
 const BTN_VISIBLE   = 240
 var btnRight        : number = IS_DEV? BTN_VISIBLE : BTN_HIDDEN
@@ -95,7 +95,7 @@ export function DebugUI() {
 				alignItems    : 'flex-start',
 				justifyContent: 'space-between',
 				padding       : '10px',
-				position      : { left: panelLeft, top: 148 },
+				position      : { left: panelLeft, top: 256 },
 				positionType: "absolute",
 				borderRadius  : { topLeft: 8, topRight: 24, bottomLeft: 8, bottomRight: 24 },
 				borderColor   : Color4.fromHexString("#4C9581FF"),
