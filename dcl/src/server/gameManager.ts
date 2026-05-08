@@ -107,7 +107,9 @@ class GameManager {
 	/**
 	 * Initialise lane state for a fresh game (scorecards, indices, runtime),
 	 * notify players that the game has started and make sure the frame watcher
-	 * system is running.
+	 * system is running. Synced phase becomes WAITING for
+	 * {@link GameSettings.GAME_START_INITIAL_DELAY} so clients see
+	 * GAME_STARTING -> WAITING before the first FRAME_START.
 	 */
 	private startGame(laneIndex: number) {
 		console.log('gameManager: startGame: laneIndex', laneIndex)
@@ -122,20 +124,32 @@ class GameManager {
 		LaneStore.setCurrentTurn(laneIndex, 0, 0, '', 0, 0)
 		LaneStore.initLaneScorecards(laneIndex)
 
-		LaneStore.setPhase(laneIndex, LanePhase.WAITING)
-
-		this.runtime.set(laneIndex, {
-			phase       : LanePhase.WAITING,
-			phaseEndTime: 0,
-			pinStanding : newFullPinRack(),
-		})
+		const rt = this.getRuntime(laneIndex)
+		rt.pinStanding = newFullPinRack()
 
 		this.ensureFrameWatcherRunning()
 
-		// Kick off the first frame for the first player. The extra delay here
-		// gives clients time to react to phase=WAITING before the first
-		// frame-start notification goes out.
-		this.startPlayerFrame(laneIndex, 0, 0, GameSettings.GAME_START_INITIAL_DELAY)
+		this.schedulePhase(laneIndex, LanePhase.WAITING, GameSettings.GAME_START_INITIAL_DELAY)
+	}
+
+
+	// =========================================================================
+	// MARK: onWaitingPhaseComplete
+	/**
+	 * After the post-countdown WAITING buffer, opens the first frame using the
+	 * same FRAME_START timing as later frames.
+	 */
+	private onWaitingPhaseComplete(laneIndex: number) {
+		if (LaneStore.getLaneUserIds(laneIndex).length === 0) {
+			console.log('gameManager: onWaitingPhaseComplete: no players, aborting')
+			this.endGame(laneIndex)
+			return
+		}
+
+		const playerIndex = LaneStore.getCurrentFramePlayerIndex(laneIndex)
+		const frameIndex  = LaneStore.getCurrentFrameIndex(laneIndex)
+
+		this.startPlayerFrame(laneIndex, playerIndex, frameIndex, GameSettings.FRAME_DELAY_BEFORE_ROLL_START)
 	}
 
 
@@ -144,7 +158,7 @@ class GameManager {
 	// =========================================================================
 	/**
 	 * Begin a frame for a specific player. Resets pin rack + roll index and
-	 * schedules the FRAME_START_DELAY phase. The phase change auto-fires
+	 * schedules the FRAME_START phase. The phase change auto-fires
 	 * `ON_MY_FRAME_START` / `ON_GROUP_FRAME_START` on each client via `MyLane`.
 	 */
 	private startPlayerFrame(
@@ -472,6 +486,9 @@ class GameManager {
 	/** Route a completed phase to the function that advances from it. */
 	private onPhaseComplete(laneIndex: number, completed: LanePhase) {
 		switch (completed) {
+			case LanePhase.WAITING:
+				this.onWaitingPhaseComplete(laneIndex)
+				break
 			case LanePhase.FRAME_START:
 				this.startPlayerRoll(laneIndex)
 				break
