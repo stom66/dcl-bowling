@@ -22,8 +22,8 @@ declare var process: {
 		NODE_ENV: string
 	}
 }
-const env = process.env.NODE_ENV
-const SHOW_DEV = env == "development"
+const env        = process.env.NODE_ENV
+const IS_DEV     = env == "development"
 const SHOW_DEBUG = true
 
 const clientStore = ClientStore.getInstance()
@@ -32,8 +32,8 @@ const PANEL_HIDDEN  = -300
 const PANEL_VISIBLE = 48
 const BTN_HIDDEN    = -110
 const BTN_VISIBLE   = 240
-var btnRight        : number = SHOW_DEV? BTN_VISIBLE : BTN_HIDDEN
-var panelLeft       : number = SHOW_DEV? PANEL_VISIBLE : PANEL_HIDDEN
+var btnRight        : number = IS_DEV? BTN_VISIBLE : BTN_HIDDEN
+var panelLeft       : number = IS_DEV? PANEL_VISIBLE : PANEL_HIDDEN
 
 
 
@@ -134,7 +134,7 @@ export function DebugUI() {
 					width         : '100%',
 					height        : 'auto',
 					flexDirection : 'column',
-					display       : SHOW_DEV ? 'flex' : 'none',
+					display       : IS_DEV || SHOW_DEBUG ? 'flex' : 'none',
 				}}
 			>
 				<SectionHeader title="Debug Menu" />
