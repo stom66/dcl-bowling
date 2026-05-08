@@ -39,12 +39,15 @@ export const ButtonAction = ({ textLabel, callback }: { textLabel: string; callb
 		<Button
 			uiTransform={{
 				width: "100%",
-				height: 40,
+				height: 'auto',
+				padding: { top: 4, bottom: 6, left: 8, right: 8 },
+				alignContent: 'center',
 				margin: 4,
 				borderRadius: 8,
 				borderColor: Color4.fromHexString("#508894"),
 				borderWidth: 2
 			}}
+			textAlign='middle-center'
 			value={textLabel}
 			fontSize={14}
 			onMouseDown={() => {

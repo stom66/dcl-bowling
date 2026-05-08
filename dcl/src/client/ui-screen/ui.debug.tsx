@@ -1,4 +1,4 @@
-import ReactEcs, { Button, UiEntity} from '@dcl/sdk/react-ecs'
+import ReactEcs, { Button, Label, UiEntity} from '@dcl/sdk/react-ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
 import { movePlayerTo } from '~system/RestrictedActions'
 
@@ -139,29 +139,35 @@ export function DebugUI() {
 						cameraTarget: Vector3.create(16, 1, 15),
 					}) }} />
 					
+
+				<Label value="Start Game on Lane" />
 				<UiEntity
 					uiTransform={{ 
 						width: '100%', 
-						height: 'auto',
+						height: '64',
 						flexDirection: 'row',
 						justifyContent: 'space-between',
 						alignItems: 'center',
-						padding: { top: 16, bottom: 10, left: 0, right: 0 },
+						padding: { top: 8, bottom: 16, left: 0, right: 0 },
 					}}
 					>
 
-					<ButtonAction textLabel="StartGame Lane 2" callback={() => { ClientMessaging.requestJoinLane(2) }} />
-					<ButtonAction textLabel="StartGame Lane 3" callback={() => { ClientMessaging.requestJoinLane(3) }} />
-					<ButtonAction textLabel="StartGame Lane 6" callback={() => { ClientMessaging.requestJoinLane(6) }} />
+					<ButtonAction textLabel="1" callback={() => { ClientMessaging.requestJoinLane(1) }} />
+					<ButtonAction textLabel="2" callback={() => { ClientMessaging.requestJoinLane(2) }} />
+					<ButtonAction textLabel="3" callback={() => { ClientMessaging.requestJoinLane(3) }} />
+					<ButtonAction textLabel="4" callback={() => { ClientMessaging.requestJoinLane(4) }} />
+					<ButtonAction textLabel="5" callback={() => { ClientMessaging.requestJoinLane(5) }} />
+					<ButtonAction textLabel="6" callback={() => { ClientMessaging.requestJoinLane(6) }} />
 				</UiEntity>
+				<Label value="Bowl-O-Tron" />
 				<UiEntity
 					uiTransform={{ 
-						width: '100%', 
-						height: 'auto',
-						flexDirection: 'row',
+						width         : '100%', 
+						height        : 'auto',
+						flexDirection : 'row',
 						justifyContent: 'space-between',
-						alignItems: 'center',
-						padding: { top: 16, bottom: 10, left: 0, right: 0 },
+						alignItems    : 'center',
+						padding       : { top:  8, bottom: 16, left: 0, right: 0 },
 					}}
 					>
 					<ButtonAction textLabel="Strike" callback={() => { BowlStrike() }} />
