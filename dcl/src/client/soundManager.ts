@@ -50,6 +50,7 @@ export namespace SoundManager {
 		Transform.create(bgmEntity, {})
 		AudioSource.create(bgmEntity, {
 			audioClipUrl: sfx.music[Math.floor(Math.random() * sfx.music.length)],
+			loop        : true,
 			global      : true,
 			playing     : false,
 			volume      : BGM_VOLUME,
