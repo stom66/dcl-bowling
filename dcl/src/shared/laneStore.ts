@@ -4,6 +4,7 @@ import * as LaneComponent from "src/shared/components/lane"
 import { ComponentManager } from "src/shared/components/componentManager"
 import { LanePhase } from "src/shared/enums"
 import { LanePlayers, LaneScores as LaneScoresRow, LaneSnapshot } from "src/shared/types/shared-types"
+import { GameSettings } from "./settings"
 
 
 /**
@@ -79,7 +80,7 @@ export namespace LaneStore {
 
 		scores.scores = (gameData?.players ?? []).map((p) => ({
 			userId: p.userId,
-			frames: Array.from({ length: 10 }, () => [] as number[]),
+			frames: Array.from({ length: GameSettings.MAX_FRAMES_PER_GAME }, () => [] as number[]),
 		}))
 	}
 
