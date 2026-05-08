@@ -43,10 +43,10 @@ dialogue = [
 			'Want to join a game of bowling?        \n\n\nChoose a lane'
 		),
 		isQuestion: true,
-		typeSpeed: -1,
+		typeSpeed: -10,
 		windowHeight: 'auto',
 		buttons: [
-			{ label: 'Next page', goToDialog: D.lanes34, size: 'auto' },
+			{ label: 'Next page', goToDialog: D.lanes12, size: 'auto' },
 			{ label: 'Cancel', goToDialog: D.bye, size: 'auto' },
 			{ label: 'Lane 1', goToDialog: D.joined, size: 'auto', triggeredActions: mkJoinLane(1) },
 			{ label: 'Lane 2', goToDialog: D.joined, size: 'auto', triggeredActions: mkJoinLane(2) }
@@ -123,13 +123,13 @@ export function setupBowlingHostNpc(): void {
 		{
 			position: Vector3.create(16, 0.3, 14.5),
 			rotation: Quaternion.fromEulerDegrees(0, 180, 0),
-			scale: Vector3.create(1, 1, 1)
+			scale   : Vector3.create(1, 1, 1)
 		},
 		{
-			type: npc.NPCType.AVATAR,
-			name: 'Bowling Host',
+			type     : npc.NPCType.AVATAR,
+			name     : 'Bowling Host',
 			bodyShape: 'urn:decentraland:off-chain:base-avatars:BaseMale',
-			eyeColor: Color3.create(0.22, 0.49, 0.69),
+			eyeColor : Color3.create(0.22, 0.49, 0.69),
 			skinColor: Color3.create(0.98, 0.82, 0.51),
 			hairColor: Color3.create(0.15, 0.12, 0.1),
 			wearables: [
@@ -140,12 +140,13 @@ export function setupBowlingHostNpc(): void {
 				'urn:decentraland:off-chain:base-avatars:concrete_pants',
 				'urn:decentraland:off-chain:base-avatars:yellow_tshirt'
 			],
-			faceUser: true,
-			reactDistance: 5,
-			hoverText: 'Join bowling',
-			onActivate: (_other: Entity) => {
+			faceUser     : true,
+			reactDistance: 6,
+			hoverText    : 'Join bowling',
+			onActivate   : (_other: Entity) => {
 				npc.talk(bowlingHostNpc, script, D.lanes12)
-			}
+			},
+			
 		}
 	)
 }
