@@ -32,4 +32,6 @@ export class GameSettings {
 	static ROLL_REPLAY_DURATION           = 1000 * 10
 	static ROLL_REPLAY_ANIM_DURATION      = 1000 * 7     // duration of the bowling animation which plays before the replay start - time before the animation releases the ball
 
+	static SHOW_NON_GROUP_ROLL_VISUALS = true
+
 }
