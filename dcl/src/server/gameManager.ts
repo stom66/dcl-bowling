@@ -53,23 +53,33 @@ class GameManager {
 			return
 		}
 
+		// Did they request an invalid lane?
 		if (laneIndex < 0 || laneIndex >= GameSettings.MAX_LANES) {
 			console.log('gameManager: onPlayerRequestJoin: laneIndex out of range', laneIndex)
 			return
 		}
 
-		if (LaneStore.getLaneUserIds(laneIndex).includes(userId)) {
+		// Are they already in a game?
+		if (LaneStore.findLaneByUserId(userId)) {
 			console.log('gameManager: onPlayerRequestJoin: player already in game, ignoring')
 			return
 		}
 
+		// Is the game already started?
 		const phase = LaneStore.getPhase(laneIndex)
 		if (phase !== LanePhase.NONE && phase !== LanePhase.GAME_STARTING) {
 			console.log('gameManager: onPlayerRequestJoin: game already started, ignoring')
 			return
 		}
 
-		const isFirstPlayer = LaneStore.getLaneUserIds(laneIndex).length === 0
+		// Is there space in the lane?
+		const lanePlayerCount = LaneStore.getLaneUserIds(laneIndex).length
+		if (lanePlayerCount >= GameSettings.MAX_PLAYERS_PER_GAME) {
+			console.log('gameManager: onPlayerRequestJoin: lane is full, ignoring')
+			return
+		}
+
+		const isFirstPlayer = lanePlayerCount === 0
 
 		// await so profile fetch completes before notifies / any follow-up logic
 		const displayName = await userProfileCache.getDisplayName(userId)
