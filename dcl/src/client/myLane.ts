@@ -144,22 +144,22 @@ export namespace MyLane {
 		if (prev === next) return
 
 		const myUserId  = ClientStore.getInstance().getUserId()
-		const turnIsMe  = snapshot.currentFrameUserId === myUserId
+		const isMyTurn  = snapshot.currentFrameUserId === myUserId
 
 		if (prev === LanePhase.GAME_STARTING && next === LanePhase.WAITING) {
 			eventBus.emit(ClientEvents.ON_GROUP_GAME_START, snapshot)
 		}
 
 		if (next === LanePhase.FRAME_START) {
-			eventBus.emit(turnIsMe ? ClientEvents.ON_MY_FRAME_START : ClientEvents.ON_GROUP_FRAME_START, snapshot)
+			eventBus.emit(isMyTurn ? ClientEvents.ON_MY_FRAME_START : ClientEvents.ON_GROUP_FRAME_START, snapshot)
 		}
 
 		if (next === LanePhase.ROLL_END) {
-			eventBus.emit(turnIsMe ? ClientEvents.ON_MY_ROLL_END : ClientEvents.ON_GROUP_ROLL_END, { userId: snapshot.currentFrameUserId })
+			eventBus.emit(isMyTurn ? ClientEvents.ON_MY_ROLL_END : ClientEvents.ON_GROUP_ROLL_END, { userId: snapshot.currentFrameUserId })
 		}
 
 		if (next === LanePhase.FRAME_END) {
-			eventBus.emit(turnIsMe ? ClientEvents.ON_MY_FRAME_END : ClientEvents.ON_GROUP_FRAME_END, { userId: snapshot.currentFrameUserId })
+			eventBus.emit(isMyTurn ? ClientEvents.ON_MY_FRAME_END : ClientEvents.ON_GROUP_FRAME_END, { userId: snapshot.currentFrameUserId })
 		}
 
 		if (next === LanePhase.NONE && prev !== LanePhase.NONE) {
