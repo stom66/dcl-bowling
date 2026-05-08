@@ -5,6 +5,7 @@ import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 import { ClientMessaging } from "./clientMessaging";
 import { eventBus } from "src/shared/utils/eventBus";
 import { ClientEvents } from "./clientEvents";
+import { sfx, SoundManager } from "./soundManager";
 
 
 enum CONTROL_TYPE {
@@ -13,12 +14,14 @@ enum CONTROL_TYPE {
 	STRENGTH  = "strength",
 }
 
+const ARROW_SCALE = 1.25
+
 /** Lateral swing ±this many meters around the lane X. */
 const POSITION_SWING_AMPLITUDE = 0.6
 const POSITION_OSCILLATION_SPEED = 1.7
 
 const DIRECTION_YAW_HALF_RANGE_DEG = 30
-const DIRECTION_OSCILLATION_SPEED = 1.5
+const DIRECTION_OSCILLATION_SPEED = 1.1
 
 const STRENGTH_OSCILLATION_SPEED = 2.2
 
@@ -60,7 +63,10 @@ export class BowlingControls {
 
 		// Create the arrow entity
 		this.arrow = engine.addEntity()
-		Transform.create(this.arrow, { position: lanePosition })
+		Transform.create(this.arrow, { 
+			position: lanePosition,
+			scale: Vector3.create(ARROW_SCALE, ARROW_SCALE, ARROW_SCALE)
+		})
 		GltfContainer.create(this.arrow, {
 			src: "assets/models/control.direction.gltf",
 			visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
@@ -80,6 +86,8 @@ export class BowlingControls {
 
 		// Add the position animation system
 		engine.addSystem(this.sys_PositionAnimation)
+
+		
 
 		//this.ball = this.CreateBall()
 		//this.SpawnPins()
@@ -120,8 +128,10 @@ export class BowlingControls {
 
 	// MARK: On Arrow Interaction
 	OnArrowInteraction() {
-		switch (this.currentControlType) {
+		SoundManager.playSound(sfx.click)
 
+		switch (this.currentControlType) {
+			
 			case CONTROL_TYPE.STRENGTH:
 				console.log("bowlingControls: OnArrowInteraction: STRENGTH")
 				engine.removeSystem(this.sys_StrengthAnimation)
