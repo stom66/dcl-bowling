@@ -450,7 +450,12 @@ export class LaneVisuals {
 
 	// MARK: emitPlaybackStartByMembership
 	private emitPlaybackStartByMembership(data: NotifyPlayerRollPayload): void {
-		const laneIndex   = LaneStore.findLaneByUserId(data.userId) ?? 0
+		const laneIndex   = LaneStore.findLaneByUserId(data.userId)
+		if (!laneIndex) {
+			console.error('laneVisuals: emitPlaybackStartByMembership: laneIndex not found')
+			return
+		}
+
 		const myLaneIndex = ClientStore.getInstance().getLaneIndex()
 		if (laneIndex == myLaneIndex) {
 			eventBus.emit(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, data)
@@ -468,7 +473,12 @@ export class LaneVisuals {
 			return
 		}
 
-		const laneIndex = LaneStore.findLaneByUserId(userId) ?? -1
+		const laneIndex = LaneStore.findLaneByUserId(userId)
+		if (!laneIndex) {
+			console.error('laneVisuals: emitPlaybackEndByMembership: laneIndex not found')
+			return
+		}
+		
 		const myLane     = ClientStore.getInstance().getLaneIndex()
 		if (laneIndex == myLane) {
 			eventBus.emit(ClientEvents.ON_GROUP_ROLL_PLAYBACK_END, {})

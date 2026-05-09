@@ -45,7 +45,12 @@ export namespace ClientHandler {
 		if (data.userId === clientStore.getUserId()) {
 			eventBus.emit(ClientEvents.ON_MY_ROLL_START, data)
 		} else {
-			const laneIndex = LaneStore.findLaneByUserId(data.userId) ?? -1
+			const laneIndex = LaneStore.findLaneByUserId(data.userId)
+			if (!laneIndex) {
+				console.error('clientHandler: handleNotifyPlayerRollStart: laneIndex not found')
+				return
+			}
+
 			if (laneIndex == clientStore.getLaneIndex()) {
 				eventBus.emit(ClientEvents.ON_GROUP_ROLL_START, data)
 			} else {
@@ -60,7 +65,12 @@ export namespace ClientHandler {
 		console.log('ClientHandler: handleNotifyPlayerRollRequestReceived: data', data)
 		clockSync.updateOffset(data.sentAt)
 
-		const laneIndex = LaneStore.findLaneByUserId(data.userId) ?? -1
+		const laneIndex = LaneStore.findLaneByUserId(data.userId)
+		if (!laneIndex) {
+			console.error('clientHandler: handleNotifyPlayerRollRequestReceived: laneIndex not found')
+			return
+		}
+
 		if (laneIndex == clientStore.getLaneIndex()) {
 			eventBus.emit(ClientEvents.ON_GROUP_ROLL_REQUEST, data)
 		} else {
@@ -74,7 +84,11 @@ export namespace ClientHandler {
 		console.log('ClientHandler: handleNotifyPlayerRollPlayback: data', data)
 		clockSync.updateOffset(data.sentAt)
 
-		const laneIndex = LaneStore.findLaneByUserId(data.userId) ?? 0
+		const laneIndex = LaneStore.findLaneByUserId(data.userId)
+		if (!laneIndex) {
+			console.error('clientHandler: handleNotifyPlayerRollPlayback: laneIndex not found')
+			return
+		}
 
 		if (laneIndex === clientStore.getLaneIndex()) {
 			eventBus.emit(ClientEvents.ON_GROUP_ROLL_PLAYBACK_RECEIVED, data)

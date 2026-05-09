@@ -72,21 +72,36 @@ export namespace gameStateHandler {
 	function onNonGroupRollStart(data: NotifyPlayerRollStartPayload) {
 		console.log('gameStateHandler: onNonGroupRollStart: data', data)
 
-		const laneIndex = LaneStore.findLaneByUserId(data.userId) ?? 0
+		const laneIndex = LaneStore.findLaneByUserId(data.userId)
+		if (!laneIndex) {
+			console.error('gameStateHandler: onNonGroupRollStart: laneIndex not found')
+			return
+		}
+
 		createLaneVisuals(data, laneIndex)
 	}
 
 	function onGroupRollStart(data: NotifyPlayerRollStartPayload) {
 		console.log('gameStateHandler: onGroupRollStart: data', data)
 
-		const laneIndex = LaneStore.findLaneByUserId(data.userId) ?? 0
+		const laneIndex = LaneStore.findLaneByUserId(data.userId)
+		if (!laneIndex) {
+			console.error('gameStateHandler: onGroupRollStart: laneIndex not found')
+			return
+		}
+
 		createLaneVisuals(data, laneIndex)
 	}
 
 	function onMyRollStart(data: NotifyPlayerRollStartPayload) {
 		console.log('gameStateHandler: onMyRollStart: data', data)
 		
-		const laneIndex = LaneStore.findLaneByUserId(data.userId) ?? 0
+		const laneIndex = LaneStore.findLaneByUserId(data.userId)
+		if (!laneIndex) {
+			console.error('gameStateHandler: onMyRollStart: laneIndex not found')
+			return
+		}
+
 		const lv = createLaneVisuals(data,laneIndex)
 
 		if (!lv) return
@@ -106,7 +121,12 @@ export namespace gameStateHandler {
 		console.log('gameStateHandler: onRollPlaybackReceived: userId', data.userId)
 
 		
-		const laneIndex = LaneStore.findLaneByUserId(data.userId) ?? 0
+		const laneIndex = LaneStore.findLaneByUserId(data.userId)
+		if (!laneIndex) {
+			console.error('gameStateHandler: onRollPlaybackReceived: laneIndex not found')
+			return
+		}
+
 		const lv = laneVisuals[laneIndex]
 
 		if (!lv) {
