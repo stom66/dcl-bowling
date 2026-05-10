@@ -12,7 +12,7 @@ import { ClientStore } from 'src/client/clientStore'
 
 import { gameStateHandler } from 'src/client/gameStateHandler'
 import { MyLane } from 'src/client/myLane'
-import { setupBowlingHostNpc } from 'src/client/npcGameHost'
+import { setupBowlingHostNpc } from 'src/client/npcGameHost.new'
 
 import { SetupScreenUI } from 'src/client/ui-screen'
 import { setupLights } from 'src/client/lights'
@@ -39,7 +39,7 @@ export async function initClient() {
 
 	ComponentManager.init()
 	await ComponentManager.onClientReady()
-	
+
 	// Fire-and-forget: MyLane awaits CRDT discovery internally, then binds onChange.
 	void MyLane.init()
 

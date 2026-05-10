@@ -24,9 +24,9 @@ eventBus.on(ClientEvents.NOTIFY_LANE_STATE, (data: LaneSnapshot) => {
 
 	// Timing
 	if (data.currentRollStartTime) {
-		endTime = data.currentRollStartTime + GameSettings.ROLL_MAX_DURATION
+		endTime = clockSync.toLocalTime(data.currentRollStartTime) + GameSettings.ROLL_MAX_DURATION
 	} else {
-		endTime = data.gameStartTime
+		endTime = clockSync.toLocalTime(data.gameStartTime)
 	}
 
 	// Phase
