@@ -73,7 +73,7 @@ export namespace gameStateHandler {
 		console.log('gameStateHandler: onNonGroupRollStart: data', data)
 
 		const laneIndex = LaneStore.findLaneByUserId(data.userId)
-		if (!laneIndex) {
+		if (laneIndex === undefined) {
 			console.error('gameStateHandler: onNonGroupRollStart: laneIndex not found')
 			return
 		}
@@ -85,7 +85,7 @@ export namespace gameStateHandler {
 		console.log('gameStateHandler: onGroupRollStart: data', data)
 
 		const laneIndex = LaneStore.findLaneByUserId(data.userId)
-		if (!laneIndex) {
+		if (laneIndex === undefined) {
 			console.error('gameStateHandler: onGroupRollStart: laneIndex not found')
 			return
 		}
@@ -97,7 +97,7 @@ export namespace gameStateHandler {
 		console.log('gameStateHandler: onMyRollStart: data', data)
 		
 		const laneIndex = LaneStore.findLaneByUserId(data.userId)
-		if (!laneIndex) {
+		if (laneIndex === undefined) {
 			console.error('gameStateHandler: onMyRollStart: laneIndex not found')
 			return
 		}
@@ -122,7 +122,7 @@ export namespace gameStateHandler {
 
 		
 		const laneIndex = LaneStore.findLaneByUserId(data.userId)
-		if (!laneIndex) {
+		if (laneIndex === undefined) {
 			console.error('gameStateHandler: onRollPlaybackReceived: laneIndex not found')
 			return
 		}

@@ -46,7 +46,7 @@ export namespace ClientHandler {
 			eventBus.emit(ClientEvents.ON_MY_ROLL_START, data)
 		} else {
 			const laneIndex = LaneStore.findLaneByUserId(data.userId)
-			if (!laneIndex) {
+			if (laneIndex === undefined) {
 				console.error('clientHandler: handleNotifyPlayerRollStart: laneIndex not found')
 				return
 			}
@@ -66,7 +66,7 @@ export namespace ClientHandler {
 		clockSync.updateOffset(data.sentAt)
 
 		const laneIndex = LaneStore.findLaneByUserId(data.userId)
-		if (!laneIndex) {
+		if (laneIndex === undefined) {
 			console.error('clientHandler: handleNotifyPlayerRollRequestReceived: laneIndex not found')
 			return
 		}
@@ -85,7 +85,7 @@ export namespace ClientHandler {
 		clockSync.updateOffset(data.sentAt)
 
 		const laneIndex = LaneStore.findLaneByUserId(data.userId)
-		if (!laneIndex) {
+		if (laneIndex === undefined) {
 			console.error('clientHandler: handleNotifyPlayerRollPlayback: laneIndex not found')
 			return
 		}

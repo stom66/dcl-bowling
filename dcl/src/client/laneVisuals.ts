@@ -451,7 +451,7 @@ export class LaneVisuals {
 	// MARK: emitPlaybackStartByMembership
 	private emitPlaybackStartByMembership(data: NotifyPlayerRollPayload): void {
 		const laneIndex   = LaneStore.findLaneByUserId(data.userId)
-		if (!laneIndex) {
+		if (laneIndex === undefined) {
 			console.error('laneVisuals: emitPlaybackStartByMembership: laneIndex not found')
 			return
 		}
@@ -474,7 +474,7 @@ export class LaneVisuals {
 		}
 
 		const laneIndex = LaneStore.findLaneByUserId(userId)
-		if (!laneIndex) {
+		if (laneIndex === undefined) {
 			console.error('laneVisuals: emitPlaybackEndByMembership: laneIndex not found')
 			return
 		}
@@ -715,11 +715,7 @@ function replaySampleLaneLocal(track: replayKeyframes, elapsed: number): Vector3
 	if (t1 <= t0) return next.position
 
 	let u = (elapsed - t0) / (t1 - t0)
-	if (u < 0) {
-		u = 0
-	} else if (u > 1) {
-		u = 1
-	}
+	u = Math.max(0, Math.min(1, u))
 	return Vector3.lerp(p0, next.position, u)
 }
 
@@ -737,11 +733,8 @@ function replaySampleRotation(track: replayKeyframes, elapsed: number): Quaterni
 		return storedRotationToQuaternion(next.rotation)
 	}
 	let u = (elapsed - t0) / (t1 - t0)
-	if (u < 0) {
-		u = 0
-	} else if (u > 1) {
-		u = 1
-	}
+	u = Math.max(0, Math.min(1, u))
+
 	const q1 = storedRotationToQuaternion(next.rotation)
 	return replaySlerpQuaternion(q0, q1, u)
 }
