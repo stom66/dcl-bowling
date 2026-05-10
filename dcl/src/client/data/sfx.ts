@@ -48,4 +48,19 @@ export const sfx = {
 		"assets/sfx/cursor_style_5b.mp3",
 	],
 
+	collisionPinHitPin: [
+		"assets/sfx/impactGeneric_light_000.wav",
+		"assets/sfx/impactGeneric_light_001.wav",
+		"assets/sfx/impactGeneric_light_002.wav",
+		"assets/sfx/impactGeneric_light_003.wav",
+		"assets/sfx/impactGeneric_light_004.wav",
+	],
+	collisionBallHitPin: [
+		"assets/sfx/impactWood_light_000.wav",
+		"assets/sfx/impactWood_light_001.wav",
+		"assets/sfx/impactWood_light_002.wav",
+		"assets/sfx/impactWood_light_003.wav",
+		"assets/sfx/impactWood_light_004.wav",
+	],
+
 }
