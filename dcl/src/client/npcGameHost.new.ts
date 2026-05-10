@@ -56,10 +56,12 @@ export function setupBowlingHostNpc(): void {
 
 	TriggerArea.setSphere(triggerZone, ColliderLayer.CL_PLAYER)
 	triggerAreaEventsSystem.onTriggerEnter(triggerZone, (event) => {
+		if (event.trigger && event.trigger.entity !== engine.PlayerEntity) return
 		console.log('Player entered trigger zone')
 		ShowJoinGameUI()
 	})
 	triggerAreaEventsSystem.onTriggerExit(triggerZone, (event) => {
+		if (event.trigger && event.trigger.entity !== engine.PlayerEntity) return
 		console.log('Player exited trigger zone')
 		HideJoinGameUI()
 	})
