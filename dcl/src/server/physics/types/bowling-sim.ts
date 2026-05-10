@@ -35,6 +35,23 @@ export type SimulationRunResult = {
 	gutterBall    : boolean
 	/** Wall time for this stage physics in `BowlingPhysicsSimulator.simulateRoll`, or compression in `compressSimulationResult`. */
 	computeTimeMs : number
+
+	// New stuff for better playback
+	ballFinalPosition      : Vector3Type // Used by the camera
+	ballFinalTimestamp     : number      // Used by the camera
+	sfxBallHitPinTimestamps: number[]    // Used by the sound manager
+	sfxPinHitPinTimestamps : number[]    // Used by the sound manager
+}
+
+
+export type SimulationCollision = {
+	timestamp: number
+	type     : COLLISION_TYPE
+}
+
+export enum COLLISION_TYPE {
+	BALL_HIT_PIN = 'ballHitPin',
+	PIN_HIT_PIN  = 'pinHitPin',
 }
 
 /** Return of `getSimulationResults`: raw and optional keyframe-reduced tracks plus pin bookkeeping. */
@@ -45,6 +62,12 @@ export type SimulationResult = {
 	gutterBall       : boolean
 	finalPinStates   : boolean[]
 	startingPinStates: boolean[]
+
+	// New stuff for better playback
+	ballFinalPosition      : Vector3Type // Used by the camera
+	ballFinalTimestamp     : number      // Used by the camera
+	sfxBallHitPinTimestamps: number[]    // Used by the sound manager
+	sfxPinHitPinTimestamps : number[]    // Used by the sound manager
 }
 
 /** Keyframe optimizer only; not used by physics integration (see `SimulationSettings.velocityRestEpsilon` for sim early-stop). */

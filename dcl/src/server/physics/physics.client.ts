@@ -45,15 +45,20 @@ export function getSimulationResults(
 		: original
 
 	return {
-		original         : original,
-		compressed       : compressed,
-		duration         : compressed.duration,
-		gutterBall       : compressed.gutterBall,
-		finalPinStates   : [...compressed.finalPinStates],
-		startingPinStates: Array.from(
+		original                   : original,
+		compressed                 : compressed,
+		duration                   : compressed.duration,
+		gutterBall                 : compressed.gutterBall,
+		finalPinStates             : [...compressed.finalPinStates],
+		startingPinStates          : Array.from(
 			{ length: PIN_LANE_LOCAL_POSITIONS.length },
 			(_, index) => input.pinStates[index] ?? true,
 		),
+
+		ballFinalPosition       : compressed.ballFinalPosition,
+		ballFinalTimestamp      : compressed.ballFinalTimestamp,
+		sfxBallHitPinTimestamps : [...compressed.sfxBallHitPinTimestamps],
+		sfxPinHitPinTimestamps  : [...compressed.sfxPinHitPinTimestamps],
 	}
 }
 

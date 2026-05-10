@@ -7,6 +7,7 @@ export type {
 	OptimizationSettings,
 	SimObjectKeyframe,
 	SimObjectKeyframes,
+	SimulationCollision,
 	SimulationInput,
 	SimulationResult,
 	SimulationRunResult,

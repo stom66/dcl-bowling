@@ -2,11 +2,10 @@ import * as utils from "@dcl-sdk/utils"
 import { Animator, EasingFunction, engine, Entity, GltfContainer, GltfContainerLoadingState, LoadingState, Transform, Tween, TweenSequence, tweenSystem } from "@dcl/sdk/ecs"
 import { Quaternion, Vector3 } from "@dcl/sdk/math"
 
-import { resolveSimulationSettings } from "src/server/physics/physics.client"
 import { PIN_LANE_LOCAL_POSITIONS } from "src/server/physics/physics.pin-layout"
 import { SimObjectKeyframes } from "src/server/physics/types"
 import { DEFAULT_STORED_ROTATION, storedRotationToQuaternion } from "src/server/physics/physics.utils"
-import { NotifyPlayerRollPayload, RollPayload, SimObjectKeyframe } from "src/shared/types/shared-types"
+import { NotifyPlayerRollPayload, SimObjectKeyframe } from "src/shared/types/shared-types"
 import { ClientEvents, eventBus } from "src/shared/utils/eventBus"
 
 import { ClientStore } from "src/client/clientStore"
@@ -23,12 +22,20 @@ type replayKeyframes = {
 	nextRotation   : SimObjectKeyframe | undefined,
 }
 
+type ReplaySfxEventKind = 'ballHitPin' | 'pinHitPin'
+
+type ReplaySfxEvent = {
+	time: number
+	kind: ReplaySfxEventKind
+}
+
 type ReplayState = {
-	//data               : RollPayload
 	elapsed            : number
 	duration           : number
 	ballKeyframes      : replayKeyframes
 	pinsKeyframes      : replayKeyframes[]
+	sfxEvents          : ReplaySfxEvent[]
+	nextSfxIndex       : number
 
 	onComplete?        : () => void
 }
@@ -525,7 +532,9 @@ export class LaneVisuals {
 					nextRotation   : replayGetNextKeyframeWithRotation(pins.keyframes, 0),
 				}
 			}),
-			onComplete:  onComplete
+			sfxEvents   : mergeReplaySfxEvents(data.sfxBallHitPinTimestamps ?? [], data.sfxPinHitPinTimestamps ?? []),
+			nextSfxIndex: 0,
+			onComplete  : onComplete,
 		}
 
 
@@ -541,14 +550,29 @@ export class LaneVisuals {
 
 		const replaySystem = (dt: number) => {
 			replayState.elapsed += dt
-			if (replayState.elapsed >= replayState.duration) {
+			const elapsed   = replayState.elapsed
+			const sfxUntil  = Math.min(elapsed, replayState.duration)
+
+			while (
+				replayState.nextSfxIndex < replayState.sfxEvents.length &&
+				replayState.sfxEvents[replayState.nextSfxIndex]!.time <= sfxUntil
+			) {
+				const ev = replayState.sfxEvents[replayState.nextSfxIndex]!
+				replayState.nextSfxIndex++
+				if (ev.kind === 'ballHitPin') {
+					SoundManager.playSound(sfx.collisionBallHitPin)
+				} else {
+					SoundManager.playSound(sfx.collisionPinHitPin)
+				}
+			}
+
+			if (elapsed >= replayState.duration) {
 				replayState.onComplete?.()
 				engine.removeSystem(replaySystem)
 				this.onReplayEnd()
 				return
 			}
 
-			const elapsed = replayState.elapsed
 			replayAdvanceTrack(replayState.ballKeyframes, ballKf.keyframes, elapsed)
 
 			const ballTransform = Transform.getMutableOrNull(this.ball!)
@@ -616,6 +640,26 @@ export class LaneVisuals {
 
 
 // MARK: Replay track helpers
+
+
+// MARK: mergeReplaySfxEvents
+/**
+ * Merges ball–pin and pin–pin collision times into one list sorted by sim time (seconds).
+ */
+function mergeReplaySfxEvents(
+	ballHitPinTimes: number[],
+	pinHitPinTimes : number[],
+): ReplaySfxEvent[] {
+	const events: ReplaySfxEvent[] = []
+	for (const time of ballHitPinTimes) {
+		events.push({ kind: 'ballHitPin', time })
+	}
+	for (const time of pinHitPinTimes) {
+		events.push({ kind: 'pinHitPin', time })
+	}
+	events.sort((a, b) => a.time - b.time)
+	return events
+}
 
 
 function replayGetNextKeyframeWithPosition(

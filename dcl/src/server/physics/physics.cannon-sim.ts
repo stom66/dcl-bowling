@@ -5,7 +5,7 @@ import bumperCollidersData from './colliders/bumper-colliders.json'
 import laneCollidersData from './colliders/lane-colliders.json'
 import pinCollidersData from './colliders/pin-colliders.json'
 import { GameSettings } from './physics.settings'
-import type { SimulationSettings } from './types'
+import type { SimulationSettings, SimulationCollision } from './types'
 import {quaternionToStoredRotation,	storedRotationToQuaternion } from './physics.utils'
 import type { QuaternionType, SimulationRunResult, SimObjectKeyframe, Vector3Type } from './types'
 import { TimeLogger } from 'src/shared/utils/timeLogging'
@@ -314,6 +314,38 @@ export class CannonSim {
 			})),
 			finalPinStates: [...this.initialPinStates],
 			computeTimeMs  : 0,
+
+			ballFinalPosition      : { x: 0, y: 0, z: 0 },
+			ballFinalTimestamp     : 0,
+			sfxBallHitPinTimestamps: [],
+			sfxPinHitPinTimestamps : [],
+		}
+
+		const pinCollisions: number[][] = []
+
+		// Setup the collision events, so we can log collision timestamps
+		this.ballBody.addEventListener('collide', (event: any) => {
+			if (this.pinBodies.some(pin => pin.id === event.body.id)) {
+				result.sfxBallHitPinTimestamps.push(this.world.time)
+			}
+		})
+
+		for (const pin of this.pinBodies) {
+			pin.addEventListener('collide', (event: any) => {
+				if (this.pinBodies.some(pin => pin.id === event.body.id)) {
+					// Ignore duplicate collisions
+					if (pinCollisions[pin.id] && pinCollisions[pin.id].includes(event.body.id)) {
+						return
+					}
+
+					// remember this collision
+					if (!pinCollisions[pin.id]) pinCollisions[pin.id] = []
+					pinCollisions[pin.id].push(event.body.id)
+
+					result.sfxPinHitPinTimestamps.push(this.world.time)
+
+				}
+			})
 		}
 
 		
@@ -328,6 +360,11 @@ export class CannonSim {
 				position: {x: step.ball.position.x, y: step.ball.position.y, z: step.ball.position.z},
 				rotation: quaternionToStoredRotation(step.ball.rotation)
 			})
+			if (step.ball.position.z > result.ballFinalPosition.z && step.ball.position.z < PIN_START_Z) {
+				result.ballFinalPosition = step.ball.position
+				result.ballFinalTimestamp = this.world.time
+			}
+
 			//if (this.currentStep % 100 == 0) this.logger.log(`step ${this.currentStep} - ball keyframes`)
 
 			// Check ball velocity
@@ -411,6 +448,17 @@ export class CannonSim {
 		}
 		
 		this.logger.log(`step ${this.currentStep} - final pin states computed`)
+
+		// Check timestamps, remove duplicates
+		result.sfxBallHitPinTimestamps = result.sfxBallHitPinTimestamps.filter((timestamp, index, self) =>
+			self.indexOf(timestamp) === index
+		)
+		result.sfxPinHitPinTimestamps = result.sfxPinHitPinTimestamps.filter((timestamp, index, self) =>
+			self.indexOf(timestamp) === index
+		)
+
+		console.log('CannonSim: simulate: sfxBallHitPinTimestamps.length =', result.sfxBallHitPinTimestamps.length)
+		console.log('CannonSim: simulate: sfxPinHitPinTimestamps.length =', result.sfxPinHitPinTimestamps.length)
 
 		// Set the animation duration from the world time
 		result.duration = this.world.time

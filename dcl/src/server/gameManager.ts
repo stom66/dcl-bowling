@@ -320,6 +320,8 @@ class GameManager {
 			ballKeyframes    : simResults.compressed.ballKeyframes,
 			duration         : simResults.duration,
 			pinsKeyframes    : simResults.compressed.pinsKeyframes,
+			sfxBallHitPinTimestamps: [...simResults.sfxBallHitPinTimestamps],
+			sfxPinHitPinTimestamps : [...simResults.sfxPinHitPinTimestamps],
 			score            : score,
 			sentAt           : Date.now(),
 		}

@@ -96,6 +96,10 @@ export type RollPayload = {
 	gutterBall       : boolean
 	ballKeyframes    : SimObjectKeyframes
 	pinsKeyframes    : SimObjectKeyframes[]
+	/** Sim world-time (seconds), aligned with keyframe `time` and replay `elapsed`. */
+	sfxBallHitPinTimestamps: number[]
+	/** Sim world-time (seconds). */
+	sfxPinHitPinTimestamps : number[]
 	score            : number
 	sentAt           : number
 }

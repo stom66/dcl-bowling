@@ -199,6 +199,11 @@ export function compressSimulationResult(
 		)),
 		finalPinStates: [...result.finalPinStates],
 		computeTimeMs : Date.now() - compressStartedAt,
+
+		ballFinalPosition       : result.ballFinalPosition,
+		ballFinalTimestamp      : result.ballFinalTimestamp,
+		sfxBallHitPinTimestamps : [...result.sfxBallHitPinTimestamps],
+		sfxPinHitPinTimestamps  : [...result.sfxPinHitPinTimestamps],
 	}
 	return out
 }

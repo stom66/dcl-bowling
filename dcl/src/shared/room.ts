@@ -65,6 +65,8 @@ const rollReplaySchema = {
 			rotation: Schemas.Optional(Schemas.Vector3)
 		}))
 	})),
+	sfxBallHitPinTimestamps: Schemas.Array(Schemas.Number),
+	sfxPinHitPinTimestamps : Schemas.Array(Schemas.Number),
 	score        : Schemas.Number,
 	sentAt       : Schemas.Int64,
 	userId       : Schemas.String
