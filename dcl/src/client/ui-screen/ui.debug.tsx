@@ -14,6 +14,7 @@ import { ClearEmote, PlayBowlingAnimation } from 'src/client/emotes'
 import { ButtonAction, Divider, InfoRow, SectionHeader } from 'src/client/ui-screen/utils/components'
 import { tweenValue } from './utils/tweens'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
+import { userProfileCache } from 'src/shared/utils/userProfileCache'
 
 
 // MARK: Vars
@@ -57,8 +58,9 @@ function GetAllLanesRows() {
 	for (let i = 0; i < GameSettings.MAX_LANES; i++) {
 		const phase    = LaneStore.getPhase(i)
 		const players  = LaneStore.getLaneUserIds(i)
-		const turnUser = LaneStore.getCurrentFrameUserId(i)
-		const summary  = `${phase} | ${players.length}p${turnUser ? ` | ${turnUser.slice(0, 4)}...${turnUser.slice(turnUser.length - 4, turnUser.length)}` : ''}`
+		const turnUser = LaneStore.getCurrentFrameUserId(i) ?? undefined
+		const turnUserDisplayName = turnUser ? userProfileCache.getDisplayName(turnUser) ?? 'Unknown' : undefined
+		const summary  = `${phase} | ${players.length}p${turnUser ? ` | ${turnUserDisplayName}` : ''}`
 		rows.push(
 			<UiEntity key={`debug_lane_${i}`} uiTransform={{ width: '100%', height: 'auto' }}>
 				<InfoRow label={`Lane ${i}`} value={summary} fontSize={10} />
