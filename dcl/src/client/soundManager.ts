@@ -204,7 +204,10 @@ export namespace SoundManager {
 	 *
 	 * @param sound - One asset path, or an array of paths (same shape as values in {@link sfx}).
 	 */
-	export function playSound(sound: string | string[]): void {
+	export function playSound(
+		sound        : string | string[],
+		parentEntity?: Entity
+	): void {
 		const list = typeof sound === 'string' ? [sound] : sound
 
 		let randomSound: string
@@ -217,11 +220,21 @@ export namespace SoundManager {
 		}
 		lastPlayedSfx = randomSound
 
-		const soundEntity = sfxCache[randomSound]
+		var soundEntity = sfxCache[randomSound]
 		if (!soundEntity) {
 			console.error('SoundManager: playSound: no preloaded entity for clip (check sfx paths and preload):', randomSound)
 			return
 		}
+
+		if (parentEntity) {
+			soundEntity = engine.addEntity()
+			Transform.create(soundEntity, { parent: parentEntity })
+			AudioSource.create(soundEntity, {
+				audioClipUrl: randomSound,
+				global: false,
+			})
+		}
+
 		const audioSrc = AudioSource.getMutableOrNull(soundEntity)
 		if (!audioSrc) {
 			console.error('SoundManager: playSound: AudioSource missing on preloaded entity for clip:', randomSound)
