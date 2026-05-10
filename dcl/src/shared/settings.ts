@@ -17,6 +17,8 @@ export class PlayerSettings {
 }
 
 export class GameSettings {
+
+	static LOADING_SCREEN_DELAY           = 1000 * 2
 	
 	static SERVER_TIME_UPDATE_INTERVAL    = (IS_DEBUG ? 15: 30) * 1000
 

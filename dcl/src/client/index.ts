@@ -1,6 +1,7 @@
 import { engine, LightSource, MeshRenderer, Transform } from '@dcl/sdk/ecs'
 import { Color3, Vector3 } from '@dcl/sdk/math'
-import { onEnterScene } from '@dcl/sdk/players'
+import { getPlayer, onEnterScene } from '@dcl/sdk/players'
+import * as utils from "@dcl-sdk/utils"
 
 
 import { ComponentManager } from 'src/shared/components/componentManager'
@@ -20,6 +21,9 @@ import { playerMover } from 'src/client/playerMover'
 import { SoundManager } from 'src/client/soundManager'
 import { CameraController } from 'src/client/cameraController'
 import { UiWorld } from './ui-world'
+import { FreezePlayer, UnFreezePlayer } from 'src/shared/utils/inputModifiers'
+import { GameSettings } from 'src/shared/settings'
+import { isStateSyncronized } from '@dcl/sdk/network'
 
 
 
@@ -34,6 +38,37 @@ const IS_DEV = env == "development"
 
 
 export async function initClient() {
+	FreezePlayer()
+
+	var hasEnteredScene = false
+	onEnterScene((player) => {
+		hasEnteredScene = true
+	})
+
+	function onGameLoaded() {
+		utils.timers.setTimeout(() => {
+			//HideLoading()
+			UnFreezePlayer()
+		}, GameSettings.LOADING_SCREEN_DELAY) 
+	}
+
+
+	function waitForLoad() {
+		if (!isStateSyncronized()) return;
+
+		// Wait for userData to be available
+		let userData = getPlayer()
+		if(!userData)                                  {console.log("waitForLoad: userData");           return}
+		if (!hasEnteredScene)                          {console.log("waitForLoad: onEnterScene");       return}
+		if (!isStateSyncronized())                     {console.log("waitForLoad: isStateSyncronized"); return}
+		if (!Transform.getOrNull(engine.PlayerEntity)) {console.log("waitForLoad: PlayerEntity");       return}
+		if (!Transform.getOrNull(engine.CameraEntity)) {console.log("waitForLoad: CameraEntity");       return}
+
+		engine.removeSystem(waitForLoad)
+
+		onGameLoaded()
+	}
+
 	const store = ClientStore.getInstance()
 	await store.init()
 
@@ -56,8 +91,11 @@ export async function initClient() {
 	setupLights()
 
 	onEnterScene((player) => {
+		hasEnteredScene = true
 		if (player && !IS_DEV) {
 			newPlayer(store.getDisplayName(), store.getUserId())
 		}
 	})
+
+	engine.addSystem(waitForLoad)
 }
