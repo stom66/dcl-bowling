@@ -1,4 +1,4 @@
-import ReactEcs, { Button, Label, UiEntity} from '@dcl/sdk/react-ecs'
+import ReactEcs, { Button, Label, UiEntity, UiFontType} from '@dcl/sdk/react-ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
 import { movePlayerTo } from '~system/RestrictedActions'
 
@@ -18,6 +18,8 @@ import { ClientMessaging } from '../clientMessaging'
 import { clockSync } from 'src/shared/utils/clockSync'
 
 import { buttonUVs, BtnStateUVIndex, getUVsForIconAtlasNumber } from './utils/btn-utils'
+import { Font, UiText } from '@dcl/sdk/ecs'
+import { pixelsScaledRelative, vwAsPixels } from './utils/sizing'
 
 
 // MARK: Vars
@@ -34,7 +36,7 @@ export function HideJoinGameUI() {
 }
 
 const FORCE_SHOW    = true
-const PANEL_HIDDEN  = -300
+const PANEL_HIDDEN  = -420
 const PANEL_VISIBLE = 8
 var panelBottom       : number        = FORCE_SHOW? PANEL_VISIBLE: PANEL_HIDDEN
 
@@ -67,14 +69,17 @@ const laneInfo: BtnInfoUVIndex[] = Array.from(
 	() => BtnInfoUVIndex.OPEN,
 )
 
-function getCountdownIndex(value: number, index: number): number {
+function getCountdownValueAtIndex(value: number, index: number): number {
 	const s = value.toString().slice(index, index + 1)
 	return parseInt(s)	
 }
 
 
 
-function LaneButton(i: number) {
+function LaneButton(
+	i: number, 
+	buttonWidth: number
+) {
 	
 	var lanePhase    = LaneStore.getPhase(i)
 
@@ -113,12 +118,12 @@ function LaneButton(i: number) {
 	if (gameIsStarting) {
 		btnElements.push(
 			<UiEntity
-				key={`ui_joinGame_laneButton_${i}_players`}
+				key={`ui_joinGame_laneButton_${i}_players_current`}
 				uiTransform={{
-					width: 28,
-					height: 28,
+					width: pixelsScaledRelative(20, 256, buttonWidth),
+					height: pixelsScaledRelative(20, 256, buttonWidth),
 					positionType: "absolute",
-					position: { left: 98, top: 63 },
+					position: { left: pixelsScaledRelative(95, 256, buttonWidth), top: pixelsScaledRelative(63, 256, buttonWidth) },
 
 				}}
 				uiBackground={{ 
@@ -130,12 +135,12 @@ function LaneButton(i: number) {
 		)
 		btnElements.push(
 			<UiEntity
-				key={`ui_joinGame_laneButton_${i}_players`}
+				key={`ui_joinGame_laneButton_${i}_players_max`}
 				uiTransform={{
-					width: 28,
-					height: 28,
+					width: pixelsScaledRelative(20, 256, buttonWidth),
+					height: pixelsScaledRelative(20, 256, buttonWidth),
 					positionType: "absolute",
-					position: { left: 126, top: 75 },
+					position: { left: pixelsScaledRelative(118, 256, buttonWidth), top: pixelsScaledRelative(78, 256, buttonWidth) },
 
 				}}
 				uiBackground={{ 
@@ -145,22 +150,22 @@ function LaneButton(i: number) {
 				}}
 			/>
 		)
-		
+
 		// TIME
 		btnElements.push(
 			<UiEntity
 				key={`ui_joinGame_laneButton_${i}_countdown_10s`}
 				uiTransform={{
-					width: 20,
-					height: 20,
+					width: pixelsScaledRelative(20, 256, buttonWidth),
+					height: pixelsScaledRelative(20, 256, buttonWidth),
 					positionType: "absolute",
-					position: { left: 203, top: 51 },
+					position: { left: pixelsScaledRelative(203, 256, buttonWidth), top: pixelsScaledRelative(51, 256, buttonWidth) },
 
 				}}
 				uiBackground={{ 
 					texture    : { src: 'assets/images/ui/icon-atlas.png' },
 					textureMode: 'stretch',
-					uvs        : getUVsForIconAtlasNumber(getCountdownIndex(countdown, 0)),
+					uvs        : getUVsForIconAtlasNumber(getCountdownValueAtIndex(countdown, 0)),
 				}}
 			/>
 		)
@@ -168,16 +173,16 @@ function LaneButton(i: number) {
 			<UiEntity
 				key={`ui_joinGame_laneButton_${i}_countdown_1s`}
 				uiTransform={{
-					width: 20,
-					height: 20,
+					width: pixelsScaledRelative(20, 256, buttonWidth),
+					height: pixelsScaledRelative(20, 256, buttonWidth),
 					positionType: "absolute",
-					position: { left: 218, top: 51 },
+					position: { left: pixelsScaledRelative(218, 256, buttonWidth), top: pixelsScaledRelative(51, 256, buttonWidth) },
 
 				}}
 				uiBackground={{ 
 					texture    : { src: 'assets/images/ui/icon-atlas.png' },
 					textureMode: 'stretch',
-					uvs        : getUVsForIconAtlasNumber(getCountdownIndex(countdown, 1)),
+					uvs        : getUVsForIconAtlasNumber(getCountdownValueAtIndex(countdown, 1)),
 				}}
 			/>
 		)
@@ -189,10 +194,10 @@ function LaneButton(i: number) {
 			<UiEntity
 				key={`ui_joinGame_laneButton_${i}_players`}
 				uiTransform={{
-					width: 28,
-					height: 28,
+					width: pixelsScaledRelative(20, 256, buttonWidth),
+					height: pixelsScaledRelative(20, 256, buttonWidth),
 					positionType: "absolute",
-					position: { left: 104, top: 60 },
+					position: { left: pixelsScaledRelative(92, 256, buttonWidth), top: pixelsScaledRelative(60, 256, buttonWidth) },
 				}}
 				uiBackground={{ 
 					texture    : { src: 'assets/images/ui/icon-atlas.png' },
@@ -205,10 +210,10 @@ function LaneButton(i: number) {
 			<UiEntity
 				key={`ui_joinGame_laneButton_${i}_frames`}
 				uiTransform={{
-					width: 28,
-					height: 28,
+					width: pixelsScaledRelative(20, 256, buttonWidth),
+					height: pixelsScaledRelative(20, 256, buttonWidth),
 					positionType: "absolute",
-					position: { left: 216, top: 72 },
+					position: { left: pixelsScaledRelative(174, 256, buttonWidth), top: pixelsScaledRelative(72, 256, buttonWidth) },
 				}}
 				uiBackground={{ 
 					texture    : { src: 'assets/images/ui/icon-atlas.png' },
@@ -224,8 +229,8 @@ function LaneButton(i: number) {
 		<UiEntity
 			key={`ui_joinGame_laneButton_${i}`}
 			uiTransform={{
-				width         : '256',
-				height        : '128',
+				width         : buttonWidth,
+				height        : buttonWidth / 2,
 				alignContent  : 'flex-start',
 				alignItems    : "center",
 				flexDirection : 'row',
@@ -254,16 +259,16 @@ function LaneButton(i: number) {
 			}}}
 
 			uiBackground={{ 
-				texture    : { src: laneInfoUVIndex == BtnInfoUVIndex.OCCUPIED ? 'assets/images/ui/btn-primary-atlas-b.png' : 'assets/images/ui/btn-secondary-atlas-b.png' }, 
+				texture    : { src: laneInfoUVIndex == BtnInfoUVIndex.OPEN ? 'assets/images/ui/btn-primary-atlas-b.png' : 'assets/images/ui/btn-secondary-atlas-b.png' }, 
 				textureMode: 'stretch',
 				uvs        : buttonUVs[buttonStates[i]],
 			}}
 		>
 			<UiEntity uiTransform={{ 
-				width       : 64, 
-				height      : 64,
+				width       : pixelsScaledRelative(58, 256, buttonWidth), 
+				height      : pixelsScaledRelative(58, 256, buttonWidth),
 				positionType: "absolute",
-				position    : { left: 16 },
+				position    : { left: pixelsScaledRelative(16, 256, buttonWidth) },
 				}}
 				uiBackground={{ 
 					texture    : { src: 'assets/images/ui/icon-atlas.png' },
@@ -287,10 +292,14 @@ function LaneButton(i: number) {
 	)
 }
 
-function GetLaneButtons(start: number, end: number) {
+function GetLaneButtons(
+	start      : number, 
+	end        : number, 
+	buttonWidth: number
+) {
 	const buttons: ReactEcs.JSX.Element[] = []
 	for (let i = start; i <= end; i++) {
-		buttons.push(LaneButton(i))
+		buttons.push(LaneButton(i, buttonWidth))
 	}
 	return buttons
 }
@@ -299,15 +308,24 @@ const breakAfter = Math.ceil(GameSettings.MAX_LANES / 2) -1
 
 
 export function JoinGameUI() {
-	const rowStyle = {
-		width          : 820 as const,
-		height         : 128 as const,
+	
+	const mainWidth   = vwAsPixels(75, 600, 1024)
+	const padding     = { left: 32, right: 32, top: 32, bottom: 16 }
+
+	const mainWidthMinusPadding = mainWidth - padding.left - padding.right
+	const buttonWidth = mainWidthMinusPadding * 0.25
+	const rowHeight   = buttonWidth / 2
+
+	const rowStyle    = {
+		width          : mainWidth * 0.75,
+		height         : rowHeight,
 		flexDirection  : 'row' as const,
 		alignContent   : 'center' as const,
 		alignItems     : 'center' as const,
 		justifyContent : 'space-between' as const,
-		padding        : { left: 16, right: 16 },
+		padding        : padding,
 	}
+
 	return (
 		<UiEntity
 			key="ui_debug_root"
@@ -322,30 +340,61 @@ export function JoinGameUI() {
 
 			<UiEntity
 				uiTransform={{
-					width: rowStyle.width,
-					positionType: 'absolute',
-					position: { bottom: panelBottom },
-					flexDirection: 'column',
-					borderRadius  : 8,
-					borderWidth   : 3,
-					borderColor   : Color4.fromHexString("#CB4F00dd"),
+					width        : mainWidth,
+					height       : buttonWidth + padding.top + padding.bottom,
+					positionType : 'absolute',
+					position     : { bottom: panelBottom },
+					flexDirection: 'row',
+					justifyContent: 'center',
+
+					padding      : { left  : rowStyle.padding.left, right: rowStyle.padding.right, top: rowStyle.padding.top, bottom: rowStyle.padding.bottom },
 				}}
-				uiBackground={{ color: Color4.fromHexString("#BE4B00cc") }}
-				>
+				uiBackground={{ 
+					texture: { src: 'assets/images/ui/bg-popup.png' },
+					textureMode: 'nine-slices',
+					textureSlices: { top: 0.25, bottom: 0.25, left: 0.25, right: 0.25 },
+				}}
+			>
 				<UiEntity
-					uiTransform={{...rowStyle}}
-				>
-					{GetLaneButtons(0, breakAfter)}
-
-				</UiEntity>
-				<UiEntity
-					uiTransform={{...rowStyle,
-						positionType: 'relative',
-						position: { top: -10 },
+					uiTransform={{
+						width      : mainWidthMinusPadding * 0.25,
+						height     : mainWidthMinusPadding * 0.25,
+						//borderColor: Color4.Red(),
+						//borderWidth: 1,
+						flexGrow   : 0,
+						flexShrink : 0
 					}}
-				>
-					{GetLaneButtons(breakAfter + 1, GameSettings.MAX_LANES - 1)}
+					uiBackground={{
+						texture    : { src: 'assets/images/ui/info-welcome.png' },
+						textureMode: 'stretch'						
+					}}
+				/>
 
+				<UiEntity uiTransform={{
+					width         : mainWidthMinusPadding * 0.75,
+					height        : mainWidthMinusPadding * 0.25,
+					flexDirection : 'column',
+					alignItems    : 'center',
+					justifyContent: 'center',
+					//borderColor   : Color4.Red(),
+					//borderWidth   : 1,
+				}}>
+					<UiEntity
+						uiTransform={{
+							...rowStyle
+						}}
+					>
+						{GetLaneButtons(0, breakAfter, buttonWidth)}
+					</UiEntity>
+					<UiEntity
+						uiTransform={{
+							...rowStyle,
+							positionType: 'relative',
+							position: { top: -20 },
+						}}
+					>
+						{GetLaneButtons(breakAfter + 1, GameSettings.MAX_LANES - 1, buttonWidth)}
+					</UiEntity>
 				</UiEntity>
 			</UiEntity>
 		</UiEntity>
