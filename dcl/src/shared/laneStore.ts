@@ -218,8 +218,10 @@ export namespace LaneStore {
 	): void {
 		if (!isServer()) return
 		const c = LaneComponent.LaneGameData.getMutable(ComponentManager.getLaneEntity(laneIndex))
+		const prior = c.players ?? []
+		if (prior.some((p) => p.userId === userId)) return
 		// Reassign rather than push so the component definitely marks dirty for sync.
-		c.players = [...(c.players ?? []), { userId, displayName }]
+		c.players = [...prior, { userId, displayName }]
 	}
 
 	export function removePlayer(
