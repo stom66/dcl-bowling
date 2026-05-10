@@ -32,7 +32,7 @@ export type LaneSnapshot = {
 	gameStartTime           : number
 	laneIndex               : number
 	phase                   : LanePhase
-	players                 : Map<string, string>      // userId -> displayName
+	players                 : string[]      // userIds only
 }
 
 

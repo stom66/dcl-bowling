@@ -5,6 +5,7 @@ import { ComponentManager } from "src/shared/components/componentManager"
 import { LanePhase } from "src/shared/enums"
 import { LanePlayers, LaneScores as LaneScoresRow, LaneSnapshot } from "src/shared/types/shared-types"
 import { GameSettings } from "./settings"
+import { userProfileCache } from "./utils/userProfileCache"
 
 
 /**
@@ -28,10 +29,8 @@ export namespace LaneStore {
 		const gameData    = LaneComponent.LaneGameData.get(entity)
 		const phase       = LaneComponent.LanePhaseEnum.get(entity)
 		const scores      = LaneComponent.LaneScores.get(entity)
+		const players     = gameData?.players ?? []
 
-		const players = new Map<string, string>(
-			(gameData?.players ?? []).map((p) => [p.userId, p.displayName])
-		)
 		const frames = new Map<string, number[][]>(
 			(scores?.scores ?? []).map((s) => [s.userId, s.frames.map((f) => f.slice())])
 		)
@@ -57,7 +56,7 @@ export namespace LaneStore {
 		ComponentManager.forEachLane((laneIndex, entity) => {
 			if (result !== undefined) return
 			const data = LaneComponent.LaneGameData.get(entity)
-			if (data?.players?.some((p) => p.userId === userId)) result = laneIndex
+			if (data?.players?.includes(userId)) result = laneIndex
 		})
 		return result
 	}
@@ -79,7 +78,7 @@ export namespace LaneStore {
 		const scores   = LaneComponent.LaneScores.getMutable(entity)
 
 		scores.scores = (gameData?.players ?? []).map((p) => ({
-			userId: p.userId,
+			userId: p,
 			frames: Array.from({ length: GameSettings.MAX_FRAMES_PER_GAME }, () => [] as number[]),
 		}))
 	}
@@ -185,26 +184,31 @@ export namespace LaneStore {
 
 
 	// MARK: Players
-	export function getPlayers(laneIndex: number): LanePlayers[] {
+	export function getPlayers(laneIndex: number): string[] {
 		const c = LaneComponent.LaneGameData.get(ComponentManager.getLaneEntity(laneIndex))
-		return c?.players?.map((p) => ({ userId: p.userId, displayName: p.displayName })) ?? []
-	}
+		return c?.players ?? []
+	}/* 
 
-	export function getPlayersMap(laneIndex: number): Map<string, string> {
+	export function getPlayersMappedToDisplayNames(laneIndex: number): Map<string, string> {
 		const players = getPlayers(laneIndex)
-		return new Map(players.map((p) => [p.userId, p.displayName]))
-	}
+		// build a new array of objects with usersId: displayname
+		const playersWithDisplayNames = players.map((p) => ({ 
+			userId: p, 
+			displayName: userProfileCache.getDisplayName(p) 
+		}))
+		return playersWithDisplayNames
+	} */
 
 	/** Returns the `userId` of every player on the given lane. */
 	export function getLaneUserIds(laneIndex: number): string[] {
 		const data = LaneComponent.LaneGameData.get(ComponentManager.getLaneEntity(laneIndex))
-		return (data?.players ?? []).map((p) => p.userId)
+		return data?.players ?? []
 	}
 
 
 	export function setPlayers(
 		laneIndex: number,
-		players  : LanePlayers[]
+		players  : string[]
 	): void {
 		if (!isServer()) return
 		const c = LaneComponent.LaneGameData.getMutable(ComponentManager.getLaneEntity(laneIndex))
@@ -213,15 +217,14 @@ export namespace LaneStore {
 
 	export function addPlayer(
 		laneIndex  : number,
-		userId     : string,
-		displayName: string
+		userId     : string
 	): void {
 		if (!isServer()) return
 		const c = LaneComponent.LaneGameData.getMutable(ComponentManager.getLaneEntity(laneIndex))
 		const prior = c.players ?? []
-		if (prior.some((p) => p.userId === userId)) return
+		if (prior.includes(userId)) return
 		// Reassign rather than push so the component definitely marks dirty for sync.
-		c.players = [...prior, { userId, displayName }]
+		c.players = [...prior, userId]
 	}
 
 	export function removePlayer(
@@ -230,7 +233,7 @@ export namespace LaneStore {
 	): void {
 		if (!isServer()) return
 		const c = LaneComponent.LaneGameData.getMutable(ComponentManager.getLaneEntity(laneIndex))
-		c.players = (c.players ?? []).filter((p) => p.userId !== userId)
+		c.players = (c.players ?? []).filter((p) => p !== userId)
 	}
 	
 	/** Server-only: removes the player from every lane's `LaneGameData.players` list. */
@@ -238,9 +241,10 @@ export namespace LaneStore {
 		if (!isServer()) return
 		ComponentManager.forEachLane((_, entity) => {
 			const c = LaneComponent.LaneGameData.get(entity)
-			if (!c.players?.some((p) => p.userId === userId)) return
+			if (!c.players?.includes(userId)) return
+
 			const m = LaneComponent.LaneGameData.getMutable(entity)
-			m.players = m.players?.filter((p) => p.userId !== userId)
+			m.players = m.players?.filter((p) => p !== userId)
 		})
 	}
 

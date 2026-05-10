@@ -60,12 +60,12 @@ class GameManager {
 		}
 
 		// Are they already in a game?
-		if (LaneStore.findLaneByUserId(userId)) {
+		if (LaneStore.findLaneByUserId(userId) !== undefined) {
 			console.log('gameManager: onPlayerRequestJoin: player already in game, ignoring')
 			return
 		}
 
-		// Is the game already started?
+		// Is the game they're joining already started?
 		const phase = LaneStore.getPhase(laneIndex)
 		if (phase !== LanePhase.NONE && phase !== LanePhase.GAME_STARTING) {
 			console.log('gameManager: onPlayerRequestJoin: game already started, ignoring')
@@ -73,22 +73,19 @@ class GameManager {
 		}
 
 		// Is there space in the lane?
-		const lanePlayerCount = LaneStore.getLaneUserIds(laneIndex).length
+		let lanePlayerCount = LaneStore.getLaneUserIds(laneIndex).length
 		if (lanePlayerCount >= GameSettings.MAX_PLAYERS_PER_GAME) {
 			console.log('gameManager: onPlayerRequestJoin: lane is full, ignoring')
 			return
 		}
+		LaneStore.addPlayer(laneIndex, userId)
 
-		const isFirstPlayer = lanePlayerCount === 0
-
-		// await so profile fetch completes before notifies / any follow-up logic
-		const displayName = await userProfileCache.getDisplayName(userId)
-		LaneStore.addPlayer(laneIndex, userId, displayName)
-
+		// Let the player know they have joined the game
 		ServerMessaging.notifyJoinGame(userId, laneIndex)
-
+		
 		// Starting the countdown is what transitions a brand-new lane into the
 		// game lifecycle. Only the first joiner triggers it.
+		const isFirstPlayer = lanePlayerCount === 0
 		if (isFirstPlayer && LaneStore.getPhase(laneIndex) === LanePhase.NONE) {
 			this.startGameCountdown(laneIndex)
 		}

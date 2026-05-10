@@ -157,8 +157,8 @@ export class ClientStore {
 		return LaneStore.getGameStartTime(this.laneIndex)
 	}
 
-	getPlayers(): Map<string, string> | undefined {
+	getPlayers(): string[] | undefined {
 		if (this.laneIndex === undefined) return undefined
-		return LaneStore.getPlayersMap(this.laneIndex)
+		return LaneStore.getPlayers(this.laneIndex)
 	}
 }

@@ -215,7 +215,7 @@ export function DebugUI() {
 			<InfoRow label = "currentFrameUserId"        value = {clientStore.getCurrentFrameUserId() ?? '-'} fontSize = {10} />
 			<InfoRow label = "currentRollIndex"          value = {clientStore.getCurrentRollIndex()?.toString() ?? '-'} />
 			<InfoRow label = "currentRollStartTime"      value = {clientStore.getCurrentRollStartTime()?.toString() ?? '-'} />
-			<InfoRow label = "players"                   value = {clientStore.getPlayers()?.size.toString() ?? '-'} />
+			<InfoRow label = "players"                   value = {clientStore.getPlayers()?.length.toString() ?? '-'} />
 			<InfoRow label = "frames"                    value = {clientStore.getFrames()?.size.toString() ?? '-'} />
 
 			<Divider />

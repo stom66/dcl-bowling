@@ -12,12 +12,7 @@ export const LaneGameData = engine.defineComponent(
 		laneIndex: Schemas.Int,
 		startTime: Schemas.Int64,
 		players: Schemas.Optional(
-			Schemas.Array(
-				Schemas.Map({
-					userId     : Schemas.String,
-					displayName: Schemas.String,
-				})
-			)
+			Schemas.Array(Schemas.String)
 		)
 	}
 )
