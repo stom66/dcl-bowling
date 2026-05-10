@@ -1,12 +1,13 @@
-import { eventBus } from "src/shared/utils/eventBus"
-import { ClientEvents } from "./clientEvents"
+import { engine } from "@dcl/sdk/ecs"
 import { Vector3 } from "@dcl/sdk/math"
+
+import { eventBus, ClientEvents } from "src/shared/utils/eventBus"
 import { ClientStore } from "./clientStore"
 
 import { lanePositions } from "./data/lanePositions"
 import { GetRandomPointInCircle } from "src/shared/utils/math"
 import { movePlayerTo } from "~system/RestrictedActions"
-import { engine, InputModifier } from "@dcl/sdk/ecs"
+import { FreezePlayer, UnFreezePlayer } from "src/shared/utils/inputModifiers"
 
 export namespace playerMover {
 
@@ -29,7 +30,7 @@ export namespace playerMover {
 		const randomPoint = GetRandomPointInCircle(circlePosition, 1.5)
 
 		movePlayerTo({ newRelativePosition: randomPoint })
-		unblockInput()
+		UnFreezePlayer()
 	}
 
 
@@ -40,26 +41,13 @@ export namespace playerMover {
 		const targetPosition = Vector3.add(lanePosition, playerOffset)
 		const faceForward    = Vector3.create(0, 0, 10)
 		movePlayerTo({ newRelativePosition: targetPosition, cameraTarget: Vector3.add(targetPosition, faceForward) })
-		blockInput()
+		FreezePlayer()
 	}
 
 
 	function movePlayerToLobby() {
 		const randomPoint = GetRandomPointInCircle(Vector3.create(16, 0, 4), 1.5)
 		movePlayerTo({ newRelativePosition: randomPoint })
-		unblockInput()
-	}
-
-
-	function blockInput() {
-		InputModifier.createOrReplace(engine.PlayerEntity, {
-			mode: InputModifier.Mode.Standard({
-				disableAll: true,
-			}),
-		})
-	}
-
-	function unblockInput() {
-		InputModifier.deleteFrom(engine.PlayerEntity)
+		UnFreezePlayer()
 	}
 }

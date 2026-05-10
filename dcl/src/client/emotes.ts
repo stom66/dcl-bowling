@@ -1,6 +1,7 @@
-import { engine, InputModifier, Transform } from "@dcl/sdk/ecs"
+import { engine, Transform } from "@dcl/sdk/ecs"
 import { movePlayerTo, triggerSceneEmote } from "~system/RestrictedActions"
 import * as utils from "@dcl-sdk/utils"
+import { FreezePlayer, UnFreezePlayer } from "src/shared/utils/inputModifiers"
 
 const EMOTE_SRC = 'assets/emotes/bowl6_emote.glb'
 const EMOTE_TRIGGER_DELAY_MS = 400
@@ -18,11 +19,7 @@ export function PlayBowlingAnimation(loop: boolean) {
 		return
 	}
 
-	InputModifier.createOrReplace(engine.PlayerEntity, {
-		mode: InputModifier.Mode.Standard({
-			disableAll: true,
-		}),
-	})
+	FreezePlayer()
 
 	movePlayerTo({
 		newRelativePosition: { x: playerPos.x, y: playerPos.y, z: playerPos.z },
@@ -41,5 +38,5 @@ export function PlayBowlingAnimation(loop: boolean) {
 export function ClearEmote() {
 	if (!emoteActive) return
 	emoteActive = false
-	InputModifier.deleteFrom(engine.PlayerEntity)
+	UnFreezePlayer()
 }
