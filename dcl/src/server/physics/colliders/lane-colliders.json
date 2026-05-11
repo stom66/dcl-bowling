@@ -12,7 +12,7 @@
 		"restitution": 0.0,
 		"mass": 1.0,
 		"dimensions": [
-			2.0,
+			1.5,
 			21.5,
 			0.75
 		],
@@ -36,7 +36,7 @@
 		"restitution": 0.0,
 		"mass": 1.0,
 		"dimensions": [
-			3.0,
+			2.5,
 			21.5,
 			0.65
 		],
@@ -50,7 +50,7 @@
 	{
 		"obj_name": "lane.wallLeft._collider_box.000",
 		"position": [
-			-1.375,
+			-1.125,
 			0.5,
 			10.75
 		],
@@ -74,7 +74,7 @@
 	{
 		"obj_name": "lane.wallRight._collider_box.000",
 		"position": [
-			1.375,
+			1.125,
 			0.5,
 			10.75
 		],

@@ -2,14 +2,14 @@
 	{
 		"obj_name": "lane.wallLeft._collider_box.007",
 		"position": [
-			-1.125,
+			-0.875,
 			0.5,
 			10.75
 		],
 		"type": "PASSIVE",
 		"shape": "BOX",
 		"friction": 0.5,
-		"restitution": 4.0,
+		"restitution": 0.0,
 		"mass": 1.0,
 		"dimensions": [
 			0.25,
@@ -26,14 +26,14 @@
 	{
 		"obj_name": "lane.wallRight._collider_box.007",
 		"position": [
-			1.125,
+			0.875,
 			0.5,
 			10.75
 		],
 		"type": "PASSIVE",
 		"shape": "BOX",
 		"friction": 0.5,
-		"restitution": 4.0,
+		"restitution": 0.0,
 		"mass": 1.0,
 		"dimensions": [
 			0.25,

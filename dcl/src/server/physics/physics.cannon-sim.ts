@@ -64,7 +64,7 @@ const PIN_LANE_LOCAL_POSITIONS: ReadonlyArray<ReadonlyArray<number>> = pinConfig
 /** Cannon cylinder is Y-up at identity; `lookRotation(forward, up)` per @dcl/ecs-math (forward first). */
 const UPRIGHT_PIN_QUATERNION = Quaternion.lookRotation(Vector3.Forward(), Vector3.Up())
 
-const GUTTER_X_ABS_OFFSET    = 1     // Distance from lane center to inner edge of gutter
+const GUTTER_X_ABS_OFFSET    = 0.75     // Distance from lane center to inner edge of gutter
 const PIN_START_Z            = 17.94 // Start Z of the leading edge of the first pin
 const PIN_END_Z              = 18.66 // End Z of the trailing edge of the last pin row
 const LANE_END_Z             = 19.5  // End Z of the lane, where the pit starts
