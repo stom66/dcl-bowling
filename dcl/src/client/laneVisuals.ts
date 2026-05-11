@@ -560,9 +560,9 @@ export class LaneVisuals {
 				const ev = replayState.sfxEvents[replayState.nextSfxIndex]!
 				replayState.nextSfxIndex++
 				if (ev.kind === 'ballHitPin') {
-					SoundManager.playSound(sfx.collisionBallHitPin)
+					SoundManager.playSound(sfx.collisionBallHitPin, this.ball, 10)
 				} else {
-					SoundManager.playSound(sfx.collisionPinHitPin)
+					SoundManager.playSound(sfx.collisionPinHitPin, this.ball, 10)
 				}
 			}
 

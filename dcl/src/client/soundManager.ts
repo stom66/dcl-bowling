@@ -4,6 +4,7 @@ import { AudioSource, engine, Entity, Transform } from '@dcl/sdk/ecs'
 import { eventBus, ClientEvents } from 'src/shared/utils/eventBus'
 
 import { sfx } from 'src/client/data/sfx'
+import { Vector2, Vector3 } from '@dcl/sdk/math'
 export { sfx } from 'src/client/data/sfx'
 
 export namespace SoundManager {
@@ -206,7 +207,8 @@ export namespace SoundManager {
 	 */
 	export function playSound(
 		sound        : string | string[],
-		parentEntity?: Entity
+		parentEntity?: Entity,
+		maxDistance? : number
 	): void {
 		const list = typeof sound === 'string' ? [sound] : sound
 
@@ -243,6 +245,19 @@ export namespace SoundManager {
 
 		audioSrc.playing     = false
 		audioSrc.currentTime = 0
+
+		if (maxDistance && parentEntity) {
+			const playerPos = Transform.get(engine.PlayerEntity).position
+			const parentPos = Transform.get(parentEntity).position
+			const x = playerPos.x - parentPos.x
+			const z = playerPos.z - parentPos.z
+			const distance = Math.sqrt(x * x + z * z)
+			if (distance < maxDistance) {
+				const vol = (audioSrc.volume ?? SFX_ENTITY_VOLUME) * (1 - distance / maxDistance)
+				console.log('SoundManager: playSound: ${randomSound} at volume', vol)
+				audioSrc.volume = vol
+			}
+		}
 
 		utils.timers.setTimeout(() => {
 			const audio = AudioSource.getMutableOrNull(soundEntity)
