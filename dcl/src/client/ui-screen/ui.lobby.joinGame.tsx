@@ -35,7 +35,7 @@ export function HideJoinGameUI() {
 	tweenValue(panelBottom, PANEL_HIDDEN, 0.3, (v) => panelBottom = v)
 }
 
-const FORCE_SHOW    = true
+const FORCE_SHOW    = false
 const PANEL_HIDDEN  = -420
 const PANEL_VISIBLE = 8
 var panelBottom       : number        = FORCE_SHOW? PANEL_VISIBLE: PANEL_HIDDEN
