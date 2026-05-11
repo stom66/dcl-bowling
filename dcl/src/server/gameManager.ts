@@ -36,6 +36,23 @@ class GameManager {
 	// MARK: Init
 	init() { }
 
+	async onPlayerRequestLeaveGame(userId: string) {
+		console.log('gameManager: onPlayerRequestLeaveGame: userId', userId)
+
+		const laneIndex = LaneStore.findLaneByUserId(userId)
+		if (laneIndex === undefined) {
+			console.log('gameManager: onPlayerRequestLeaveGame: user not in any lane')
+			return
+		}
+
+		LaneStore.removePlayer(laneIndex, userId)
+
+		// Check to see if we need to cancel that game
+		if (LaneStore.getLaneUserIds(laneIndex).length === 0) {
+			this.abortGame(laneIndex)
+		}
+	}
+
 
 	// =========================================================================
 	// MARK: Phase 1 — On Player Request Join
@@ -440,6 +457,8 @@ class GameManager {
 	private endGame(laneIndex: number) {
 		console.log(`gameManager: endGame: lane ${laneIndex}`)
 
+		
+
 		// Setting phase=NONE is the trigger clients use (via MyLane) to fire
 		// ON_GROUP_GAME_END and clear their local laneIndex.
 		LaneStore.setPhase(laneIndex, LanePhase.NONE)
@@ -451,6 +470,23 @@ class GameManager {
 	private resetLane(laneIndex: number) {
 		this.runtime.delete(laneIndex)
 		LaneStore.resetLane(laneIndex)
+	}
+
+
+	// MARK: Abort Game
+
+	private abortGame(laneIndex: number) {
+		console.log(`gameManager: abortGame: lane ${laneIndex}`)
+
+		// Need to check if a roll was in progress, and if so send the end roll message to the clients
+		const rt = this.getRuntime(laneIndex)
+		if (rt.phase === LanePhase.ROLL_AWAITING || rt.phase === LanePhase.ROLL_PLAYBACK || rt.phase === LanePhase.ROLL_END) {
+			
+		}
+		
+		this.schedulePhase(laneIndex, LanePhase.ROLL_END, GameSettings.FRAME_DELAY_BETWEEN_TURNS)
+
+		this.resetLane(laneIndex)
 	}
 
 

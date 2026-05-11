@@ -8,6 +8,7 @@ import { ScoresUI } from 'src/client/ui-screen/ui.game.scores'
 import { VersionUI } from './ui-screen/ui.version'
 import { HowToPlay } from './ui-screen/ui.HowToPlay'
 import { JoinGameUI } from './ui-screen/ui.lobby.joinGame'
+import { LeaveGameUI } from './ui-screen/ui.game.leaveGame'
 
 
 // MARK: Vars
@@ -31,6 +32,7 @@ const uiComponent = () => [
 	VersionUI(),
 	//HowToPlay(),
 	JoinGameUI(),
+	LeaveGameUI(),
 
 	DebugUI()
 	//SHOW_DEBUG ? DebugUI() : null

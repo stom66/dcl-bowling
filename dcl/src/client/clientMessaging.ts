@@ -3,6 +3,7 @@ import { Vector3 } from '@dcl/sdk/math'
 import { MessageType, room } from 'src/shared/room'
 
 import { ClientStore } from 'src/client/clientStore'
+import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 
 export namespace ClientMessaging {
 	const clientStore = ClientStore.getInstance()
@@ -27,5 +28,11 @@ export namespace ClientMessaging {
 			frameIndex: clientStore.getCurrentFrameIndex() ?? 0, 
 			rollIndex : clientStore.getCurrentRollIndex() ?? 0 
 		})
+	}
+
+	export function requestLeaveGame(): void {
+		console.log('ClientMessaging: requestLeaveGame')
+		room.send(MessageType.REQUEST_LEAVE_GAME, {})
+		eventBus.emit(ClientEvents.REQUEST_LEAVE_GAME, {})
 	}
 }

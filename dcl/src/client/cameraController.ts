@@ -36,6 +36,7 @@ export namespace CameraController {
 		eventBus.on(ClientEvents.ON_MY_ROLL_END, (data: { userId: string }) => { onMyRollEnd(data) })
 		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, (data: { userId: string }) => { onGroupRollPlaybackStart(data) })
 		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_END, (data: {}) => { onGroupRollPlaybackEnd() })
+		eventBus.on(ClientEvents.REQUEST_LEAVE_GAME, (data: {}) => { onRequestLeaveGame() })
 
 		camera = engine.addEntity()
 		Transform.create(camera, { position: Vector3.create(0, 0, 0) })
@@ -70,6 +71,11 @@ export namespace CameraController {
 				resetCamera()
 			}, 1000)
 		}
+	}
+
+	function onRequestLeaveGame() {
+		console.log("CameraController: onRequestLeaveGame")
+		resetCamera()
 	}
 
 

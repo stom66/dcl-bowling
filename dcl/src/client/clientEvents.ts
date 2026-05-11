@@ -33,6 +33,8 @@ export enum ClientEvents {
 	ON_NON_GROUP_ROLL_PLAYBACK_START    = "onNonGroupRollPlaybackStart",    // Lane visuals began for a non-group member (another lane)
 	ON_NON_GROUP_ROLL_PLAYBACK_END      = "onNonGroupRollPlaybackEnd",      // Lane visuals finished for a non-group member (another lane)
 
+	REQUEST_LEAVE_GAME                  = "requestLeaveGame",                 // When the local player requests to leave the game
+
 
 	//ON_GROUP_TURN_START    =  "onGroupTurnStart", // When someone else in the group starts their turn
 	//ON_GROUP_TURN_END      =  "onGroupTurnEnd",   // When someone else in the group ends their turn

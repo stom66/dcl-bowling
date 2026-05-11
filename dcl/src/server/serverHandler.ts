@@ -19,6 +19,7 @@ export namespace serverHandler {
 	export function init() {
 		room.onMessage(MessageType.REQUEST_JOIN_GAME, (data, context) => handleRequestJoinGame(data, context))
 		room.onMessage(MessageType.REQUEST_PLAY_ROLL, (data, context) => handleRequestPlayRoll(data, context))
+		room.onMessage(MessageType.REQUEST_LEAVE_GAME, (data, context) => handleRequestLeaveGame(data, context))
 	}
 
 	
@@ -53,5 +54,13 @@ export namespace serverHandler {
 		utils.timers.setTimeout(() => {
 			gameManager.onPlayerRequestPlayRoll(userId, data)
 		}, 0)
+	}
+
+	// MARK: Leave Game
+	export async function handleRequestLeaveGame(data: any, context: any) {
+		const userId = getUserId(context)
+		console.log('serverHandler: handleRequestLeaveGame: userId', userId)
+
+		await gameManager.onPlayerRequestLeaveGame(userId)
 	}
 }

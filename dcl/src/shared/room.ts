@@ -13,6 +13,7 @@ import { ReadWriteByteBuffer } from '@dcl/ecs/dist/serialization/ByteBuffer'
 export enum MessageType {
 	REQUEST_JOIN_GAME           = 'requestJoinGame',
 	REQUEST_PLAY_ROLL           = 'requestPlayRoll',
+	REQUEST_LEAVE_GAME          = 'requestLeaveGame',
 
 	NOTIFY_SERVER_TIME          = 'notifyServerTime',
 
@@ -88,6 +89,7 @@ const Messages = {
 	[MessageType.REQUEST_PLAY_ROLL]          : Schemas.Map({
 		...rollRequestSchema
 	}),
+	[MessageType.REQUEST_LEAVE_GAME]         : Schemas.Map({}),
 
 	[MessageType.NOTIFY_SERVER_TIME]         : Schemas.Int64,
 
