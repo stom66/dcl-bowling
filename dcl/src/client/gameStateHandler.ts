@@ -40,13 +40,24 @@ export namespace gameStateHandler {
 
 	// MARK: Init
 	export function init() {
-
+/* 		eventBus.on(ClientEvents.ON_GROUP_GAME_END, (data: LaneSnapshot) => { (data) }) {
+			console.log('gameStateHandler: onGroupGameEnd: data', data)
+			for (let i = 0; i < laneVisuals.length; i++) {
+				if (laneVisuals[i]) laneVisuals[i]?.destroy()
+			}
+			laneVisuals = []
+		} */
 	}
 
 	function createLaneVisuals(
-		data     : NotifyPlayerRollStartPayload,
-		laneIndex: number
+		data     : NotifyPlayerRollStartPayload
 	) {
+		const laneIndex = LaneStore.findLaneByUserId(data.userId)
+		if (laneIndex === undefined) {
+			console.error('gameStateHandler: createLaneVisuals: laneIndex not found')
+			return undefined
+		}
+
 		if (laneVisuals[laneIndex]) laneVisuals[laneIndex]?.destroy()
 			
 		const pos = lanePositions[laneIndex]
@@ -72,41 +83,29 @@ export namespace gameStateHandler {
 	function onNonGroupRollStart(data: NotifyPlayerRollStartPayload) {
 		console.log('gameStateHandler: onNonGroupRollStart: data', data)
 
-		const laneIndex = LaneStore.findLaneByUserId(data.userId)
-		if (laneIndex === undefined) {
-			console.error('gameStateHandler: onNonGroupRollStart: laneIndex not found')
-			return
-		}
 
-		createLaneVisuals(data, laneIndex)
+		createLaneVisuals(data)
 	}
 
 	function onGroupRollStart(data: NotifyPlayerRollStartPayload) {
 		console.log('gameStateHandler: onGroupRollStart: data', data)
 
-		const laneIndex = LaneStore.findLaneByUserId(data.userId)
-		if (laneIndex === undefined) {
-			console.error('gameStateHandler: onGroupRollStart: laneIndex not found')
-			return
-		}
-
-		createLaneVisuals(data, laneIndex)
+		createLaneVisuals(data)
 	}
 
 	function onMyRollStart(data: NotifyPlayerRollStartPayload) {
 		console.log('gameStateHandler: onMyRollStart: data', data)
 		
+		const lv = createLaneVisuals(data)
+
 		const laneIndex = LaneStore.findLaneByUserId(data.userId)
 		if (laneIndex === undefined) {
 			console.error('gameStateHandler: onMyRollStart: laneIndex not found')
 			return
 		}
 
-		const lv = createLaneVisuals(data,laneIndex)
-
-		if (!lv) return
 		const lanePosition = lanePositions[laneIndex]
-		bowlingControls    = new BowlingControls(lanePosition, lv.getBall())
+		bowlingControls    = new BowlingControls(lanePosition, lv?.getBall())
 	}
 
 	function onMyRollEnd(data: { userId: string }) {
