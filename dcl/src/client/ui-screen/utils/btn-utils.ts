@@ -21,7 +21,7 @@ export function getUVsForIconAtlasNumber(number: number): number[] {
 		y = 0
 		number = number - 8
 	}
-	console.log('getUVsForIconAtlasNumber: number', number)
+	//console.log('getUVsForIconAtlasNumber: number', number)
 	return [
 		number * 0.125, y, 
 		number * 0.125, y + 0.125, 
