@@ -47,6 +47,8 @@ function getStatusText() {
 	var text = "You are idle."
 	if (lanePhase === LanePhase.GAME_STARTING) {
 		text = "Game is starting..."
+	} else if (lanePhase === LanePhase.WAITING) {
+		text = "Waiting for the next frame"
 	} else if (lanePhase === LanePhase.FRAME_START) {
 		text = playerName + "'s turn is starting"
 	} else if (lanePhase === LanePhase.ROLL_AWAITING) {
