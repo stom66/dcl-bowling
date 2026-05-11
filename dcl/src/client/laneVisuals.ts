@@ -428,6 +428,8 @@ export class LaneVisuals {
 		utils.timers.setTimeout(() => {
 			this.replayDriver = undefined
 			this.emitPlaybackEndByMembership()
+
+			this.destroy()
 		}, 2000)
 	}
 
