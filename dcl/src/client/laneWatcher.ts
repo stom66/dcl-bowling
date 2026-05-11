@@ -21,7 +21,7 @@ import { ClientStore } from "src/client/clientStore"
  *   (see `flush`) so consumers only see one `LaneSnapshot` per tick, with all
  *   fields fully synced.
  */
-export namespace MyLane {
+export namespace LaneWatcher {
 
 	// MARK: Vars
 	let isInitialised        : boolean    = false
@@ -98,7 +98,7 @@ export namespace MyLane {
 	 * by the time we read the snapshot.
 	 */
 	function onLaneChanged(laneIndex: number): void {
-		if (laneIndex !== ClientStore.getInstance().getLaneIndex()) return
+		//if (laneIndex !== ClientStore.getInstance().getLaneIndex()) return
 
 		pendingLanes.add(laneIndex)
 		if (flushScheduled) return
@@ -114,6 +114,8 @@ export namespace MyLane {
 	 */
 	function flush(): void {
 		flushScheduled = false
+
+		// TODO: refactor this to send out events for other lanes, such as game end
 
 		const laneIndex = ClientStore.getInstance().getLaneIndex()
 		if (laneIndex === undefined || !pendingLanes.has(laneIndex)) {

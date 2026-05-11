@@ -2,7 +2,7 @@ import { LaneStore } from 'src/shared/laneStore'
 import { LanePhase, PlayerStatus } from 'src/shared/enums'
 import { userProfileCache } from 'src/shared/utils/userProfileCache'
 
-import { MyLane } from 'src/client/myLane'
+import { LaneWatcher } from 'src/client/laneWatcher'
 
 
 // MARK: ClientStore
@@ -76,7 +76,7 @@ export class ClientStore {
 	setLaneIndex(value: number | undefined) {
 		if (this.laneIndex === value) return
 		this.laneIndex = value
-		MyLane.onMyLaneIndexChanged(value)
+		LaneWatcher.onMyLaneIndexChanged(value)
 	}
 		getLaneIndex(): number | undefined {
 			return this.laneIndex
