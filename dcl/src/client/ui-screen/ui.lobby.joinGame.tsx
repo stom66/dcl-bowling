@@ -1,6 +1,7 @@
 import ReactEcs, { Button, Label, UiEntity, UiFontType} from '@dcl/sdk/react-ecs'
 import { Color4, Vector3 } from '@dcl/sdk/math'
 import { movePlayerTo } from '~system/RestrictedActions'
+import { getPlatform, isMobile, isDesktop, isWeb } from '@dcl/sdk/platform'
 
 import { ComponentManager } from 'src/shared/components/componentManager'
 import { LaneStore } from 'src/shared/laneStore'
@@ -36,9 +37,11 @@ export function HideJoinGameUI() {
 }
 
 const FORCE_SHOW    = false
-const PANEL_HIDDEN  = -420
+const PANEL_HIDDEN  = isMobile() ? -800 : -420
 const PANEL_VISIBLE = 8
 var panelBottom       : number        = FORCE_SHOW? PANEL_VISIBLE: PANEL_HIDDEN
+
+const isVisible = () => {return panelBottom > PANEL_HIDDEN}
 
 
 enum BtnInfoUVIndex {
@@ -308,6 +311,8 @@ const breakAfter = Math.ceil(GameSettings.MAX_LANES / 2) -1
 
 
 export function JoinGameUI() {
+
+	//if (!isVisible()) return (<UiEntity />)
 	
 	const mainWidth   = vwAsPixels(75, 600, 1024)
 	const padding     = { left: 32, right: 32, top: 32, bottom: 16 }
@@ -334,7 +339,7 @@ export function JoinGameUI() {
 				height        : '100%',
 				flexDirection : 'column',
 				alignItems    : 'center',
-				justifyContent: 'flex-end',
+				justifyContent: isMobile() ? 'space-around' : 'flex-end',
 			}}
 		>
 
@@ -342,10 +347,11 @@ export function JoinGameUI() {
 				uiTransform={{
 					width        : mainWidth,
 					height       : buttonWidth + padding.top + padding.bottom,
-					positionType : 'absolute',
+					positionType : 'relative',
 					position     : { bottom: panelBottom },
 					flexDirection: 'row',
 					justifyContent: 'center',
+					display       : panelBottom <= PANEL_HIDDEN ? 'none' : 'flex',
 
 					padding      : { left  : rowStyle.padding.left, right: rowStyle.padding.right, top: rowStyle.padding.top, bottom: rowStyle.padding.bottom },
 				}}
