@@ -15,8 +15,8 @@ import { ClientStore } from "src/client/clientStore"
  * Watches the synced lane components for the player's currently-enrolled lane and
  * re-emits state changes on the local `eventBus` using the existing event names.
  *
- * - All lane entities are watched up-front; the per-tick "is this my lane?" filter
- *   gates emissions, so dynamic subscribe/unsubscribe is unnecessary.
+ * - All lane entities are watched up-front; `flush` emits for every lane that
+ *   changed in that tick (clients filter `NOTIFY_LANE_STATE` by `laneIndex` if needed).
  * - Multiple component changes within one tick are coalesced into a single emit
  *   (see `flush`) so consumers only see one `LaneSnapshot` per tick, with all
  *   fields fully synced.
@@ -25,8 +25,9 @@ export namespace LaneWatcher {
 
 	// MARK: Vars
 	let isInitialised        : boolean    = false
-	let lastEmittedPhase     : LanePhase  = LanePhase.NONE
-	let lastEmittedTurnUserId: string     = ''
+
+	let lastEmittedPhase     : LanePhase[]  = Array.from({ length: GameSettings.MAX_LANES }, () => LanePhase.NONE)
+	let lastEmittedTurnUserId: string[]   = Array.from({ length: GameSettings.MAX_LANES }, () => '')
 
 	const pendingLanes       : Set<number> = new Set()
 	let flushScheduled       : boolean     = false
@@ -65,6 +66,20 @@ export namespace LaneWatcher {
 	}
 
 
+	// MARK: onLaneChanged
+	/**
+	 * Component-onChange callback. Records the dirty lane and schedules a single
+	 * coalesced flush at end-of-tick so all sibling component updates are visible
+	 * by the time we read the snapshot.
+	 */
+	function onLaneChanged(laneIndex: number): void {
+		pendingLanes.add(laneIndex)
+		if (flushScheduled) return
+		flushScheduled = true
+		utils.timers.setTimeout(flush, 0)
+	}
+
+
 	// MARK: onMyLaneIndexChanged
 	/**
 	 * Called by `ClientStore.setLaneIndex` whenever the local player's enrolled lane
@@ -76,98 +91,76 @@ export namespace LaneWatcher {
 		console.log('MyLane: onMyLaneIndexChanged: laneIndex', laneIndex)
 
 		pendingLanes.clear()
-		lastEmittedPhase      = LanePhase.NONE
-		lastEmittedTurnUserId = ''
 
 		if (laneIndex === undefined) return
 
 		const snapshot = LaneStore.getLaneSnapshot(laneIndex)
-
-		lastEmittedPhase      = snapshot.phase
-		lastEmittedTurnUserId = snapshot.currentFrameUserId
-
+		lastEmittedPhase[laneIndex]      = snapshot.phase
+		lastEmittedTurnUserId[laneIndex] = snapshot.currentFrameUserId
 		eventBus.emit(ClientEvents.NOTIFY_LANE_STATE, snapshot)
 		eventBus.emit(ClientEvents.ON_GAME_JOINED,    snapshot)
 	}
 
 
-	// MARK: onLaneChanged
-	/**
-	 * Component-onChange callback. Records the dirty lane and schedules a single
-	 * coalesced flush at end-of-tick so all sibling component updates are visible
-	 * by the time we read the snapshot.
-	 */
-	function onLaneChanged(laneIndex: number): void {
-		//if (laneIndex !== ClientStore.getInstance().getLaneIndex()) return
-
-		pendingLanes.add(laneIndex)
-		if (flushScheduled) return
-		flushScheduled = true
-		utils.timers.setTimeout(flush, 0)
-	}
-
-
 	// MARK: flush
 	/**
-	 * End-of-tick flush. Reads the current snapshot for "my lane" and emits
+	 * End-of-tick flush. For each dirty lane, reads the snapshot and emits
 	 * `NOTIFY_LANE_STATE` plus any phase-transition-derived events.
 	 */
 	function flush(): void {
 		flushScheduled = false
 
-		// TODO: refactor this to send out events for other lanes, such as game end
-
-		const laneIndex = ClientStore.getInstance().getLaneIndex()
-		if (laneIndex === undefined || !pendingLanes.has(laneIndex)) {
-			pendingLanes.clear()
-			return
-		}
+		const lanesToFlush = Array.from(pendingLanes)
 		pendingLanes.clear()
 
-		const snapshot = LaneStore.getLaneSnapshot(laneIndex)
-		eventBus.emit(ClientEvents.NOTIFY_LANE_STATE, snapshot)
+		for (const laneIndex of lanesToFlush) {
+			const snapshot = LaneStore.getLaneSnapshot(laneIndex)
+			eventBus.emit(ClientEvents.NOTIFY_LANE_STATE, snapshot)
 
-		emitPhaseTransition(snapshot)
+			emitPhaseTransition(snapshot)
 
-		lastEmittedPhase      = snapshot.phase
-		lastEmittedTurnUserId = snapshot.currentFrameUserId
+			lastEmittedPhase[laneIndex]      = snapshot.phase
+			lastEmittedTurnUserId[laneIndex] = snapshot.currentFrameUserId
+		}
 	}
 
 
 	// MARK: emitPhaseTransition
 	/**
-	 * Maps a phase change on the local player's lane to the existing event-bus
-	 * events. The current player's userId (from `LaneCurrentTurn.currentFrameUserId`)
-	 * decides whether to fire an `ON_MY_*` or `ON_GROUP_*` variant.
+	 * Maps a synced phase change to the existing event-bus events. Uses
+	 * `isMyLane` / `isMyTurn` so other lanes still emit `ON_NON_GROUP_*` without
+	 * clearing local enrollment.
 	 */
 	function emitPhaseTransition(snapshot: LaneSnapshot): void {
-		const prev = lastEmittedPhase
+		const prev = lastEmittedPhase[snapshot.laneIndex]
 		const next = snapshot.phase
 		if (prev === next) return
 
 		const myUserId  = ClientStore.getInstance().getUserId()
 		const isMyTurn  = snapshot.currentFrameUserId === myUserId
+		const isMyLane  = snapshot.laneIndex === ClientStore.getInstance().getLaneIndex()
 
 		if (prev === LanePhase.GAME_STARTING && next === LanePhase.WAITING) {
-			eventBus.emit(ClientEvents.ON_GROUP_GAME_START, snapshot)
+			eventBus.emit(isMyLane ? ClientEvents.ON_GROUP_GAME_START : ClientEvents.ON_NON_GROUP_GAME_START, snapshot)
 		}
 
 		if (next === LanePhase.FRAME_START) {
-			eventBus.emit(isMyTurn ? ClientEvents.ON_MY_FRAME_START : ClientEvents.ON_GROUP_FRAME_START, snapshot)
+			eventBus.emit(isMyTurn ? ClientEvents.ON_MY_FRAME_START : isMyLane ? ClientEvents.ON_GROUP_FRAME_START : ClientEvents.ON_NON_GROUP_FRAME_START, snapshot)
 		}
 
 		if (next === LanePhase.ROLL_END) {
-			eventBus.emit(isMyTurn ? ClientEvents.ON_MY_ROLL_END : ClientEvents.ON_GROUP_ROLL_END, { userId: snapshot.currentFrameUserId })
+			eventBus.emit(isMyTurn ? ClientEvents.ON_MY_ROLL_END : isMyLane ? ClientEvents.ON_GROUP_ROLL_END : ClientEvents.ON_NON_GROUP_ROLL_END, { userId: snapshot.currentFrameUserId })
 		}
 
 		if (next === LanePhase.FRAME_END) {
-			eventBus.emit(isMyTurn ? ClientEvents.ON_MY_FRAME_END : ClientEvents.ON_GROUP_FRAME_END, { userId: snapshot.currentFrameUserId })
+			eventBus.emit(isMyTurn ? ClientEvents.ON_MY_FRAME_END : isMyLane ? ClientEvents.ON_GROUP_FRAME_END : ClientEvents.ON_NON_GROUP_FRAME_END, { userId: snapshot.currentFrameUserId })
 		}
 
 		if (next === LanePhase.NONE && prev !== LanePhase.NONE) {
-			eventBus.emit(ClientEvents.ON_GROUP_GAME_END, snapshot)
-			// Player has left this lane (or the lane has been reset).
-			ClientStore.getInstance().setLaneIndex(undefined)
+			eventBus.emit(isMyLane ? ClientEvents.ON_GROUP_GAME_END : ClientEvents.ON_NON_GROUP_GAME_END, snapshot)
+			if (isMyLane) {
+				ClientStore.getInstance().setLaneIndex(undefined)
+			}
 		}
 	}
 }
