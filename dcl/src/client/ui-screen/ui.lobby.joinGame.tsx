@@ -335,11 +335,12 @@ export function JoinGameUI() {
 		<UiEntity
 			key="ui_debug_root"
 			uiTransform={{
-				width         : '100%',
-				height        : '100%',
-				flexDirection : 'column',
-				alignItems    : 'center',
-				justifyContent: isMobile() ? 'space-around' : 'flex-end',
+				width          : '100%',
+				height         : '100%',
+				flexDirection  : 'column',
+				alignItems     : 'center',
+				justifyContent : isMobile() ? 'space-around' : 'flex-end',
+				positionType   : 'absolute',
 			}}
 		>
 
@@ -351,7 +352,6 @@ export function JoinGameUI() {
 					position     : { bottom: panelBottom },
 					flexDirection: 'row',
 					justifyContent: 'center',
-					display       : panelBottom <= PANEL_HIDDEN ? 'none' : 'flex',
 
 					padding      : { left  : rowStyle.padding.left, right: rowStyle.padding.right, top: rowStyle.padding.top, bottom: rowStyle.padding.bottom },
 				}}
