@@ -254,14 +254,16 @@ export class BowlingControls {
 		if (!this.ball) return
 
 		const lateral = Math.sin(this.accumulatedTime * POSITION_OSCILLATION_SPEED) * POSITION_SWING_AMPLITUDE
-		const t = Transform.getMutable(this.arrow)
+		const t = Transform.getMutableOrNull(this.arrow)
+		if (!t) return
 		t.position = Vector3.create(
 			this.lanePosition.x + lateral,
 			this.lanePosition.y,
 			this.lanePosition.z,
 		)
 
-		const tBall = Transform.getMutable(this.ball)
+		const tBall = Transform.getMutableOrNull(this.ball)
+		if (!tBall) return
 		tBall.position = Vector3.create(
 			this.lanePosition.x + lateral,
 			this.lanePosition.y + BALL_SPAWN_LANE_LOCAL_Y,
@@ -275,7 +277,8 @@ export class BowlingControls {
 		if (!this.ball) return
 
 		const yawDegrees = Math.sin(this.accumulatedTime * DIRECTION_OSCILLATION_SPEED) * DIRECTION_YAW_HALF_RANGE_DEG
-		const t = Transform.getMutable(this.arrow)
+		const t = Transform.getMutableOrNull(this.arrow)
+		if (!t) return
 		t.rotation = Quaternion.fromEulerDegrees(0, yawDegrees, 0)
 	}
 
@@ -285,7 +288,8 @@ export class BowlingControls {
 		if (!this.ball) return
 
 		const s = (Math.sin(this.accumulatedTime * STRENGTH_OSCILLATION_SPEED) + 1) * 0.5
-		const t = Transform.getMutable(this.arrow)
+		const t = Transform.getMutableOrNull(this.arrow)
+		if (!t) return
 		t.scale = Vector3.create(s, s, s)
 	}
 }
