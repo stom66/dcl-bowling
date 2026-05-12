@@ -13,8 +13,18 @@ import { ClientStore } from 'src/client/clientStore'
 import { InfoRow } from './utils/components'
 
 
+// MARK: Vars
+const clientStore = ClientStore.getInstance()
+//var lanePhase : LanePhase  = LanePhase.NONE
+var playerName: string     = "~"
+var endTime   : number     = 0
+
+
 // MARK: Event Bindings
 eventBus.on(ClientEvents.NOTIFY_LANE_STATE, (data: LaneSnapshot) => {
+	const myLane = clientStore.getLaneIndex()
+	if (myLane === undefined || data.laneIndex !== myLane) return
+
 	// Player name
 	if (data.currentFrameUserId) {
 		userProfileCache.getDisplayName(data.currentFrameUserId).then(displayName => {
@@ -29,21 +39,10 @@ eventBus.on(ClientEvents.NOTIFY_LANE_STATE, (data: LaneSnapshot) => {
 		endTime = clockSync.toLocalTime(data.gameStartTime)
 	}
 
-	// Phase
-	lanePhase = data.phase
-
 })
 
-// MARK: Vars
-const clientStore = ClientStore.getInstance()
-var lanePhase : LanePhase  = LanePhase.NONE
-var playerName: string     = "~"
-var endTime   : number     = 0
-
-
-
-
 function getStatusText() {
+	const lanePhase = clientStore.getLanePhase()
 	var text = "You are idle."
 	if (lanePhase === LanePhase.GAME_STARTING) {
 		text = "Game is starting..."
