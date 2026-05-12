@@ -19,6 +19,9 @@ export namespace playerMover {
 
 		eventBus.on(ClientEvents.ON_GROUP_GAME_START, movePlayerToGroupZone)
 		eventBus.on(ClientEvents.ON_GROUP_GAME_END, movePlayerToLobby)
+
+		
+		eventBus.on(ClientEvents.REQUEST_LEAVE_GAME, (data: {}) => { movePlayerToLobby() })
 	}
 
 

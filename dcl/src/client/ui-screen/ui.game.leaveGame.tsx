@@ -5,11 +5,18 @@ import { ClientMessaging } from '../clientMessaging'
 import { ClientStore } from '../clientStore'
 import { PlayerStatus } from 'src/shared/enums'
 import { getCanvasInfo } from './utils/sizing'
+import { UnFreezePlayer } from 'src/shared/utils/inputModifiers'
 
 
 var buttonState = BtnStateUVIndex.NORMAL
 
 const clientStore = ClientStore.getInstance()
+
+function requestLeaveGame() {
+	ClientMessaging.requestLeaveGame()
+	clientStore.setLaneIndex(undefined)
+	UnFreezePlayer()
+}
 
 // MARK: Main GameUI
 export function LeaveGameUI() {
@@ -50,7 +57,7 @@ export function LeaveGameUI() {
 				onMouseDown  = {() => { if (buttonState !== BtnStateUVIndex.DISABLED) {
 					console.log("PRESSED")
 					buttonState = BtnStateUVIndex.PRESSED
-					ClientMessaging.requestLeaveGame()
+					requestLeaveGame()
 				}}}
 				onMouseUp    = {() => { if (buttonState !== BtnStateUVIndex.DISABLED) {
 					console.log("NORMAL")
