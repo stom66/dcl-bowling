@@ -9,7 +9,9 @@ import { VersionUI } from './ui-screen/ui.version'
 import { HowToPlay } from './ui-screen/ui.HowToPlay'
 import { JoinGameUI } from './ui-screen/ui.lobby.joinGame'
 import { LeaveGameUI } from './ui-screen/ui.game.leaveGame'
+import { HideLetterbox, LetterboxUi, ShowLetterbox } from './ui-screen/ui.letterbox'
 
+import * as utils from "@dcl-sdk/utils"
 
 // MARK: Vars
 declare var process: {
@@ -33,9 +35,13 @@ const uiComponent = () => [
 	//HowToPlay(),
 	JoinGameUI(),
 	LeaveGameUI(),
+	LetterboxUi(),
 
-	DebugUI()
+	DebugUI(),
 	//SHOW_DEBUG ? DebugUI() : null
+
+
+
 ]
 
 export function SetupScreenUI() {
