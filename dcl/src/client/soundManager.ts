@@ -74,6 +74,10 @@ export namespace SoundManager {
 		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, () => {
 			playSound(sfx.swish)
 		})
+
+		eventBus.on(ClientEvents.ON_GROUP_GAME_END, () => {
+			stopBgm()
+		})
 	}
 
 
