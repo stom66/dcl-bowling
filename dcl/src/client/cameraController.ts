@@ -8,6 +8,7 @@ import { PlayerSettings } from "src/shared/settings";
 import { lanePositions } from "src/client/data/lanePositions";
 import { ClientEvents } from "src/client/clientEvents";
 import { ClientStore } from "src/client/clientStore";
+import { LaneSnapshot } from "src/shared/types/shared-types";
 
 
 export namespace CameraController {
@@ -37,6 +38,7 @@ export namespace CameraController {
 		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, (data: { userId: string }) => { onGroupRollPlaybackStart(data) })
 		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_END, (data: {}) => { onGroupRollPlaybackEnd() })
 		eventBus.on(ClientEvents.REQUEST_LEAVE_GAME, (data: {}) => { onRequestLeaveGame() })
+		eventBus.on(ClientEvents.ON_GROUP_GAME_END, (data: LaneSnapshot) => { resetCamera() })
 
 		camera = engine.addEntity()
 		Transform.create(camera, { position: Vector3.create(0, 0, 0) })
