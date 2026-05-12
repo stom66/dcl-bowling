@@ -6,6 +6,8 @@ import { ClientMessaging } from "./clientMessaging";
 import { eventBus } from "src/shared/utils/eventBus";
 import { ClientEvents } from "./clientEvents";
 import { sfx, SoundManager } from "./soundManager";
+import { LaneSnapshot } from "src/shared/types/shared-types";
+import { lanePositions } from "./data/lanePositions";
 
 
 enum CONTROL_TYPE {
@@ -47,6 +49,7 @@ export class BowlingControls {
 	private pointerCollider: Entity
 
 	private lanePosition: Vector3
+	private laneIndex: number
 
 	private accumulatedTime: number = 0
 	private awaitingPointerUp = false // simple debounce
@@ -56,15 +59,19 @@ export class BowlingControls {
 	//private cannonSim?: CannonSim
 
 	// MARK: Constructor
-	constructor(lanePosition: Vector3, ball: Entity | undefined) {
-		console.log("bowlingControls: BowlingControls: constructor", lanePosition.x, lanePosition.y, lanePosition.z)
-		this.lanePosition = lanePosition
-		this.ball = ball
+	constructor(
+		laneIndex: number,
+		ball: Entity | undefined
+	) {
+		console.log("bowlingControls: BowlingControls: laneIndex", laneIndex)
+		this.laneIndex    = laneIndex
+		this.lanePosition = lanePositions[laneIndex]
+		this.ball         = ball
 
 		// Create the arrow entity
 		this.arrow = engine.addEntity()
 		Transform.create(this.arrow, { 
-			position: lanePosition,
+			position: this.lanePosition,
 			scale: Vector3.create(ARROW_SCALE, ARROW_SCALE, ARROW_SCALE)
 		})
 		GltfContainer.create(this.arrow, {
@@ -75,7 +82,7 @@ export class BowlingControls {
 		// Create the collider for itneractions
 		this.pointerCollider = engine.addEntity()
 		Transform.create(this.pointerCollider, { 
-			position: Vector3.add(lanePosition, Vector3.create(0, 2, 1)), 
+			position: Vector3.add(this.lanePosition, Vector3.create(0, 2, 1)), 
 			scale: Vector3.create(2, 5, 2) 
 		})
 		//MeshRenderer.setBox(this.pointerCollider)
@@ -88,6 +95,11 @@ export class BowlingControls {
 		engine.addSystem(this.sys_PositionAnimation)
 
 		
+		eventBus.on(ClientEvents.ON_GROUP_GAME_END, (data: LaneSnapshot) => {
+			if (this.laneIndex == data.laneIndex) {
+				this.Destroy()
+			}
+		})
 
 		//this.ball = this.CreateBall()
 		//this.SpawnPins()
@@ -195,11 +207,12 @@ export class BowlingControls {
 
 	// MARK: Destroy
 	Destroy() {
-		engine.removeEntity(this.arrow)
-		engine.removeEntity(this.pointerCollider)
 		engine.removeSystem(this.sys_PositionAnimation)
 		engine.removeSystem(this.sys_DirectionAnimation)
 		engine.removeSystem(this.sys_StrengthAnimation)
+
+		engine.removeEntity(this.arrow)
+		engine.removeEntity(this.pointerCollider)
 
 		//this.cannonSim?.dispose()
 		//this.cannonSim = undefined
@@ -237,6 +250,8 @@ export class BowlingControls {
 	/** Arrow fn so `this` is bound when the engine invokes the system. */
 	private sys_PositionAnimation = (dt: number) => {
 		this.accumulatedTime += dt
+		if (!this.arrow) return
+		if (!this.ball) return
 
 		const lateral = Math.sin(this.accumulatedTime * POSITION_OSCILLATION_SPEED) * POSITION_SWING_AMPLITUDE
 		const t = Transform.getMutable(this.arrow)
@@ -246,7 +261,6 @@ export class BowlingControls {
 			this.lanePosition.z,
 		)
 
-		if (!this.ball) return
 		const tBall = Transform.getMutable(this.ball)
 		tBall.position = Vector3.create(
 			this.lanePosition.x + lateral,
@@ -257,6 +271,8 @@ export class BowlingControls {
 
 	private sys_DirectionAnimation = (dt: number) => {
 		this.accumulatedTime += dt
+		if (!this.arrow) return
+		if (!this.ball) return
 
 		const yawDegrees = Math.sin(this.accumulatedTime * DIRECTION_OSCILLATION_SPEED) * DIRECTION_YAW_HALF_RANGE_DEG
 		const t = Transform.getMutable(this.arrow)
@@ -265,6 +281,8 @@ export class BowlingControls {
 
 	private sys_StrengthAnimation = (dt: number) => {
 		this.accumulatedTime += dt
+		if (!this.arrow) return
+		if (!this.ball) return
 
 		const s = (Math.sin(this.accumulatedTime * STRENGTH_OSCILLATION_SPEED) + 1) * 0.5
 		const t = Transform.getMutable(this.arrow)

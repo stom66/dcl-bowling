@@ -40,13 +40,11 @@ export namespace gameStateHandler {
 
 	// MARK: Init
 	export function init() {
-/* 		eventBus.on(ClientEvents.ON_GROUP_GAME_END, (data: LaneSnapshot) => { (data) }) {
-			console.log('gameStateHandler: onGroupGameEnd: data', data)
-			for (let i = 0; i < laneVisuals.length; i++) {
-				if (laneVisuals[i]) laneVisuals[i]?.destroy()
+		eventBus.on(ClientEvents.ON_GROUP_GAME_END, (data: LaneSnapshot) => {
+			if (laneVisuals[data.laneIndex]) {
+				laneVisuals[data.laneIndex]?.destroy()
 			}
-			laneVisuals = []
-		} */
+		})
 	}
 
 	function createLaneVisuals(
@@ -60,8 +58,7 @@ export namespace gameStateHandler {
 
 		if (laneVisuals[laneIndex]) laneVisuals[laneIndex]?.destroy()
 			
-		const pos = lanePositions[laneIndex]
-		const lv = new LaneVisuals(pos, data.rollStartTimestamp, data.userId)
+		const lv = new LaneVisuals(laneIndex, data.rollStartTimestamp, data.userId)
 		lv.setupPins(data.pinStanding)
 
 		laneVisuals[laneIndex] = lv
@@ -104,8 +101,7 @@ export namespace gameStateHandler {
 			return
 		}
 
-		const lanePosition = lanePositions[laneIndex]
-		bowlingControls    = new BowlingControls(lanePosition, lv?.getBall())
+		bowlingControls = new BowlingControls(laneIndex, lv?.getBall())
 	}
 
 	function onMyRollEnd(data: { userId: string }) {

@@ -11,6 +11,7 @@ import { ClientEvents, eventBus } from "src/shared/utils/eventBus"
 import { ClientStore } from "src/client/clientStore"
 import { LaneStore } from "src/shared/laneStore"
 import { sfx, SoundManager } from "./soundManager"
+import { lanePositions } from "./data/lanePositions"
 
 
 // MARK: Types
@@ -66,6 +67,7 @@ const REPLAY_WAIT_MS = 3000
  */
 export class LaneVisuals {
 
+	private readonly laneIndex: number
 	private readonly lanePosition: Vector3
 	private rollPayload: NotifyPlayerRollPayload | undefined
 
@@ -92,16 +94,26 @@ export class LaneVisuals {
 
 	// MARK: Constructor
 	constructor(
-		lanePosition       : Vector3,
+		laneIndex          : number,
 		rollStartTimestamp : number,
 		rollOwnerUserId    : string
 	) {
-		this.lanePosition       = lanePosition
+		this.laneIndex          = laneIndex
+		this.lanePosition       = lanePositions[laneIndex]
 		this.rollStartTimestamp = rollStartTimestamp
 		this.rollOwnerUserId    = rollOwnerUserId
 		this.setupBall()
 
 		this.bindRollRequestCountdownHandlers()
+
+		eventBus.on(ClientEvents.ON_GROUP_GAME_END, (data) => {
+			if (data.laneIndex !== this.laneIndex) return
+			this.destroy()
+		})
+		eventBus.on(ClientEvents.ON_NON_GROUP_GAME_END, (data) => {
+			if (data.laneIndex !== this.laneIndex) return
+			this.destroy()
+		})
 	}
 
 
