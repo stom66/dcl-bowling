@@ -32,7 +32,7 @@ export class GameSettings {
 	static FRAME_DELAY_BETWEEN_TURNS      = 1000 * 3    // How long to wait between Frames
 	static ROLL_MAX_DURATION              = 1000 * (IS_DEBUG ? 20 : 30)
 	static ROLL_REPLAY_DURATION           = 1000 * 10
-	static ROLL_REPLAY_ANIM_DURATION      = 1000 * 7     // duration of the bowling animation which plays before the replay start - time before the animation releases the ball
+	//static ROLL_REPLAY_ANIM_DURATION      = 1000 * 7     // duration of the bowling animation which plays before the replay start - time before the animation releases the ball
 
 	static SHOW_NON_GROUP_ROLL_VISUALS = true
 

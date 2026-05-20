@@ -250,8 +250,7 @@ export class BowlingControls {
 	/** Arrow fn so `this` is bound when the engine invokes the system. */
 	private sys_PositionAnimation = (dt: number) => {
 		this.accumulatedTime += dt
-		if (!this.arrow) return
-		if (!this.ball) return
+		if (!this.arrow || !this.ball) return
 
 		const lateral = Math.sin(this.accumulatedTime * POSITION_OSCILLATION_SPEED) * POSITION_SWING_AMPLITUDE
 		const t = Transform.getMutableOrNull(this.arrow)
@@ -273,8 +272,7 @@ export class BowlingControls {
 
 	private sys_DirectionAnimation = (dt: number) => {
 		this.accumulatedTime += dt
-		if (!this.arrow) return
-		if (!this.ball) return
+		if (!this.arrow || !this.ball) return
 
 		const yawDegrees = Math.sin(this.accumulatedTime * DIRECTION_OSCILLATION_SPEED) * DIRECTION_YAW_HALF_RANGE_DEG
 		const t = Transform.getMutableOrNull(this.arrow)
@@ -284,8 +282,7 @@ export class BowlingControls {
 
 	private sys_StrengthAnimation = (dt: number) => {
 		this.accumulatedTime += dt
-		if (!this.arrow) return
-		if (!this.ball) return
+		if (!this.arrow || !this.ball) return
 
 		const s = (Math.sin(this.accumulatedTime * STRENGTH_OSCILLATION_SPEED) + 1) * 0.5
 		const t = Transform.getMutableOrNull(this.arrow)
