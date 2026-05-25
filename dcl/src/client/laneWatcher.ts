@@ -29,6 +29,11 @@ export namespace LaneWatcher {
 	let lastEmittedPhase     : LanePhase[]  = Array.from({ length: GameSettings.MAX_LANES }, () => LanePhase.NONE)
 	let lastEmittedTurnUserId: string[]   = Array.from({ length: GameSettings.MAX_LANES }, () => '')
 
+	// Server endGame sets phase=NONE and resetLane (empty players) in the same tick, so
+	// snapshot.players is already [] when we detect the transition. Cache the last
+	// non-empty roster so game-end can still tell "our" game from a spectator lane.
+	const lastKnownPlayersByLane: string[][] = Array.from({ length: GameSettings.MAX_LANES }, () => [])
+
 	const pendingLanes       : Set<number> = new Set()
 	let flushScheduled       : boolean     = false
 
@@ -95,10 +100,28 @@ export namespace LaneWatcher {
 		if (laneIndex === undefined) return
 
 		const snapshot = LaneStore.getLaneSnapshot(laneIndex)
+		if (snapshot.players.length > 0) {
+			lastKnownPlayersByLane[laneIndex] = snapshot.players.slice()
+		}
 		lastEmittedPhase[laneIndex]      = snapshot.phase
 		lastEmittedTurnUserId[laneIndex] = snapshot.currentFrameUserId
 		eventBus.emit(ClientEvents.NOTIFY_LANE_STATE, snapshot)
 		eventBus.emit(ClientEvents.ON_GAME_JOINED,    snapshot)
+	}
+
+
+	// MARK: wasMyLane
+	/**
+	 * Whether the local player was enrolled on this lane. Uses `ClientStore.laneIndex`
+	 * when set, and falls back to the cached roster for game-end when synced players
+	 * have already been cleared.
+	 */
+	function wasMyLane(
+		laneIndex: number,
+		myUserId : string
+	): boolean {
+		if (laneIndex === ClientStore.getInstance().getLaneIndex()) return true
+		return lastKnownPlayersByLane[laneIndex].includes(myUserId)
 	}
 
 
@@ -115,6 +138,9 @@ export namespace LaneWatcher {
 
 		for (const laneIndex of lanesToFlush) {
 			const snapshot = LaneStore.getLaneSnapshot(laneIndex)
+			if (snapshot.players.length > 0) {
+				lastKnownPlayersByLane[laneIndex] = snapshot.players.slice()
+			}
 			eventBus.emit(ClientEvents.NOTIFY_LANE_STATE, snapshot)
 
 			emitPhaseTransition(snapshot)
@@ -157,8 +183,10 @@ export namespace LaneWatcher {
 		}
 
 		if (next === LanePhase.NONE && prev !== LanePhase.NONE) {
-			eventBus.emit(isMyLane ? ClientEvents.ON_GROUP_GAME_END : ClientEvents.ON_NON_GROUP_GAME_END, snapshot)
-			if (isMyLane) {
+			const isMyGameEnd = wasMyLane(snapshot.laneIndex, myUserId)
+			eventBus.emit(isMyGameEnd ? ClientEvents.ON_GROUP_GAME_END : ClientEvents.ON_NON_GROUP_GAME_END, snapshot)
+			if (isMyGameEnd) {
+				lastKnownPlayersByLane[snapshot.laneIndex] = []
 				ClientStore.getInstance().setLaneIndex(undefined)
 			}
 		}
