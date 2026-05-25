@@ -7,6 +7,7 @@ export enum ClientEvents {
 	ON_MY_FRAME_START                   = "onMyFrameStart",                 // When the local player starts their frame
 	ON_MY_FRAME_END                     = "onMyFrameEnd",                   // When the local player ends their frame
 	ON_MY_ROLL_START                    = "onMyRollStart",                  // When the local player starts their roll
+	ON_MY_ROLL_CLICK_TO_SET             = "onMyRollClickToSet",             // When the local player clicks to set a roll input property
 	//ON_MY_ROLL_PLAYBACK_RECEIVED        = "onMyRollPlaybackReceived",       // We got the playback for the local player
 	//ON_MY_ROLL_PLAYBACK_START           = "onMyRollPlaybackStart",          // Lane visuals began for the local player
 	//ON_MY_ROLL_PLAYBACK_END             = "onMyRollPlaybackEnd",            // Lane visuals finished for the local player

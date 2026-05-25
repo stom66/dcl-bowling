@@ -1,4 +1,5 @@
 import { EasingFunction, engine } from "@dcl/sdk/ecs"
+import { Color4 } from "@dcl/sdk/math";
 
 
 const easingFunctions: Record<EasingFunction, (t: number) => number> = {
@@ -64,6 +65,43 @@ export function tweenValue(
 		const t = Math.min(elapsed / duration, 1)
 		const easedT = easing != null ? applyEasing(t, easing) : t
 		onUpdate(lerp(from, to, easedT))
+
+		if (t >= 1) {
+			onUpdate(to)
+			engine.removeSystem(system)
+			onComplete?.()
+		}
+	}
+
+	engine.addSystem(system)
+}
+
+export function tweenColor(
+	from       : Color4,
+	to         : Color4,
+	duration   : number = 0.35,
+	onUpdate   : (v: Color4) => void,
+	onComplete?: () => void,
+	easing     : EasingFunction = EasingFunction.EF_EASECIRC
+) {
+	let elapsed = 0
+
+	if (Color4.toHexString(from) === Color4.toHexString(to)) {
+		onUpdate(to)
+		onComplete?.()
+		return
+	}
+
+	function system(dt: number) {
+		elapsed += dt
+		const t = Math.min(elapsed / duration, 1)
+		const easedT = easing != null ? applyEasing(t, easing) : t
+
+		const R = lerp(from.r, to.r, easedT)
+		const G = lerp(from.g, to.g, easedT)
+		const B = lerp(from.b, to.b, easedT)
+		const A = lerp(from.a, to.a, easedT)	
+		onUpdate(Color4.create(R, G, B, A))
 
 		if (t >= 1) {
 			onUpdate(to)

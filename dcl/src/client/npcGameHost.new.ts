@@ -4,7 +4,7 @@ import type { Dialog } from 'dcl-npc-toolkit'
 import * as npc from 'dcl-npc-toolkit'
 
 import { ClientMessaging } from 'src/client/clientMessaging'
-import { HideJoinGameUI, ShowJoinGameUI } from './ui-screen/ui.lobby.joinGame'
+import { HideJoinGameUI, ShowJoinGameUI } from './ui-screen/layers/lobby.joinGame'
 
 let bowlingHostNpc: Entity
 let triggerZone: Entity

@@ -1,17 +1,18 @@
 import { ReactEcsRenderer } from '@dcl/sdk/react-ecs'
 import { NpcUtilsUi } from 'dcl-npc-toolkit'
 
-import { DebugUI } from 'src/client/ui-screen/ui.debug'
+import { DebugUI } from 'src/client/ui-screen/layers/debug.info'
 
-import { GameStatusUI } from 'src/client/ui-screen/ui.game.gameStatus'
-import { ScoresUI } from 'src/client/ui-screen/ui.game.scores'
-import { VersionUI } from './ui-screen/ui.version'
-import { HowToPlay } from './ui-screen/ui.HowToPlay'
-import { JoinGameUI } from './ui-screen/ui.lobby.joinGame'
-import { LeaveGameUI } from './ui-screen/ui.game.leaveGame'
-import { HideLetterbox, LetterboxUi, ShowLetterbox } from './ui-screen/ui.letterbox'
+import { GameStatusUI } from 'src/client/ui-screen/layers/game.gameStatus'
+import { ScoresUI } from 'src/client/ui-screen/layers/game.scores'
+import { VersionUI } from './ui-screen/layers/version'
+import { HowToPlay } from './ui-screen/layers/info.HowToPlay'
+import { JoinGameUI } from './ui-screen/layers/lobby.joinGame'
+import { LeaveGameUI } from './ui-screen/layers/game.leaveGame'
+import { HideLetterbox, LetterboxUi, ShowLetterbox } from './ui-screen/layers/game.letterbox'
 
 import * as utils from "@dcl-sdk/utils"
+import { BowlingControlsUI } from './ui-screen/layers/game.bowlingControls'
 
 // MARK: Vars
 declare var process: {
@@ -36,14 +37,15 @@ const uiComponent = () => [
 	JoinGameUI(),
 	LeaveGameUI(),
 	LetterboxUi(),
+	BowlingControlsUI(),
 
 	DebugUI(),
 	//SHOW_DEBUG ? DebugUI() : null
-
-
-
 ]
 
 export function SetupScreenUI() {
-	ReactEcsRenderer.setUiRenderer(uiComponent)
+	ReactEcsRenderer.setUiRenderer(uiComponent, {
+		virtualHeight: 1080,
+		virtualWidth: 1920,
+	})
 }

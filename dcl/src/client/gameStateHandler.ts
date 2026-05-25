@@ -10,7 +10,6 @@ import { ClientEvents, eventBus } from "src/shared/utils/eventBus"
 
 import { BowlingControls } from "src/client/bowlingControls"
 import { ClientStore } from "src/client/clientStore"
-import { lanePositions } from "src/client/data/lanePositions"
 import { LaneVisuals } from "src/client/laneVisuals"
 import { LaneStore } from "src/shared/laneStore"
 

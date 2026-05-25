@@ -54,13 +54,12 @@ export async function initClient() {
 
 
 	function waitForLoad() {
-		if (!isStateSyncronized()) return;
+		if (!isStateSyncronized())                     {console.log("waitForLoad: isStateSyncronized"); return}
 
 		// Wait for userData to be available
 		let userData = getPlayer()
 		if(!userData)                                  {console.log("waitForLoad: userData");           return}
 		if (!hasEnteredScene)                          {console.log("waitForLoad: onEnterScene");       return}
-		if (!isStateSyncronized())                     {console.log("waitForLoad: isStateSyncronized"); return}
 		if (!Transform.getOrNull(engine.PlayerEntity)) {console.log("waitForLoad: PlayerEntity");       return}
 		if (!Transform.getOrNull(engine.CameraEntity)) {console.log("waitForLoad: CameraEntity");       return}
 
@@ -69,26 +68,30 @@ export async function initClient() {
 		onGameLoaded()
 	}
 
+	ComponentManager.init()
+	await ComponentManager.onClientReady().then(() => {
+		console.log("ComponentManager.onClientReady")
+		
+		// Fire-and-forget: MyLane awaits CRDT discovery internally, then binds onChange.
+		void LaneWatcher.init()
+	
+		ClientHandler.init()
+		gameStateHandler.init()
+		playerMover.init()
+		CameraController.init()
+		SoundManager.init()
+	
+		SetupScreenUI()
+		UiWorld.init()
+		
+		setupBowlingHostNpc()
+		setupLights()
+	})
+
+
 	const store = ClientStore.getInstance()
 	await store.init()
 
-	ComponentManager.init()
-	await ComponentManager.onClientReady()
-
-	// Fire-and-forget: MyLane awaits CRDT discovery internally, then binds onChange.
-	void LaneWatcher.init()
-
-	ClientHandler.init()
-	gameStateHandler.init()
-	playerMover.init()
-	CameraController.init()
-	SoundManager.init()
-
-	SetupScreenUI()
-	UiWorld.init()
-	
-	setupBowlingHostNpc()
-	setupLights()
 
 	onEnterScene((player) => {
 		hasEnteredScene = true

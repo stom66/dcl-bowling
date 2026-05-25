@@ -8,12 +8,14 @@ import { ClientEvents } from "./clientEvents";
 import { sfx, SoundManager } from "./soundManager";
 import { LaneSnapshot } from "src/shared/types/shared-types";
 import { lanePositions } from "./data/lanePositions";
+import { SetIndicator } from "./ui-screen/layers/game.bowlingControls";
 
 
 enum CONTROL_TYPE {
 	POSIITION = "position",
 	DIRECTION = "direction",
 	STRENGTH  = "strength",
+	DISABLED  = "disabled",
 }
 
 const ARROW_SCALE = 1.25
@@ -22,13 +24,15 @@ const ARROW_SCALE = 1.25
 const POSITION_SWING_AMPLITUDE = 0.6
 const POSITION_OSCILLATION_SPEED = 1.7
 
-const DIRECTION_YAW_HALF_RANGE_DEG = 30
-const DIRECTION_OSCILLATION_SPEED = 1.1
+const DIRECTION_YAW_HALF_RANGE_DEG = 15
+const DIRECTION_OSCILLATION_SPEED = 0.9
 
 const STRENGTH_OSCILLATION_SPEED = 2.2
+const STRENGTH_MIN_SCALE = 0.2
 
-/** Lane-local Y for the ball center (must clear the lane floor; sim ball radius is 0.1). */
-const BALL_SPAWN_LANE_LOCAL_Y = 0.32
+/** Lane-local Y for the ball center (must clear the lane floor; see ballRadius property in server/physics/physics.settings.ts. */
+const BALL_SPAWN_LANE_LOCAL_Y = 0.065
+const BALL_SPAWN_SIM_Y = 0.32
 
 /** `pin.gltf` root node translates the mesh up; entity pivot sits below the pin center. Match Cannon cylinder center. */
 const PIN_GLTF_MESH_OFFSET_Y = 0.18949292600154877
@@ -46,17 +50,13 @@ export class BowlingControls {
 	private spin     : number  = 0
 
 	private arrow: Entity
-	private pointerCollider: Entity
 
 	private lanePosition: Vector3
 	private laneIndex: number
 
 	private accumulatedTime: number = 0
-	private awaitingPointerUp = false // simple debounce
 
 	private ball?: Entity
-	//private pinEntities: Entity[] = []
-	//private cannonSim?: CannonSim
 
 	// MARK: Constructor
 	constructor(
@@ -79,18 +79,6 @@ export class BowlingControls {
 			visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
 		})
 
-		// Create the collider for itneractions
-		this.pointerCollider = engine.addEntity()
-		Transform.create(this.pointerCollider, { 
-			position: Vector3.add(this.lanePosition, Vector3.create(0, 2, 1)), 
-			scale: Vector3.create(2, 5, 2) 
-		})
-		//MeshRenderer.setBox(this.pointerCollider)
-		MeshCollider.setBox(this.pointerCollider)
-
-		// Configure the pointer system
-		this.UpdatePointerSystem()
-
 		// Add the position animation system
 		engine.addSystem(this.sys_PositionAnimation)
 
@@ -101,97 +89,78 @@ export class BowlingControls {
 			}
 		})
 
+		eventBus.on(ClientEvents.ON_MY_ROLL_CLICK_TO_SET, () => {
+			this.OnClickToSet()
+		})
+
 		//this.ball = this.CreateBall()
 		//this.SpawnPins()
 	}
 
-	// MARK: Update Pointer System
-	UpdatePointerSystem() {
-		pointerEventsSystem.removeOnPointerDown(this.pointerCollider)
-		pointerEventsSystem.removeOnPointerUp(this.pointerCollider)
-
-		const pointerOpts = {
-			button: InputAction.IA_POINTER,
-			hoverText:
-				this.currentControlType === CONTROL_TYPE.POSIITION
-					? "Click to set position"
-					: this.currentControlType === CONTROL_TYPE.DIRECTION
-						? "Click to set direction"
-						: "Click to set strength",
-			maxDistance: 4,
-		}
-
-		pointerEventsSystem.onPointerDown({ entity: this.pointerCollider, opts: pointerOpts }, () => {
-			if (this.awaitingPointerUp) return
-			this.awaitingPointerUp = true
-		})
-
-		pointerEventsSystem.onPointerUp({ entity: this.pointerCollider, opts: pointerOpts }, () => {
-			if (!this.awaitingPointerUp) return
-			this.awaitingPointerUp = false
-			this.OnArrowInteraction()
-		})
-	}
-
-	RemovePointerSystem() {
-		pointerEventsSystem.removeOnPointerDown(this.pointerCollider)
-		pointerEventsSystem.removeOnPointerUp(this.pointerCollider)
-	}
-
-	// MARK: On Arrow Interaction
-	OnArrowInteraction() {
+	// MARK: On Button Interaction
+	OnClickToSet() {
 		SoundManager.playSound(sfx.click)
 
 		switch (this.currentControlType) {
-			
+
+			case CONTROL_TYPE.DISABLED:
+				return
+				
 			case CONTROL_TYPE.STRENGTH:
 				console.log("bowlingControls: OnArrowInteraction: STRENGTH")
+				this.currentControlType = CONTROL_TYPE.DISABLED
+
 				engine.removeSystem(this.sys_StrengthAnimation)
 				this.accumulatedTime = 0
 
 				// Get the scale of the arrow
-				const arrowScale = Transform.get(this.arrow).scale
+				const arrowScale = Transform.getOrNull(this.arrow)?.scale
+				if (!arrowScale) return
+
 				this.strength = arrowScale.x
 
-				// Remove the pointer system
-				this.RemovePointerSystem()
-
 				// AND NOW, WE BOWL!
-				//this.DoTheBowl()
 				this.RequestBowl()
 				return
 
 			case CONTROL_TYPE.DIRECTION:
 				console.log("bowlingControls: OnArrowInteraction: DIRECTION")
 				// Get the current direction of the arrow
-				const arrowDirection = Transform.get(this.arrow).rotation
+				const arrowDirection = Transform.getOrNull(this.arrow)?.rotation
+				if (!arrowDirection) return
+				
 				this.direction = Vector3.rotate(Vector3.Forward(), arrowDirection)
 
 				// Update the controls
 				this.currentControlType = CONTROL_TYPE.STRENGTH
-				this.UpdatePointerSystem()
 
 				// Change the animation
 				engine.removeSystem(this.sys_DirectionAnimation)
 				this.accumulatedTime = 0
 				engine.addSystem(this.sys_StrengthAnimation)
+
+				SetIndicator("STRENGTH")
 				return
 
 			case CONTROL_TYPE.POSIITION:
 				console.log("bowlingControls: OnArrowInteraction: POSIITION")
 				// Get the current position of the arrow
-				const arrowPosition = Transform.get(this.arrow).position
+				const arrowPosition = Transform.getOrNull(this.arrow)?.position
+				if (!arrowPosition) return
+				
 				const x = arrowPosition.x - this.lanePosition.x
-				this.position = Vector3.create(x, BALL_SPAWN_LANE_LOCAL_Y, 0)
+				this.position = Vector3.create(x, BALL_SPAWN_SIM_Y, 0)
 
 				// Update the controls
 				this.currentControlType = CONTROL_TYPE.DIRECTION
-				this.UpdatePointerSystem()
 
 				// Change the animation
 				engine.removeSystem(this.sys_PositionAnimation)
 				this.accumulatedTime = 0
 				engine.addSystem(this.sys_DirectionAnimation)
+
+				
+				SetIndicator("DIRECTION")
 				return
 		}
 	}
@@ -212,7 +181,6 @@ export class BowlingControls {
 		engine.removeSystem(this.sys_StrengthAnimation)
 
 		engine.removeEntity(this.arrow)
-		engine.removeEntity(this.pointerCollider)
 
 		//this.cannonSim?.dispose()
 		//this.cannonSim = undefined
@@ -284,7 +252,9 @@ export class BowlingControls {
 		this.accumulatedTime += dt
 		if (!this.arrow || !this.ball) return
 
-		const s = (Math.sin(this.accumulatedTime * STRENGTH_OSCILLATION_SPEED) + 1) * 0.5
+		var s = (Math.sin(this.accumulatedTime * STRENGTH_OSCILLATION_SPEED) + 1) * 0.5
+		var s = s * (1-STRENGTH_MIN_SCALE) + STRENGTH_MIN_SCALE
+		
 		const t = Transform.getMutableOrNull(this.arrow)
 		if (!t) return
 		t.scale = Vector3.create(s, s, s)
