@@ -33,6 +33,7 @@ const createEventBus = () => {
 		},
 		
 		emit<T = any>(event: string, data: T): void {
+			console.log('eventBus: emit: event', event, 'data', data)
 			const arr = listeners.get(event)
 			if (!arr) return
 			const snapshot = arr.slice()
