@@ -1,5 +1,6 @@
 import ReactEcs, { Button, UiEntity} from '@dcl/sdk/react-ecs'
 import { Color4 } from "@dcl/sdk/math"
+import { theme } from '../vars/theme'
 
 export const SectionHeader = ({ title }: { title: string }) => {
 	return (
@@ -38,22 +39,24 @@ export const ButtonAction = ({ textLabel, callback }: { textLabel: string; callb
 	return (
 		<Button
 			uiTransform={{
-				width: "100%",
-				height: 'auto',
-				padding: { top: 4, bottom: 6, left: 8, right: 8 },
+				width       : "100%",
+				height      : 'auto',
+				padding     : { top: 4, bottom: 6, left: 8, right: 8 },
 				alignContent: 'center',
-				margin: 4,
+				margin      : 4,
 				borderRadius: 8,
-				borderColor: Color4.fromHexString("#508894"),
-				borderWidth: 2
+				borderColor : Color4.fromHexString("#508894"),
+				borderWidth : 2
 			}}
-			textAlign='middle-center'
-			value={textLabel}
-			fontSize={14}
-			onMouseDown={() => {
+			textAlign   = 'middle-center'
+			value       = {textLabel}
+			fontSize    = {14}
+			onMouseDown = {() => {
 				callback!()
 			}}
-			uiBackground={{ color: Color4.fromHexString("#44727b") }}
+			uiBackground={{ 
+				color: Color4.fromHexString("#44727b") 
+			}}
 		/>
 	)
 }
@@ -62,33 +65,33 @@ export const InfoRow = ({ label, value, fontSize, firstColumnWidth }: { label: s
 	return (
 		<UiEntity
 		uiTransform={{
-			width: '100%',
-			height: 'auto',
-			padding: { top: 5, bottom: 5 },
-			flexDirection: 'row'
+			width        : '100%',
+			height       : 'auto',
+			padding      : { top: 5, bottom: 5 },
+			flexDirection:  'row'
 		}}
 		>
 		<UiEntity
 		uiTransform={{
-			width: firstColumnWidth !== undefined ? `${firstColumnWidth}%` : "50%",
+			width : firstColumnWidth !== undefined ? `${firstColumnWidth}%` : "50%",
 			height: 'auto'
 		}}
 		uiText={{
-			value: label,
-			fontSize: fontSize ?? 13,
-			color: Color4.fromHexString("#64abba"),
+			value    : label,
+			fontSize : fontSize ?? 13,
+			color    : theme.colors.light,
 			textAlign: 'middle-left'
 		}}
 		/>
 		<UiEntity
 		uiTransform={{
-			width: firstColumnWidth !== undefined ? `${100 - firstColumnWidth}%` : "50%",
+			width : firstColumnWidth !== undefined ? `${100 - firstColumnWidth}%`: "50%",
 			height: 'auto'
 		}}
 		uiText={{
-			value: value,
-			fontSize: fontSize ?? 13,
-			color: Color4.White(),
+			value    : value,
+			fontSize : fontSize ?? 13,
+			color    : Color4.White(),
 			textAlign: 'middle-left'
 		}}
 		/>

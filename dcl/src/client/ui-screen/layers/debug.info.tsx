@@ -15,6 +15,7 @@ import { ButtonAction, Divider, InfoRow, SectionHeader } from 'src/client/ui-scr
 import { tweenValue } from '../utils/tweens'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 import { userProfileCache } from 'src/shared/utils/userProfileCache'
+import { theme } from '../vars/theme'
 
 
 // MARK: Vars
@@ -92,18 +93,18 @@ export function DebugUI() {
 			key="ui_debug_root"
 			uiTransform={{
 				width         : 300,
-				height        : 720,
+				height        : 800,
 				flexDirection : 'column',
 				alignItems    : 'flex-start',
 				justifyContent: 'space-between',
 				padding       : '10px',
-				position      : { left: panelLeft, top: 256 },
+				position      : { left: panelLeft, top: 212 },
 				positionType: "absolute",
 				borderRadius  : { topLeft: 8, topRight: 24, bottomLeft: 8, bottomRight: 24 },
-				borderColor   : Color4.fromHexString("#4C9581FF"),
+				borderColor   : theme.colors.primary,
 				borderWidth   : 3
 			}}
-			uiBackground={{ color: Color4.fromHexString("#4C958166") }}
+			uiBackground={{ color: theme.colors.secondary }}
 		>
 
 		<UiEntity 
@@ -112,7 +113,7 @@ export function DebugUI() {
 					height      : '32',
 					borderRadius: 16,
 					borderWidth : 3,
-					borderColor : Color4.fromHexString("#44B596FF"),
+					borderColor : theme.colors.primary,
 					positionType: 'absolute',
 					position    : { top: -36, right: btnRight },
 				}}

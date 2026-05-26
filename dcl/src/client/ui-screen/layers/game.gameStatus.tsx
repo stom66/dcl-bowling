@@ -11,6 +11,7 @@ import { userProfileCache } from 'src/shared/utils/userProfileCache'
 import { ClientStore } from 'src/client/clientStore'
 
 import { InfoRow } from '../components/components'
+import { theme } from '../vars/theme'
 
 
 // MARK: Vars
@@ -101,11 +102,11 @@ export function GameStatusUI() {
 					margin        : { top: '8px' },
 					display       : 'flex',
 					padding       : { top: 10, bottom: 10, left: 30, right: 30 },
-					borderRadius  : { topLeft: 8, topRight: 8, bottomLeft: 32, bottomRight: 32 },
-					borderColor   : Color4.fromHexString("#4C9581FF"),
+					borderRadius  : { topLeft: 16, topRight: 16, bottomLeft: 32, bottomRight: 32 },
+					borderColor   : theme.colors.primary,
 					borderWidth   : 3
 				}}
-				uiBackground={{ color: Color4.fromHexString("#4C958199") }}
+				uiBackground={{ color: theme.colors.secondary }}
 			>
 				<InfoRow 
 					label            = {getStatusText()}
