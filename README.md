@@ -1,95 +1,183 @@
-## `dcl-boilerplate-scene`
+## `dcl-bowling`
 
-# Decentraland SDK7 Template
+# Decentraland Bowling: Fastlane
 
-A basic Decentraland SDK7 Scene, setup with a generic folder structure and various utility scripts.
+This is the repository for the Decentraland bowling game *Fastlane*, which you can play here: [fastlane.dcl.eth](decentraland://?realm=stom.dcl.eth)
 
-This repo is a template repository. See [using the template](/docs/USING_THE_TEMPLATE.md) for info on using it for a project.
+You will need the [Decentraland Client](https://decentraland.org/) installed to play.
 
-**Warning**: here be dragons
+This experience uses the new [Authoritative Servers](https://docs.decentraland.org/creator/scenes-sdk7/networking/authoritative-servers) extensively to synchronise gameplay and organise matches. Bowling physics are simulated with [Cannon-ES](https://github.com/pmndrs/cannon-es) on the authoritative server and then sent out to clients, to ensure all clients see the same animation.
+
+![Fastlane Bowling: Scene thumbnail](dcl/images/scene-thumbnail.png)
 
 ---
 
 ## Contents
 
-- [Resources](#resources)
 - [Repository Overview](#repository-overview)
+  - [Code structure](#code-structure)
+  - [How the scene works](#how-the-scene-works)
+  - [Server-authoritative physics](#server-authoritative-physics)
+  - [Bowling physics sandbox](#bowling-physics-sandbox)
+- [Development notes](#development-notes)
 - [Getting Started](#getting-started)
   - [Pre-requisites](#pre-requisites)
-  - [Using this template](#using-this-template)
   - [Preview the DCL scene](#preview-the-dcl-scene)
+- [License](#license)
 
 ---
-
-## Resources
-
-- Google Sheet - [DCL scene limits calculator](https://docs.google.com/spreadsheets/d/1p4aEoGuguFRqeSSXUCC4DLK-HQ8f1cHM2VzXApo7MBk/edit?usp=sharing)
-- Guide - [Asset pipeline overview](/docs/ASSETS.md)
-- Guide - [Automatic deployment via GitHub Actions](/docs/GITHUB_AUTOMATIC_DEPLOYMENT.md)
-- Guide - [Updating DCL dependencies](/docs/UPDATE_DCL_DEPENDENCIES.md)
 
 ## Repository Overview
 
-This repository is split in the following folders:
+This repository is split into the following folders:
 
-- `/assets` - contains all assets and textures before being exported to `glTF`. This includes all `blend` and `FBX` files, as well as full-size source textures.
-  - `/assets/models` - source files for each model in the scene, including full res textures
-  - `/assets/fonts` - any fonts used in the scene and accompanying media
-  - `/assets/tex` - asset agnostic textures used across the scene
-- `/config` - useful info such as import/export settings, UVPackMaster Presets, shader templates
-- `/dcl` - the DCL scene to be deployed. Exported glTF files are in `/dcl/models` along with a `tex` folder of optimised textures
-- `/docs` - extra info on relevant topics, eg asset creation
-- `/reference` - screenshots, previs, reference pictures used during asset creation
-- `/scripts` - various bash/blender/bat utility scripts
+- `/assets` — source assets and textures before export to `glTF`. Includes Blender and FBX files, plus full-size source textures.
+  - `/assets/fonts` — custom fonts
+  - `/assets/images` — Affinity source files for UI images
+  - `/assets/models` — source Blender/glTF files per model, including full-res textures
+  - `/assets/sfx` — raw WAV files for sound effects
+  - `/assets/textures` — asset-agnostic textures used across the scene
+- `/config` — import/export settings, UVPackMaster presets, shader templates, etc.
+- `/dcl` — the DCL scene to deploy. Exported glTF files live in `/dcl/models` with optimised textures in `/dcl/assets/models/tex`
+- `/docs` — supplementary notes (e.g. asset creation, dependency updates)
+- `/reference` — screenshots, previs, and reference images from production
+- `/scripts` — bash, Blender, and batch utility scripts
+
+### Code structure
+
+All scene code lives in `/dcl/src`. The entry point (`/dcl/index.ts`) branches on `isServer()` and calls either `initServer()` or `initClient()`.
+
+| Folder | Role |
+|--------|------|
+| `/dcl/src/client` | Client-only logic: UI, lane visuals, input, camera, audio, `LaneWatcher`, etc. |
+| `/dcl/src/server` | Auth-server logic: match flow (`gameManager`), messaging, and Cannon-ES physics |
+| `/dcl/src/shared` | Code used by both sides: lane components, `ComponentManager`, `LaneStore`, types, utilities |
+
+Notable modules (non-exhaustive):
+
+- **`shared/components/`** — ECS component definitions (`lane.ts`) and `ComponentManager` (entity lifecycle and sync)
+- **`shared/laneStore.ts`** — read/write API over lane component data
+- **`shared/room.ts`** — typed MessageBus messages for actions that do not fit on synced components (e.g. roll playback payloads)
+- **`shared/utils/eventBus.ts`** — in-scene pub/sub (see below)
+- **`server/gameManager.ts`** — authoritative game state machine per lane
+- **`server/physics/`** — Cannon simulation, keyframe recording, and compression (see [Server-authoritative physics](#server-authoritative-physics))
+- **`client/laneWatcher.ts`** — watches synced lane components and drives client-side events
+- **`client/laneVisuals.ts`**, **`client/bowlingControls.ts`**, **`client/gameStateHandler.ts`** — playback, input, and high-level client reactions
+
+More detail on the physics module alone is in [`dcl/src/server/physics/README.md`](dcl/src/server/physics/README.md).
+
+### How the scene works
+
+This is a skim-level guide, not a tutorial. The goal is a decoupled layout: new features can hook into existing flows without rewriting the core each time.
+
+**Authoritative server and synced components**
+
+Game state for each bowling lane is stored on dedicated ECS entities. On the server, `ComponentManager` creates one entity per lane, seeds default component values, and registers them with `syncEntity` so clients receive updates over CRDT sync. Server-only validation prevents clients from mutating that data directly.
+
+`LaneStore` is the data-access layer: it reads and writes the lane components (`LanePhaseEnum`, `LaneCurrentTurn`, `LaneGameData`, `LaneScores`) through `ComponentManager.getLaneEntity()`. Writes are server-only; the client treats component data as read-only truth from the auth server.
+
+`ComponentManager` intentionally does not contain game rules — only entity lifecycle, sync setup, and lookup. Domain logic stays in `LaneStore`, `gameManager`, and client modules. Dependency flows one way: `LaneStore` → `ComponentManager`.
+
+**`LaneWatcher` and the local `eventBus`**
+
+On the client, `LaneWatcher` attaches `onChange` listeners to each lane’s synced components. When something changes, it coalesces updates per tick and builds a `LaneSnapshot`, then emits on the **local** `eventBus` (`shared/utils/eventBus.ts`).
+
+That bus is an in-process pub/sub layer (similar to Roblox *BindableEvents*). It is **not** Decentraland’s built-in MessageBus used for peer-to-peer messages. Use `eventBus` to decouple scripts: UI, camera, controls, and visuals subscribe to `ClientEvents` (e.g. `NOTIFY_LANE_STATE`, `ON_MY_ROLL_START`) instead of calling each other directly.
+
+Peer actions and bulky payloads still use **`room`** / MessageBus (`shared/room.ts`) — for example join-game requests, roll input, and compressed physics playback — where CRDT components are the wrong fit or size limits apply.
+
+**Rough data flow**
+
+```mermaid
+flowchart LR
+  subgraph server [Auth server]
+    GM[gameManager]
+    LS[LaneStore]
+    CM[ComponentManager]
+    PHY[physics / Cannon-ES]
+    GM --> LS
+    LS --> CM
+    GM --> PHY
+  end
+
+  subgraph sync [CRDT sync]
+    COMP[Lane components on entities]
+  end
+
+  subgraph client [Client]
+    LW[LaneWatcher]
+    EB[eventBus]
+    VIS[laneVisuals / UI / controls]
+    CM2[ComponentManager]
+    LW --> EB
+    EB --> VIS
+    CM2 --> COMP
+    LW --> CM2
+  end
+
+  CM --> COMP
+  COMP --> CM2
+  PHY -->|playback via MessageBus| VIS
+```
+
+### Server-authoritative physics
+
+Roll outcomes are simulated on the server with Cannon-ES, not on each client. That keeps gameplay consistent and avoids trusting client physics.
+
+Each roll produces dense keyframe tracks (ball and pins over time). Those tracks are **reduced and compressed** before send — redundant keyframes are dropped, rotations are stored in a compact wire format, and further optimisation runs in `physics.keyframe-optimization.ts` so payloads stay within Decentraland’s practical message size limits. Clients replay the compressed keyframes in `laneVisuals` rather than re-simulating.
+
+Tuning and pipeline detail: [`dcl/src/server/physics/README.md`](dcl/src/server/physics/README.md).
+
+### Bowling physics sandbox
+
+While building Fastlane, a separate standalone tool was put together to iterate on the bowling simulation, inspect keyframes, and measure compression — without running the full DCL scene.
+
+- **Repository:** [github.com/dcl-bowling-visualiser](https://github.com/stom66/dcl-bowling-visualiser/)
+- **Live demo:** [stom66.github.io/dcl-bowling-visualiser](https://stom66.github.io/dcl-bowling-visualiser/)
+
+Replace the URL when the repo is published. The physics code under `dcl/src/server/physics/` is designed to be portable; the sandbox is the easiest place to experiment with rolls and wire-size tradeoffs.
 
 ---
 
-# Getting Started
+## Development notes
 
-## Pre-requisites
+**AI assistance**
 
-- **Previewing the scene**:
+Cursor and other AI tools were used during development, but this is predominantly **human-designed and human-written** code. Layout, decoupling, and what *not* to add were planned deliberately — avoiding the usual AI-driven bloat was a priority, as was a structure that can grow without a rewrite every time a feature lands.
 
-  - You will require the [Decentraland Creator Hub](https://decentraland.org/download/creator-hub/) to launch and host the scene.
-  - You will require the [Decentraland Client](https://decentraland.org/download/) to join and view the scene.
+**On the architecture**
 
-- **Utility scripts** (optional)
-
-  - Various dev scripts require bash (linux) to run.
-  - They have been tested on Ubuntu under WSL.
-  - See [DEPENDENCIES](/docs/DEPENDENCIES.md) for the required packages.
-
-## Using this template
-
-- [Using the template](/docs/USING_THE_TEMPLATE.md)
-- [Asset pipeline overview](/docs/ASSETS.md)
-- [Automatic deployment via GitHub Actions](/docs/GITHUB_AUTOMATIC_DEPLOYMENT.md)
-- [Updating DCL dependencies](/docs/UPDATE_DCL_DEPENDENCIES.md)
-
-## Preview the DCL scene
-
-#### First-time setup:
-
-1. Launch the Decentraland Creator Hub
-1. Select the "Scenes" tab
-1. Select "Import Scene"
-1. Navigate to the repository folder and select the `dcl` folder inside it.
-
-#### Normal use:
-
-1. Launch the Decentraland Creator Hub
-1. Select the scene from the home screen
-1. Choose "Preview" at the top
-1. This will fire up a local test server, and launch the Decentraland Client
+This layout is not presented as perfect or prescriptive. It has worked well as a starting point for an authoritative multiplayer bowling scene. If something looks wrong or could be simpler, suggestions and PRs are welcome.
 
 ---
 
-## Known Bugs
+## Getting Started
 
-- Lack of caffeine causes occassional I/O errors.
+### Pre-requisites
+
+**Previewing the scene**
+
+- [Decentraland Creator Hub](https://decentraland.org/download/creator-hub/) — launch and host the scene
+- [Decentraland Client](https://decentraland.org/download/) — join and view the scene
+
+### Preview the DCL scene
+
+#### First-time setup
+
+1. Launch the Decentraland Creator Hub
+2. Open the **Scenes** tab
+3. Choose **Import Scene**
+4. Select the `dcl` folder inside this repository
+
+#### Normal use
+
+1. Launch the Decentraland Creator Hub
+2. Open the scene from the home screen
+3. Choose **Preview**
+4. A local test server starts and the Decentraland Client opens
 
 ---
 
 ## License
 
-This work is licensed under the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License. To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-nd/4.0/, see the license included in this repository, or send a letter to Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
+This work is licensed under the [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License](http://creativecommons.org/licenses/by-nc-nd/4.0/). See the license file in this repository.
