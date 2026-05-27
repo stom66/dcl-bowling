@@ -79,7 +79,7 @@ export namespace LaneStore {
 
 		scores.scores = (gameData?.players ?? []).map((p) => ({
 			userId: p,
-			frames: Array.from({ length: GameSettings.MAX_FRAMES_PER_GAME }, () => [] as number[]),
+			frames: [[]] as number[][]
 		}))
 	}
 
