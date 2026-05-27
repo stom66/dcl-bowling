@@ -296,11 +296,11 @@ class GameManager {
 			spin     : data.spin,
 			strength : data.power,
 		}
-		console.log('gameManager: simulateAndPlaybackRoll: simInput', JSON.stringify(simInput, null, 2))
+		//console.log('gameManager: simulateAndPlaybackRoll: simInput', JSON.stringify(simInput, null, 2))
 		const simResults: SimulationResult = getSimulationResults(simInput)
 
 		const simDuration = Date.now() - simStartTime
-		console.log(`gameManager: simulateAndPlaybackRoll: simDuration ${simDuration}ms`)
+		//console.log(`gameManager: simulateAndPlaybackRoll: simDuration ${simDuration}ms`)
 
 		const score = this.countTrueValues(startingPinStates) - this.countTrueValues(simResults.finalPinStates)
 		const payload = this.buildRollPayload(userId, frameIndex, rollIndex, simResults, startingPinStates, score)
@@ -382,22 +382,43 @@ class GameManager {
 	private afterRollEnd(laneIndex: number) {
 		const rt           = this.getRuntime(laneIndex)
 		const rollIndex    = LaneStore.getCurrentRollIndex(laneIndex)
+		const frameIndex   = LaneStore.getCurrentFrameIndex(laneIndex)
 		const allDown      = rt.pinStanding.every(s => !s)
-		const isFinalFrame = rollIndex == (GameSettings.MAX_FRAMES_PER_GAME - 1)
+		const isFinalFrame = frameIndex == (GameSettings.MAX_FRAMES_PER_GAME - 1)
 		const userId       = LaneStore.getCurrentFrameUserId(laneIndex) || ''
 		const frames       = LaneStore.getScoresMap(laneIndex).get(userId) || []
-		const firstRollWasAStrike = frames?.[0]?.[0] === 10
+		const firstRollWasAStrike  = frames?.[frameIndex]?.[0] === 10
+		const secondRollWasAStrike = frames?.[frameIndex]?.[1] === 10
+		const secondRollWasASpare  = frames?.[frameIndex]?.[0] + frames?.[frameIndex]?.[1] === 10
 
 		// Standard frames 0–8: two rolls unless a strike on the first.
 		// TODO: 10th-frame bonus rolls (strike/spare ⇒ up to 3 rolls).
+		console.log('gameManager: afterRollEnd: rollIndex:', rollIndex, '- allDown:', allDown, '- isFinalFrame:', isFinalFrame, '- firstRollWasAStrike:', firstRollWasAStrike, '- secondRollWasAStrike:', secondRollWasAStrike, '- secondRollWasASpare:', secondRollWasASpare)
 		if (rollIndex === 0 && !allDown) {
 			LaneStore.setCurrentRollIndex(laneIndex, 1)
 			this.startPlayerRoll(laneIndex)
 		}
-		else if (isFinalFrame && rollIndex === 1 && firstRollWasAStrike) {
-			LaneStore.setCurrentRollIndex(laneIndex, 2)
-			this.startPlayerRoll(laneIndex)
-		} else {
+		else if (isFinalFrame) {
+			
+			if (rollIndex === 0 && firstRollWasAStrike) {
+				console.log('gameManager: afterRollEnd: final frame, strike, starting second roll')
+
+				// all our pins are down, so reset them
+				rt.pinStanding = newFullPinRack()
+				LaneStore.setCurrentRollIndex(laneIndex, 1)
+				this.startPlayerRoll(laneIndex)
+			}
+			else if (rollIndex === 1 && (secondRollWasASpare || secondRollWasAStrike)) {
+				console.log('gameManager: afterRollEnd: final frame, strike/spare, starting thirdroll')
+				rt.pinStanding = newFullPinRack()
+				LaneStore.setCurrentRollIndex(laneIndex, 2)
+				this.startPlayerRoll(laneIndex)
+			}
+			else {
+				this.endPlayerFrame(laneIndex)
+			}
+		}
+		else {
 			this.endPlayerFrame(laneIndex)
 		}
 	}
