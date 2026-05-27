@@ -8,6 +8,7 @@ import { GameSettings } from "src/shared/settings"
 import { gameManager } from "src/server/gameManager"
 import { serverHandler } from "src/server/serverHandler"
 import { notifyServerTime } from "src/server/serverMessaging"
+import { newPlayer } from "src/shared/utils/discord-webhooks"
 
 
 export async function initServer(): Promise<void> {
@@ -28,6 +29,9 @@ export async function initServer(): Promise<void> {
 	// MARK: Event bindings
 	onEnterScene((player) => {
 		// Placeholder
+		if (player) {
+			newPlayer(player.name, player.userId)
+		}
 	})
 	onLeaveScene((userId) => {
 		LaneStore.removePlayerFromAllLanes(userId)

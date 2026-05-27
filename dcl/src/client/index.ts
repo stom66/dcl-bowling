@@ -95,9 +95,6 @@ export async function initClient() {
 
 	onEnterScene((player) => {
 		hasEnteredScene = true
-		if (player && !IS_DEV) {
-			newPlayer(store.getDisplayName(), store.getUserId())
-		}
 	})
 
 	engine.addSystem(waitForLoad)
