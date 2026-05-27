@@ -40,7 +40,7 @@ export namespace playerMover {
 	function movePlayerToStartOfLane() {
 		// move the player to the start of the lane
 		const lanePosition   = lanePositions[clientStore.getLaneIndex() ?? 0]
-		const playerOffset   = Vector3.create(-1, 0, -0.2)
+		const playerOffset   = Vector3.create(-1.25, 0, -0.35)
 		const targetPosition = Vector3.add(lanePosition, playerOffset)
 		const faceForward    = Vector3.create(0, 0, 10)
 		movePlayerTo({ newRelativePosition: targetPosition, cameraTarget: Vector3.add(targetPosition, faceForward) })
