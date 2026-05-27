@@ -10,23 +10,31 @@ import { userProfileCache } from 'src/shared/utils/userProfileCache'
 
 import { ClientStore } from 'src/client/clientStore'
 
-import { FrameResult, getDummyScoreData, getFrameResults } from 'src/shared/utils/scoreCalc'
+import { FrameResult, getDummyScoreData, getFrameResults, getPlayerTotalScore } from 'src/shared/utils/scoreCalc'
 import { tweenValue } from '../utils/tweens'
 import { theme } from '../vars/theme'
+import { getOrdinalSuffix } from 'src/shared/utils/strings'
+import { alpha } from '../utils/colors'
 
 
 // MARK: Vars
 const clientStore = ClientStore.getInstance()
 
-const forceShowScores = true
+const DEBUG_FORCE_SHOW = false
 
 const OFFSET_VISIBLE = 0
 const OFFSET_HIDDEN = -512
 
-var offset = forceShowScores ? OFFSET_VISIBLE : OFFSET_HIDDEN
+var offset = DEBUG_FORCE_SHOW ? OFFSET_VISIBLE : OFFSET_HIDDEN
 
 var lastKnownScores: Map<string, number[][]> | null = null
 var gameHasEnded = false
+
+// Sizing:
+
+const FRAME_CELL_WIDTH = 52
+const FRAME_CELL_HEIGHT = 45
+const FRAME_CELL_MARGIN = 4
 
 
 // MARK: Event Bindings
@@ -57,16 +65,18 @@ function ShowFinalScores() {
 
 
 // MARK: UI Functions
-const getFrames = (): Map<string, FrameResult[]> => {
+const getFrames = (sortResults: boolean = false): Map<string, FrameResult[]> => {
 	// The expected structure in clientState.laneState.frames is:
 	// Map<string, number[][]>, where
 	//   key: userId (string)
 	//   value: array of arrays (frames), each frame being number[] of rolled pins
 
-	//const frames = getDummyScoreData()
-	var frames: Map<string, number[][]> | null
+	var frames: Map<string, number[][]> | null = null
 	if (!gameHasEnded) {
 		frames = clientStore.getFrames() ?? new Map<string, number[][]>()
+
+		if (DEBUG_FORCE_SHOW) frames = getDummyScoreData() // DEBUG: use dummy data
+
 		if (frames.size > 0) {
 			lastKnownScores = frames
 		}	
@@ -83,37 +93,80 @@ const getFrames = (): Map<string, FrameResult[]> => {
 		frameResults.set(userId, getFrameResults(frame))
 	}
 
-	return frameResults
+	if (!sortResults) {
+		return frameResults
+	}
+
+	return new Map<string, FrameResult[]>([...frameResults.entries()].sort((a, b) => {
+		return getPlayerTotalScore(b[1]) - getPlayerTotalScore(a[1])
+	}))
+}
+
+function getRowWidth(showRanks: boolean, showTotalScore: boolean): number {
+	var rowWidth = (FRAME_CELL_WIDTH + FRAME_CELL_MARGIN) * GameSettings.MAX_FRAMES_PER_GAME
+	rowWidth     += FRAME_CELL_HEIGHT + FRAME_CELL_MARGIN // Add the player portrait
+	if (showRanks) rowWidth += FRAME_CELL_HEIGHT + FRAME_CELL_MARGIN // Add the rank
+	if (showTotalScore) rowWidth += FRAME_CELL_HEIGHT + FRAME_CELL_MARGIN // Add the rank
+	return rowWidth
 }
 
 
-
 // MARK: Get Score Rows
-function GetScoreRows() {
-	const frameResults = getFrames()
+function GetScoreRows(
+	showRanks     : boolean = true,
+	showTotalScore: boolean = true
+) {
+	const sortResults = showRanks
+	var frameResults = getFrames(sortResults)
 	const ui: ReactEcs.JSX.Element[] = []
+
+	var rank = 0
+
+	var rowWidth = getRowWidth(showRanks, showTotalScore)
 
 	// A row for each player
 	for (const [userId, frameResult] of frameResults.entries()) {
+		rank++
 		ui.push(
 			<UiEntity
 				key={`ui_Scores_row_${userId}`}
 				uiTransform={{
-					width        : "100%",
-					height       : 45,
+					width        : rowWidth,
+					height       : FRAME_CELL_HEIGHT,
 					flexShrink   : 0,
 					flexDirection: 'row',
 					alignItems   : 'flex-start',
 					margin       : { bottom: '5px' }
 				}}
+				//uiBackground={{ color: theme.colors.danger }}
 			>
+				<UiEntity
+					key={`ui_Scores_row_${userId}_rank`}
+					uiTransform={{
+						width       : FRAME_CELL_HEIGHT,
+						height      : FRAME_CELL_HEIGHT,
+						flexShrink  : 0,
+						borderRadius: 8,
+						display     : showRanks? 'flex' : 'none',
+						margin      : { left: FRAME_CELL_MARGIN / 2, right: FRAME_CELL_MARGIN / 2 },
+					}}
+					uiBackground={{ color: theme.colors.info }}
+					uiText={{
+						value    : rank.toString() + getOrdinalSuffix(rank),
+						fontSize : 16,
+						color    : theme.colors.light,
+						textAlign: 'middle-center'
+					}}
+				/>
 				<UiEntity
 					key={`ui_Scores_row_${userId}_avatar`}
 					uiTransform={{
-						width       : 45,
-						height      : 45,
+						width       : FRAME_CELL_HEIGHT,
+						height      : FRAME_CELL_HEIGHT,
 						flexShrink  : 0,
-						borderRadius: 8
+						borderRadius: 8,
+						margin      : { left: FRAME_CELL_MARGIN / 2, right: FRAME_CELL_MARGIN / 2 },
+						overflow    : 'hidden',
 					}}
 					uiBackground={{ 
 						texture: {
@@ -126,17 +179,52 @@ function GetScoreRows() {
 				<UiEntity
 					key={`ui_Scores_row_${userId}_scores`}
 					uiTransform={{
-						width         : "100%",
+						width         : "auto",
 						height        : 45,
 						flexShrink    : 0,
+						flexGrow      : 0,
 						flexDirection : 'row',
 						alignItems    : 'flex-start',
-						margin        : { right: '100px' },
+						padding       : { left: 0, right: 0 },
 					}}
-					//uiBackground={{ color: theme.colors.warning }}
+					//uiBackground={{ color: theme.colors.danger }}
 				>
 					{GetFrames(userId, frameResult)}
 				</UiEntity>
+
+				<UiEntity
+					key={`ui_Scores_row_${userId}_spacer`}
+					uiTransform={{
+						width       : "0",
+						height      : FRAME_CELL_HEIGHT,
+						flexShrink  : 0,
+						flexGrow    : 1,
+						display     : showTotalScore ? 'flex' : 'none',
+						
+					}}
+					//uiBackground={{ color: theme.colors.danger }}
+				/>
+
+				<UiEntity
+					key={`ui_Scores_row_${userId}_totalScore`}
+					uiTransform={{
+						width       : FRAME_CELL_HEIGHT,
+						height      : FRAME_CELL_HEIGHT,
+						flexShrink  : 0,
+						borderRadius: 8,
+						margin      : { left: FRAME_CELL_MARGIN / 2, right: FRAME_CELL_MARGIN / 2 },
+						alignSelf   : 'flex-end',
+						display     : showTotalScore ? 'flex' : 'none',
+						
+					}}
+					uiBackground={{ color: theme.colors.info }}
+					uiText={{
+						value    : getPlayerTotalScore(frameResult).toString() ?? '-',
+						fontSize : 14,
+						color    : theme.colors.light,
+						textAlign: 'middle-center'
+					}}
+				/>
 			</UiEntity>
 		)
 	}
@@ -191,9 +279,9 @@ function GetFrames(userId: string, frameResults: FrameResult[]) {
 			<UiEntity 
 				key={`ui_Scores_row_${userId}_frame_${frameIndex}`}
 				uiTransform={{ 
-					width        : 52, 
+					width        : FRAME_CELL_WIDTH, 
 					height       : 45,
-					margin       : { left: 4 },
+					margin       : { left: FRAME_CELL_MARGIN / 2, right: FRAME_CELL_MARGIN / 2 },
 					flexDirection: 'column',
 					borderRadius : 4
 				}}
@@ -224,13 +312,14 @@ function GetFrames(userId: string, frameResults: FrameResult[]) {
 						height        : "50%",
 						flexDirection : 'row',
 						alignItems    : 'flex-start',
-						justifyContent: 'center'
+						justifyContent: 'center',
 					}}
 					uiText={{
 						value    : frameResult.runningScore?.toString() ?? '-',
 						fontSize : 14,
-						color    : theme.colors.light,
-						textAlign: 'middle-center'
+						color    : alpha(theme.colors.light, frameResult.isPending ? 0.25 : 1),
+						textAlign: 'middle-center',
+
 					}}
 				/>
 				
@@ -242,7 +331,10 @@ function GetFrames(userId: string, frameResults: FrameResult[]) {
 
 // MARK: Main GameUI
 export function ScoresUI() {
+	const showRanks      = gameHasEnded
+	const showTotalScore = true
 
+	var rowWidth         = getRowWidth(showRanks, showTotalScore)
 	return (
 		<UiEntity
 			key={`ui_GameStatus_root`}
@@ -260,22 +352,23 @@ export function ScoresUI() {
 			<UiEntity
 				key={`ui_GameStatus_body`}
 				uiTransform={{
-					width         : 680,
+					width         : rowWidth+32,
 					height        : 'auto',
 					flexShrink    : 0,
+					flexGrow      : 0,
 					flexDirection : 'column',
 					alignItems    : 'center',
 					justifyContent: 'center',
 					margin        : { bottom: '16px' },
 					display       : 'flex',
-					padding       : { top: 16, bottom: 10, left: 32, right: 32 },
+					padding       : { top: 16, bottom: 10, left: 0, right: 0 },
 					borderRadius  : { topLeft: 32, topRight: 32, bottomLeft: 16, bottomRight: 16 },
 					borderColor   : theme.colors.primary,
 					borderWidth   : 3
 				}}
-				uiBackground={{ color: theme.colors.secondary }}
+				uiBackground={{ color: alpha(theme.colors.secondary, 0.85) }}
 			>
-				{GetScoreRows()}
+				{GetScoreRows(showRanks, showTotalScore)}
 			</UiEntity>
 		</UiEntity>
 	)

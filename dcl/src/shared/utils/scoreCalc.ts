@@ -1,3 +1,5 @@
+import { GameSettings } from "../settings"
+
 export type FrameResult = {
 	frameNumber : number
 	totalScore  : number
@@ -5,6 +7,16 @@ export type FrameResult = {
 	scores      : number[]
 	isStrike    : boolean
 	isSpare     : boolean
+	isPending   : boolean // Are we waiting on follow-up bowls to amend this score? Eg, strikes
+}
+
+
+export function getPlayerTotalScore(frameResults: FrameResult[]): number {
+	return frameResults[frameResults.length - 1].runningScore ?? 0
+}
+
+function IsFinalFrame(frameNumber: number): boolean {
+	return frameNumber == GameSettings.MAX_FRAMES_PER_GAME
 }
 
 export function getFrameResults(frames: number[][]): FrameResult[] {
@@ -12,94 +24,110 @@ export function getFrameResults(frames: number[][]): FrameResult[] {
 	// We need to return an array of objects, which contain: 
 	// frameNumber (starting at 1), totalScore, runningScore, and scores (array of numbers)
 
-	const results: FrameResult[] = []
+	const frameResults: FrameResult[] = []
 
 	// First pass just fills in the easy data
-	for (let i = 0; i < frames.length; i++) {
-		const frame      = frames[i]
-		const totalScore = frame.reduce((a, b) => a + b, 0)
-		const isStrike   = frame[0]            == 10
-		const isSpare    = frame[0] + frame[1] == 10 && !isStrike
+	let lastFrameIsPending = false
+	for (const [i, frame] of frames.entries()) {
+		const totalScore      = frame.reduce((a, b) => a + b, 0)
+		const isStrike        = frame[0]            === 10
+		const isSpare         = frame[0] + frame[1] === 10 && !isStrike
+		const isFinalFrame    = IsFinalFrame(i+1)
 
-		results.push({
+		let isPending = false
+		if (lastFrameIsPending) isPending = true
+		else {
+			if (isStrike) {
+				isPending = true
+
+				if (isFinalFrame && frame.length > 2) {
+					isPending = false
+				} else {
+					// Check if we have two rolls after the strike
+					const nextFrame = frames[i + 1]
+					const nextNextFrame = frames[i + 2]
+					if (nextFrame) {
+						if (nextFrame.length > 1) { // Does the next frame have 2 scores?
+							isPending = false
+						} else {
+							if (nextNextFrame) {
+								if (nextNextFrame.length >= (2 - nextFrame.length)) {
+									isPending = false
+								}
+							}
+						}
+					}
+				}
+			}
+			if (isSpare) {
+				isPending = true
+				const nextFrame = frames[i + 1]
+				if (nextFrame && nextFrame[0] !== undefined) {
+					isPending = false
+				}
+			}
+
+			if (isPending) lastFrameIsPending = true
+		}
+
+		const frameResult: FrameResult = {
 			frameNumber : i + 1,
 			totalScore  : totalScore,
 			runningScore: undefined,
 			scores      : frame,
 			isStrike    : isStrike,
-			isSpare     : isSpare
-		})
+			isSpare     : isSpare,
+			isPending   : isPending
+		}
+		frameResults.push(frameResult)
 	}
 
 	// Second pass calculetes the running scores	
-	var runningScore = 0
-	for (let [index, frameResult] of results.entries()) {
+	let runningScore = 0
+	for (let [index, frameResult] of frameResults.entries()) {
+
+		// add all the scores from this frame to the running score
+		runningScore += frameResult.totalScore
+
+		const nextFrame = frameResults[index + 1]
+		const nextNextFrame = frameResults[index + 2]
 
 		// STRIKE: If the current frame is a strike, add the score of the next two balls
-		if (frameResult.isStrike) {
-			runningScore += 10
+		if (frameResult.isStrike && !IsFinalFrame(frameResult.frameNumber)) {
 
-			if (frameResult.frameNumber == 10) {
-				runningScore += frameResult.scores[1]
-				runningScore += frameResult.scores[2]
-				frameResult.runningScore = runningScore
-			}
-
-			const nextFrame = results[index + 1]
 			if (nextFrame) {
 
-				// Is the next frame the final frame?
-				if (nextFrame.frameNumber == 10) {
-					if (nextFrame.scores[0]) runningScore += nextFrame.scores[0]
-					if (nextFrame.scores[1]) runningScore += nextFrame.scores[1]
-					frameResult.runningScore = runningScore
-				}
+				// Is the next frame the final frame? Then we just add the first two scores (they should be there)
+				if (IsFinalFrame(nextFrame.frameNumber)) {
+					if (nextFrame.scores[0] !== undefined) runningScore += nextFrame.scores[0]
+					if (nextFrame.scores[1] !== undefined) runningScore += nextFrame.scores[1]
+				} else {
+					// add the first score from the next frame
+					if (nextFrame.scores[0] !== undefined) runningScore += nextFrame.scores[0]
 
-				else if (nextFrame.isStrike) {
-
-					runningScore += nextFrame.totalScore
-					// Also add the value of the next ball
-					const nextNextFrame = results[index + 2]
-					if (nextNextFrame) {
-						if (nextNextFrame.scores[0]) runningScore += nextNextFrame.scores[0]
-						frameResult.runningScore = runningScore
+					// add the second score from the next frame 
+					if (nextFrame.scores[1] !== undefined) {
+						runningScore += nextFrame.scores[1]
+					} 
+					// If there's not a second score, but there is a score in the nextNExt, add that
+					else if (nextNextFrame && nextNextFrame.scores[0] !== undefined) {
+						runningScore += nextNextFrame.scores[0]
 					}
-				} 
-				
-				else {
-					runningScore += nextFrame.totalScore
-					frameResult.runningScore = runningScore
 				}
 			}
-
 		}
 		
 		// SPARE: If the current frame is a spare, add the score of the next one ball
 		if (frameResult.isSpare) {
-			runningScore += 10
-			const nextFrame = results[index + 1]
-			if (nextFrame) {
-				if (nextFrame.scores[0]) runningScore += nextFrame.scores[0]
-				frameResult.runningScore = runningScore
+			if (nextFrame && nextFrame.scores[0] !== undefined) {
+				runningScore += nextFrame.scores[0]
 			}
 		}
 
-		// OPEN: If the current frame is not a strike or spare, add the total score of the previous frame
-		if (!frameResult.isStrike && !frameResult.isSpare) {
-			//const lastFrame = results[index - 1]
-			//if (lastFrame) runningScore += lastFrame.totalScore
-
-			// Add the score from this frame
-			runningScore += frameResult.totalScore
-
-			// Frame was not a strike. Store the running score immediately
-			frameResult.runningScore = runningScore
-		}
+		frameResult.runningScore = runningScore
 	}
 
-	
-
-	return results
+	return frameResults
 }
 
 
@@ -132,18 +160,18 @@ export function getDummyScoreData() {
 		[10],
 	]) */
 
-		frames.set('0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF', [
-			[10],
-			[10],
-			[10],
-			[10],
-			[10],
-			[10],
-			[10],
-			//[10],
-			//[10],
-			//[10,10,10]
-		])
+	frames.set('0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF', [
+		[10],
+		[10],
+		[10],
+		[10],
+		[10],
+		[10],
+		[10],
+		[10],
+		[10],
+		[10,10,10]
+	])
 
 		// Real-world exmaple set
 	frames.set('0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEB', [
