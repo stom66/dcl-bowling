@@ -8,6 +8,8 @@ You will need the [Decentraland Client](https://decentraland.org/) installed to 
 
 This experience uses the new [Authoritative Servers](https://docs.decentraland.org/creator/scenes-sdk7/networking/authoritative-servers) extensively to synchronise gameplay and organise matches. Bowling physics are simulated with [Cannon-ES](https://github.com/pmndrs/cannon-es) on the authoritative server and then sent out to clients, to ensure all clients see the same animation.
 
+See also: [Bowling Visualiser](#bowling-physics-sandbox)
+
 ![Fastlane Bowling: Scene thumbnail](dcl/images/scene-thumbnail.png)
 
 ---
