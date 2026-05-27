@@ -22,7 +22,7 @@ declare var process: {
 }
 const env = process.env.NODE_ENV
 const SHOW_DEV = env == "development"
-const SHOW_DEBUG = true
+const SHOW_DEBUG = false
 
 
 // MARK: Main
@@ -36,11 +36,12 @@ const uiComponent = () => [
 	//HowToPlay(),
 	JoinGameUI(),
 	LeaveGameUI(),
-	LetterboxUi(),
 	BowlingControlsUI(),
+	
+	LetterboxUi(),
 
-	DebugUI(),
-	//SHOW_DEBUG ? DebugUI() : null
+	//DebugUI(),
+	SHOW_DEV ? DebugUI() : null
 ]
 
 export function SetupScreenUI() {
