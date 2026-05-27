@@ -33,12 +33,15 @@ export namespace CameraController {
 
 	// MARK: Init
 	export function init() {
-		eventBus.on(ClientEvents.ON_MY_ROLL_START, (data: { userId: string }) => { onMyRollStart(data) })
-		eventBus.on(ClientEvents.ON_MY_ROLL_END, (data: { userId: string }) => { onMyRollEnd(data) })
-		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, (data: { userId: string }) => { onGroupRollPlaybackStart(data) })
-		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_END, (data: {}) => { onGroupRollPlaybackEnd() })
-		eventBus.on(ClientEvents.REQUEST_LEAVE_GAME, (data: {}) => { onRequestLeaveGame() })
-		eventBus.on(ClientEvents.ON_GROUP_GAME_END, (data: LaneSnapshot) => { resetCamera() })
+		eventBus.on(ClientEvents.ON_MY_ROLL_START,             () => { onMyRollStart() })
+		eventBus.on(ClientEvents.ON_MY_ROLL_END,               () => { onMyRollEnd() })
+		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, () => { onGroupRollPlaybackStart() })
+		
+		eventBus.on(ClientEvents.REQUEST_LEAVE_GAME,           () => { resetCamera() })
+		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_END,   () => { resetCamera() })
+		eventBus.on(ClientEvents.ON_GROUP_GAME_END,            () => { resetCamera() })
+		eventBus.on(ClientEvents.ON_GROUP_FRAME_END,           () => { resetCamera() })
+		eventBus.on(ClientEvents.ON_MY_FRAME_END,              () => { resetCamera() })
 
 		camera = engine.addEntity()
 		Transform.create(camera, { position: Vector3.create(0, 0, 0) })
@@ -47,38 +50,33 @@ export namespace CameraController {
 		Transform.create(cameraTarget, { position: Vector3.create(0, 0, 0) })
 	}
 
-	function onMyRollStart(data: { userId: string }) {
+	function onMyRollStart() {
 		console.log("CameraController: onMyRollStart")
 		isMyTurn = true
 		triggerRollStartCamera()
 	}
 
-	function onMyRollEnd(data: { userId: string }) {
+	function onMyRollEnd() {
 		console.log("CameraController: onMyRollEnd")
 		isMyTurn = false
 		resetCamera()
 	}
 
-	function onGroupRollPlaybackStart(data: { userId: string }) {
+	function onGroupRollPlaybackStart() {
 		console.log("CameraController: onGroupRollPlaybackStart")
 		if (isMyTurn || PlayerSettings.CAMER_ACTIVE_FOR_OTHER_PLAYERS_ROLLS) {
 			triggerPlaybackCamera()
 		}
 	}
 
-	function onGroupRollPlaybackEnd() {
+/* 	function onGroupRollPlaybackEnd() {
 		console.log("CameraController: onGroupRollPlaybackEnd")
 		if (isMyTurn || PlayerSettings.CAMER_ACTIVE_FOR_OTHER_PLAYERS_ROLLS) {
 			utils.timers.setTimeout(() => {
 				resetCamera()
 			}, 1000)
 		}
-	}
-
-	function onRequestLeaveGame() {
-		console.log("CameraController: onRequestLeaveGame")
-		resetCamera()
-	}
+	} */
 
 
 
