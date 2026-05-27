@@ -13,21 +13,21 @@ import { LaneSnapshot } from "src/shared/types/shared-types";
 
 export namespace CameraController {
 
-	const clientStore = ClientStore.getInstance()
-	var isMyTurn           : boolean = false
-	var camera             : Entity | undefined
-	var cameraTarget       : Entity | undefined
-	var cameraTargetPosition: Vector3 | undefined
-	var cameraStartPosition: Vector3 | undefined
-	var cameraEndPosition  : Vector3 | undefined
+	const clientStore                   = ClientStore.getInstance()
+	var isMyTurn                        : boolean = false
+	var camera                          : Entity | undefined
+	var cameraTarget                    : Entity | undefined
+	var cameraTargetPosition            : Vector3 | undefined
+	var cameraStartPosition             : Vector3 | undefined
+	var cameraEndPosition               : Vector3 | undefined
 
-	var cameraHeight = Vector3.create(0, 0.65, -1.2)
-	var cameraTargetOffset = Vector3.create(0, 0.2, 19)
+	var cameraHeight                    = Vector3.create(0, 0.65, -1.2)
+	var cameraTargetOffset              = Vector3.create(0, 0.2, 19)
 
-	var cameraEndOffset = Vector3.create(0, 0, 16)
+	var cameraEndOffset                 = Vector3.create(0, 0, 16)
 
-	const cameraTransitionDuration       = 1
-	const cameraPlaybackDuration         = 1000 * 2
+	const cameraTransitionDuration      = 1
+	const cameraPlaybackDuration        = 1000 * 2
 	const cameraPlaybackEndHoldDuration = 1000 * 3
 
 
@@ -68,17 +68,6 @@ export namespace CameraController {
 			triggerPlaybackCamera()
 		}
 	}
-
-/* 	function onGroupRollPlaybackEnd() {
-		console.log("CameraController: onGroupRollPlaybackEnd")
-		if (isMyTurn || PlayerSettings.CAMER_ACTIVE_FOR_OTHER_PLAYERS_ROLLS) {
-			utils.timers.setTimeout(() => {
-				resetCamera()
-			}, 1000)
-		}
-	} */
-
-
 
 	function setCameraView(startPosition: Vector3, targetPosition: Vector3): boolean {
 		if (!camera || !cameraTarget) {
