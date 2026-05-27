@@ -12,6 +12,7 @@ import { ClientStore } from "src/client/clientStore"
 import { LaneStore } from "src/shared/laneStore"
 import { sfx, SoundManager } from "./soundManager"
 import { lanePositions } from "./data/lanePositions"
+import { GameSettings } from "src/shared/settings"
 
 
 // MARK: Types
@@ -412,17 +413,15 @@ export class LaneVisuals {
 	// MARK: onReplayEnd
 	onReplayEnd(): void {
 		console.log("laneVisuals: onReplayEnd()")
-
-		const allPinsUpAtStart = this.rollPayload?.startingPinStates.every((pin) => pin)
-		const allPinsDownAtEnd = this.rollPayload?.finalPinStates.every((pin) => !pin)
+		
 		// Was it a strike?
 		if (this.rollPayload?.gutterBall === true) {
 			this.showScoreGutterBall()
 		}
-		else if (allPinsUpAtStart && allPinsDownAtEnd) {
+		else if (this.rollPayload?.isStrike) {
 			this.showScoreStrike()
 		} 
-		else if (!allPinsUpAtStart && allPinsDownAtEnd) {
+		else if (this.rollPayload?.isSpare) {
 			this.showScoreSpare()
 		} 
 		else if (this.rollPayload?.score === 0) {

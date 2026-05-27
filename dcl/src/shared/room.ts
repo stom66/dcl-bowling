@@ -58,6 +58,8 @@ const rollReplaySchema = {
 	}),
 	duration       : Schemas.Number,
 	gutterBall     : Schemas.Boolean,
+	isStrike       : Schemas.Boolean,
+	isSpare        : Schemas.Boolean,
 	pinsKeyframes    : Schemas.Array(Schemas.Map({
 		index    : Schemas.Int,
 		keyframes: Schemas.Array(Schemas.Map({

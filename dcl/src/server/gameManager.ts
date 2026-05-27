@@ -299,11 +299,11 @@ class GameManager {
 		//console.log('gameManager: simulateAndPlaybackRoll: simInput', JSON.stringify(simInput, null, 2))
 		const simResults: SimulationResult = getSimulationResults(simInput)
 
-		const simDuration = Date.now() - simStartTime
+		//const simDuration = Date.now() - simStartTime
 		//console.log(`gameManager: simulateAndPlaybackRoll: simDuration ${simDuration}ms`)
 
-		const score = this.countTrueValues(startingPinStates) - this.countTrueValues(simResults.finalPinStates)
-		const payload = this.buildRollPayload(userId, frameIndex, rollIndex, simResults, startingPinStates, score)
+		const score   = this.countTrueValues(startingPinStates) - this.countTrueValues(simResults.finalPinStates)
+		const payload = this.buildRollPayload(userId, laneIndex, frameIndex, rollIndex, simResults, startingPinStates, score)
 
 		// Update lane runtime + scorecard from the simulation result.
 		rt.pinStanding = simResults.finalPinStates
@@ -320,12 +320,38 @@ class GameManager {
 	/** Convert Cannon sim output into the wire-format NotifyPlayerRollPayload. */
 	private buildRollPayload(
 		userId           : string,
+		laneIndex        : number,
 		frameIndex       : number,
 		rollIndex        : number,
 		simResults       : SimulationResult,
 		startingPinStates: boolean[],
 		score            : number,
 	): NotifyPlayerRollPayload {
+
+		const frameRolls             = LaneStore.getScoresMap(laneIndex).get(userId)?.[frameIndex] ?? []
+		const pinsStandingAtStart    = this.countTrueValues(startingPinStates)
+		const clearedAllStandingPins = score === pinsStandingAtStart
+		const isFinalFrame           = frameIndex === GameSettings.MAX_FRAMES_PER_GAME - 1
+
+		let isStrike = false
+		let isSpare  = false
+
+		if (!isFinalFrame) {
+			if (rollIndex === 0 && clearedAllStandingPins && pinsStandingAtStart === 10) isStrike = true
+			else if (rollIndex === 1 && clearedAllStandingPins) isSpare = true
+		} else {
+			const previousRollScore = rollIndex >= 1 ? frameRolls[rollIndex - 1] : undefined
+
+			if (rollIndex === 0 && clearedAllStandingPins && pinsStandingAtStart === 10) {
+				isStrike = true
+			} else if (rollIndex >= 1 && previousRollScore !== undefined && clearedAllStandingPins) {
+				if (previousRollScore === 10 && score === 10) {
+					isStrike = true
+				} else if (previousRollScore < 10 && (score === 10 || previousRollScore + score === 10)) {
+					isSpare = true
+				}
+			}
+		}
 
 		const payload: NotifyPlayerRollPayload = {
 			userId           : userId,
@@ -334,6 +360,8 @@ class GameManager {
 			startingPinStates: startingPinStates,
 			finalPinStates   : simResults.finalPinStates,
 			gutterBall       : simResults.gutterBall,
+			isStrike         : isStrike,
+			isSpare          : isSpare,
 			ballKeyframes    : simResults.compressed.ballKeyframes,
 			duration         : simResults.duration,
 			pinsKeyframes    : simResults.compressed.pinsKeyframes,
@@ -411,6 +439,10 @@ class GameManager {
 			else if (rollIndex === 1 && (secondRollWasASpare || secondRollWasAStrike)) {
 				console.log('gameManager: afterRollEnd: final frame, strike/spare, starting thirdroll')
 				rt.pinStanding = newFullPinRack()
+				LaneStore.setCurrentRollIndex(laneIndex, 2)
+				this.startPlayerRoll(laneIndex)
+			}
+			else if (rollIndex === 1 && firstRollWasAStrike && !secondRollWasAStrike) {
 				LaneStore.setCurrentRollIndex(laneIndex, 2)
 				this.startPlayerRoll(laneIndex)
 			}
