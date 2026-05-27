@@ -6,9 +6,11 @@ import { tweenValue } from '../utils/tweens'
 
 import * as utils from "@dcl-sdk/utils"
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
+import { vhAsPixels } from '../utils/sizing'
 
-const OFFSET_VISIBLE = -64
-const OFFSET_HIDDEN = -360
+const BAR_HEIGHT     = vhAsPixels(17.5)
+const OFFSET_VISIBLE = BAR_HEIGHT * -0.25 // Need to have ti slightly offscreen becuase of the BACK easing causing it to overshoot
+const OFFSET_HIDDEN  = BAR_HEIGHT * -1
 
 var offset = OFFSET_HIDDEN
 
@@ -19,16 +21,13 @@ export function HideLetterbox() {
 	tweenValue(offset, OFFSET_HIDDEN, 0.8, (v) => offset = v)
 }
 
-eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, () => {
-	ShowLetterbox()
-})
-eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_END, () => {
-	HideLetterbox()
-})
-eventBus.on(ClientEvents.ON_GROUP_GAME_END, () => {
-	HideLetterbox()
-})
+eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, () => { ShowLetterbox() })
 
+eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_END,   () => { HideLetterbox() })
+eventBus.on(ClientEvents.ON_GROUP_GAME_END,            () => { HideLetterbox() })
+eventBus.on(ClientEvents.ON_GROUP_ROLL_END,            () => { HideLetterbox() })
+eventBus.on(ClientEvents.ON_GROUP_FRAME_END,           () => { HideLetterbox() })
+eventBus.on(ClientEvents.ON_MY_FRAME_END,              () => { HideLetterbox() })
 
 
 // MARK: Main GameUI
@@ -47,7 +46,7 @@ export function LetterboxUi() {
 		<UiEntity
 			uiTransform={{
 				width         : '100%',
-				height        : '17.5vh',
+				height        : BAR_HEIGHT,
 				positionType  : 'relative',
 				position      : { top: offset }
 			}}
@@ -56,7 +55,7 @@ export function LetterboxUi() {
 		<UiEntity
 			uiTransform={{
 				width         : '100%',
-				height        : '17.5vh',
+				height        : BAR_HEIGHT,
 				positionType  : 'relative',
 				position      : { bottom: offset }
 			}}
