@@ -23,8 +23,8 @@ export class GameSettings {
 	static SERVER_TIME_UPDATE_INTERVAL    = (IS_DEBUG ? 15: 30) * 1000
 
 	static MAX_LANES                      = 6
-	static MAX_PLAYERS_PER_GAME           = IS_DEBUG ? 2 : 3
-	static MAX_FRAMES_PER_GAME            = IS_DEBUG ? 5 : 5
+	static MAX_PLAYERS_PER_GAME           = IS_DEBUG ? 2 : 5
+	static MAX_FRAMES_PER_GAME            = IS_DEBUG ? 2 : 5
 
 	static GAME_START_COUNTDOWN_DURATION  = 1000 * (IS_DEBUG ? 2 : 30)
 	static GAME_START_INITIAL_DELAY       = 1000 * 1    // Time between starting the game, and starting the first frame
