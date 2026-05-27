@@ -466,7 +466,7 @@ export class CannonSim {
 		result.computeTimeMs = Date.now() - computeStartedAt
 
 		// DEBUG: log timings
-		this.logger.print()
+		//this.logger.print()
 		return result
 	}
 
