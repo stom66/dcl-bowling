@@ -161,11 +161,11 @@ export function getDummyScoreData() {
 	]) */
 
 	frames.set('0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF', [
-		[10],
-		[10],
-		[10],
-		[10],
-		[10],
+		//[10],
+		//[10],
+		//[10],
+		//[10],
+		//[10],
 		[10],
 		[10],
 		[10],
@@ -175,11 +175,11 @@ export function getDummyScoreData() {
 
 		// Real-world exmaple set
 	frames.set('0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEB', [
-		[10],
-		[9,0],
-		[10],
-		[7,0],
-		[0,9],
+		//[10],
+		//[9,0],
+		//[10],
+		//[7,0],
+		//[0,9],
 		[8,0],
 		[3,7],
 		[9,0],
@@ -187,11 +187,11 @@ export function getDummyScoreData() {
 		[6,0],
 	])
 	frames.set('0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEC', [
-		[8,2],
-		[10],
-		[9,0],
-		[7,1],
-		[4,0],
+		//[8,2],
+		//[10],
+		//[9,0],
+		//[7,1],
+		//[4,0],
 		[3,4],
 		[10],
 		[7,3],
@@ -199,11 +199,11 @@ export function getDummyScoreData() {
 		[7,0],
 	])
 	frames.set('0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEED', [
-		[7,1],
-		[3,5],
-		[5,5],
-		[10],
-		[4,6],
+		//[7,1],
+		//[3,5],
+		//[5,5],
+		//[10],
+		//[4,6],
 		[9,1],
 		[7,3],
 		[8,2],

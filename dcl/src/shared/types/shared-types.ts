@@ -94,6 +94,8 @@ export type RollPayload = {
 	startingPinStates: boolean[]
 	finalPinStates   : boolean[]
 	gutterBall       : boolean
+	isStrike         : boolean
+	isSpare          : boolean
 	ballKeyframes    : SimObjectKeyframes
 	pinsKeyframes    : SimObjectKeyframes[]
 	/** Sim world-time (seconds), aligned with keyframe `time` and replay `elapsed`. */
