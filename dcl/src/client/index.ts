@@ -6,7 +6,6 @@ import * as utils from "@dcl-sdk/utils"
 
 import { ComponentManager } from 'src/shared/components/componentManager'
 import { MessageType, room } from 'src/shared/room'
-import { newPlayer } from 'src/shared/utils/discord-webhooks'
 
 import { ClientHandler } from 'src/client/clientHandler'
 import { ClientStore } from 'src/client/clientStore'

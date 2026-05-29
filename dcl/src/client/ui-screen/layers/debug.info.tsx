@@ -5,7 +5,7 @@ import { movePlayerTo } from '~system/RestrictedActions'
 import { ComponentManager } from 'src/shared/components/componentManager'
 import { LaneStore } from 'src/shared/laneStore'
 import { GameSettings } from 'src/shared/settings'
-import { newPlayer, perfectGame } from 'src/shared/utils/discord-webhooks'
+import { DiscordWebhooks } from 'src/shared/utils/discord-webhooks'
 
 import { ClientMessaging } from 'src/client/clientMessaging'
 import { ClientStore } from 'src/client/clientStore'
@@ -186,9 +186,8 @@ export function DebugUI() {
 
 				{/* 			
 				<Divider />
-				<ButtonAction textLabel="Discord | newPlayer()" callback={() => { newPlayer(clientStore.getDisplayName(), clientStore.getUserId()) }} />
-				<ButtonAction textLabel="playerWateredPlants(stom, 60)" callback={() => { playerWateredPlants("stom", 60) }} /> 
-				<ButtonAction textLabel="Discord | perfectGame(stom)" callback={() => { perfectGame("stom") }} />
+				<ButtonAction textLabel="Discord | newPlayer()" callback={() => { DiscordWebhooks.newPlayer(clientStore.getDisplayName(), clientStore.getUserId()) }} />
+				<ButtonAction textLabel="Discord | perfectGame(stom)" callback={() => { DiscordWebhooks.perfectGame("stom") }} />
 				*/}
 				
 				
