@@ -13,6 +13,7 @@ import { ClientMessaging } from 'src/client/clientMessaging'
 
 import { buttonUVs, BtnStateUVIndex, getUVsForIconAtlasNumber } from '../utils/btn-utils'
 import { pixelsScaledRelative, vwAsPixels } from '../utils/sizing'
+import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 
 
 // MARK: Enums
@@ -76,6 +77,11 @@ function getLaneNumberUVs(i: number): number[] {
 	]
 	return laneNumberUVs
 }
+
+
+// MARK: event bindings
+eventBus.on(ClientEvents.ON_GROUP_GAME_START, () => { HideJoinGameUI() })
+eventBus.on(ClientEvents.ON_MY_ROLL_START, () => { HideJoinGameUI() })
 
 
 // MARK: s_updateLaneData
