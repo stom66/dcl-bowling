@@ -1,7 +1,7 @@
 import { EasingFunction, engine } from "@dcl/sdk/ecs"
 import { Color4 } from "@dcl/sdk/math";
 
-
+// MARK: Easing functions
 const easingFunctions: Record<EasingFunction, (t: number) => number> = {
 	[EasingFunction.EF_LINEAR]        :  (t) => t,
 	[EasingFunction.EF_EASEBACK]      :  (t) => { const c = 1.70158 * 1.525; return t < 0.5 ? (Math.pow(2 * t, 2) * ((c + 1) * 2 * t - c)) / 2 : (Math.pow(2 * t - 2, 2) * ((c + 1) * (t * 2 - 2) + c) + 2) / 2 },
@@ -50,6 +50,8 @@ export function applyEasing(t: number, easing: EasingFunction): number {
 	return easingFunctions[easing](t)
 }
 
+
+// MARK: Tween: Value
 export function tweenValue(
 	from       : number,
 	to         : number,
@@ -76,6 +78,8 @@ export function tweenValue(
 	engine.addSystem(system)
 }
 
+
+// MARK: Tween: Color
 export function tweenColor(
 	from       : Color4,
 	to         : Color4,
