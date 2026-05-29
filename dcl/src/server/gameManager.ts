@@ -13,6 +13,8 @@ import { getSimulationResults } from "src/server/physics/physics.client"
 import { GameSettings as PhysicsSimulationSettings } from "src/server/physics/physics.settings"
 import { SimulationInput, SimulationResult } from "src/server/physics/types"
 import * as ServerMessaging from "src/server/serverMessaging"
+import { Metrics } from "./metrics/client"
+import { PlayerStats } from "./metrics/playerStats"
 
 
 /** Per-lane runtime state that lives only on the server (not part of the wire payload). */
@@ -51,6 +53,8 @@ class GameManager {
 		if (LaneStore.getLaneUserIds(laneIndex).length === 0) {
 			this.abortGame(laneIndex)
 		}
+
+		Metrics.incrementPlayerStat(userId, PlayerStats.GAMES_LEFT_EARLY)
 	}
 
 
@@ -103,8 +107,16 @@ class GameManager {
 		// Starting the countdown is what transitions a brand-new lane into the
 		// game lifecycle. Only the first joiner triggers it.
 		const isFirstPlayer = lanePlayerCount === 0
+		
 		if (isFirstPlayer && LaneStore.getPhase(laneIndex) === LanePhase.NONE) {
-			this.startGameCountdown(laneIndex)
+			const gameStartTime = Date.now() + GameSettings.GAME_START_COUNTDOWN_DURATION
+			this.startGameCountdown(laneIndex, gameStartTime)
+
+			Metrics.trackGameCreated(userId, gameStartTime, laneIndex)
+		}
+		else {
+			const gameStartTime = LaneStore.getGameStartTime(laneIndex)
+			Metrics.trackGameJoined(userId, gameStartTime, laneIndex)
 		}
 	}
 
@@ -113,11 +125,15 @@ class GameManager {
 	// MARK: Phase 2 — Start Game Countdown
 	// =========================================================================
 	/** Mark the lane as STARTING and schedule startGame() after the countdown. */
-	private startGameCountdown(laneIndex: number) {
+	private startGameCountdown(
+		laneIndex    : number,
+		gameStartTime: number
+	) {
 		console.log('gameManager: startGameCountdown: laneIndex', laneIndex)
 
 		LaneStore.setPhase(laneIndex, LanePhase.GAME_STARTING)
-		LaneStore.setGameStartTime(laneIndex, Date.now() + GameSettings.GAME_START_COUNTDOWN_DURATION)
+
+		LaneStore.setGameStartTime(laneIndex, gameStartTime)
 
 		utils.timers.setTimeout(() => {
 			this.startGame(laneIndex)
@@ -138,8 +154,10 @@ class GameManager {
 	private startGame(laneIndex: number) {
 		console.log('gameManager: startGame: laneIndex', laneIndex)
 
+		const playerIds = LaneStore.getLaneUserIds(laneIndex)
+
 		// Everyone left during the countdown — bail out cleanly.
-		if (LaneStore.getLaneUserIds(laneIndex).length === 0) {
+		if (playerIds.length === 0) {
 			console.log('gameManager: startGame: no players, aborting')
 			this.resetLane(laneIndex)
 			return
@@ -154,6 +172,9 @@ class GameManager {
 		this.ensureFrameWatcherRunning()
 
 		this.schedulePhase(laneIndex, LanePhase.WAITING, GameSettings.GAME_START_INITIAL_DELAY)
+
+		const gameStartTime = LaneStore.getGameStartTime(laneIndex)
+		Metrics.trackGameStarted(gameStartTime, laneIndex, playerIds)
 	}
 
 
@@ -303,7 +324,7 @@ class GameManager {
 		//console.log(`gameManager: simulateAndPlaybackRoll: simDuration ${simDuration}ms`)
 
 		const score   = this.countTrueValues(startingPinStates) - this.countTrueValues(simResults.finalPinStates)
-		const payload = this.buildRollPayload(userId, laneIndex, frameIndex, rollIndex, simResults, startingPinStates, score)
+		const payload = this.buildRollPayload(userId, laneIndex, frameIndex, rollIndex, simInput, simResults, startingPinStates, score)
 
 		// Update lane runtime + scorecard from the simulation result.
 		rt.pinStanding = simResults.finalPinStates
@@ -314,6 +335,7 @@ class GameManager {
 		// Roll-playback carries the keyframe payload that's far too big for a
 		// synced component, so this stays as a directed room message.
 		ServerMessaging.notifyPlayerRollPlayback(laneIndex, payload)
+		
 	}
 
 
@@ -323,6 +345,7 @@ class GameManager {
 		laneIndex        : number,
 		frameIndex       : number,
 		rollIndex        : number,
+		simInput         : SimulationInput,
 		simResults       : SimulationResult,
 		startingPinStates: boolean[],
 		score            : number,
@@ -354,22 +377,33 @@ class GameManager {
 		}
 
 		const payload: NotifyPlayerRollPayload = {
-			userId           : userId,
-			frameIndex       : frameIndex,
-			rollIndex        : rollIndex,
-			startingPinStates: startingPinStates,
-			finalPinStates   : simResults.finalPinStates,
-			gutterBall       : simResults.gutterBall,
-			isStrike         : isStrike,
-			isSpare          : isSpare,
-			ballKeyframes    : simResults.compressed.ballKeyframes,
-			duration         : simResults.duration,
-			pinsKeyframes    : simResults.compressed.pinsKeyframes,
+			userId                 : userId,
+			frameIndex             : frameIndex,
+			rollIndex              : rollIndex,
+			startingPinStates      : startingPinStates,
+			finalPinStates         : simResults.finalPinStates,
+			gutterBall             : simResults.gutterBall,
+			isStrike               : isStrike,
+			isSpare                : isSpare,
+			ballKeyframes          : simResults.compressed.ballKeyframes,
+			duration               : simResults.duration,
+			pinsKeyframes          : simResults.compressed.pinsKeyframes,
 			sfxBallHitPinTimestamps: [...simResults.sfxBallHitPinTimestamps],
 			sfxPinHitPinTimestamps : [...simResults.sfxPinHitPinTimestamps],
-			score            : score,
-			sentAt           : Date.now(),
+			score                  : score,
+			sentAt                 : Date.now(),
 		}
+
+		Metrics.incrementPlayerStat(userId, PlayerStats.ROLLED_BALLS)
+		Metrics.incrementPlayerStat(userId, PlayerStats.PINS_KNOCKED_DOWN, payload.score)
+
+		if (payload.isStrike)   Metrics.incrementPlayerStat(userId, PlayerStats.ROLLED_STRIKES)
+		if (payload.isSpare)    Metrics.incrementPlayerStat(userId, PlayerStats.ROLLED_SPARES)
+		if (payload.gutterBall) Metrics.incrementPlayerStat(userId, PlayerStats.ROLLED_GUTTER_BALLS)
+
+		const gameStartTime = LaneStore.getGameStartTime(laneIndex)
+
+		Metrics.trackRoll(gameStartTime, laneIndex, payload, simInput)
 
 		return payload
 	}
@@ -510,6 +544,21 @@ class GameManager {
 	private endGame(laneIndex: number) {
 		console.log(`gameManager: endGame: lane ${laneIndex}`)
 
+		const gameStartTime = LaneStore.getGameStartTime(laneIndex)
+		const playerIds     = LaneStore.getLaneUserIds(laneIndex)
+		const winnerUserId  = LaneStore.getWinnerUserId(laneIndex)
+
+		Metrics.trackGameEnded(gameStartTime, laneIndex, playerIds, winnerUserId)
+
+		// Log metrics for each player
+		for (const userId of playerIds) {
+			if (userId === winnerUserId) {
+				Metrics.trackGameWon(userId, gameStartTime, laneIndex)
+			} else {
+				Metrics.trackGameNotWon(userId, gameStartTime, laneIndex)
+			}
+		}
+
 		
 
 		// Setting phase=NONE is the trigger clients use (via MyLane) to fire
@@ -531,6 +580,8 @@ class GameManager {
 	private abortGame(laneIndex: number) {
 		console.log(`gameManager: abortGame: lane ${laneIndex}`)
 
+		const gameStartTime = LaneStore.getGameStartTime(laneIndex)
+
 		// Need to check if a roll was in progress, and if so send the end roll message to the clients
 		const rt = this.getRuntime(laneIndex)
 		if (rt.phase === LanePhase.ROLL_AWAITING || rt.phase === LanePhase.ROLL_PLAYBACK || rt.phase === LanePhase.ROLL_END) {
@@ -540,6 +591,8 @@ class GameManager {
 		this.schedulePhase(laneIndex, LanePhase.ROLL_END, GameSettings.FRAME_DELAY_BETWEEN_TURNS)
 
 		this.resetLane(laneIndex)
+		
+		Metrics.trackGameAborted(gameStartTime, laneIndex)
 	}
 
 

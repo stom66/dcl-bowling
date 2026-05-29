@@ -6,6 +6,7 @@ import { LanePhase } from "src/shared/enums"
 import { LanePlayers, LaneScores as LaneScoresRow, LaneSnapshot } from "src/shared/types/shared-types"
 import { GameSettings } from "./settings"
 import { userProfileCache } from "./utils/userProfileCache"
+import { FrameResult, getFrameResults, getPlayerTotalScore } from "./utils/scoreCalc"
 
 
 /**
@@ -312,5 +313,26 @@ export namespace LaneStore {
 
 		if (!scores!.frames[frameIndex]) scores!.frames[frameIndex] = []
 		scores!.frames[frameIndex]!.push(score)
+	}
+
+
+	export function getWinnerUserId(laneIndex: number): string | undefined {
+		var winnerUserId: string | undefined = undefined
+		var maxScore    : number             = 0
+
+
+		const scores = getScores(laneIndex)
+
+		for (const score of scores) {
+			const frameResults = getFrameResults(score.frames)
+			const totalScore   = getPlayerTotalScore(frameResults)
+
+			if (totalScore > maxScore) {
+				maxScore = totalScore
+				winnerUserId = score.userId
+			}
+		}
+
+		return winnerUserId
 	}
 }

@@ -8,11 +8,14 @@ import { GameSettings } from "src/shared/settings"
 import { gameManager } from "src/server/gameManager"
 import { serverHandler } from "src/server/serverHandler"
 import { notifyServerTime } from "src/server/serverMessaging"
-import { newPlayer } from "src/shared/utils/discord-webhooks"
+import { DiscordWebhooks } from "src/shared/utils/discord-webhooks"
+import { Metrics } from "./metrics/client"
 
 
 export async function initServer(): Promise<void> {
 	console.log("Server: initServer()")
+
+	Metrics.init()
 
 	ComponentManager.init()
 
@@ -30,10 +33,12 @@ export async function initServer(): Promise<void> {
 	onEnterScene((player) => {
 		// Placeholder
 		if (player) {
-			newPlayer(player.name, player.userId)
+			Metrics.startSession(player.userId, player.name)
+			DiscordWebhooks.newPlayer(player.name, player.userId)
 		}
 	})
 	onLeaveScene((userId) => {
+		Metrics.endSession(userId)
 		LaneStore.removePlayerFromAllLanes(userId)
 	})
 }
