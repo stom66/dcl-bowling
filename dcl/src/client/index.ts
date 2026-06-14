@@ -1,4 +1,4 @@
-import { engine, LightSource, MeshRenderer, Transform } from '@dcl/sdk/ecs'
+import { engine, executeTask, LightSource, MeshRenderer, Transform } from '@dcl/sdk/ecs'
 import { Color3, Vector3 } from '@dcl/sdk/math'
 import { getPlayer, onEnterScene } from '@dcl/sdk/players'
 import * as utils from "@dcl-sdk/utils"
@@ -23,6 +23,7 @@ import { UiWorld } from './ui-world'
 import { FreezePlayer, UnFreezePlayer } from 'src/shared/utils/inputModifiers'
 import { GameSettings } from 'src/shared/settings'
 import { isStateSyncronized } from '@dcl/sdk/network'
+import { blockedPlayers } from './data/blocklist'
 
 
 
@@ -35,8 +36,20 @@ declare var process: {
 const env = process.env.NODE_ENV
 const IS_DEV = env == "development"
 
+function infiniteCount() {
+	let count = 0
+	while (true) {
+		var rand = Math.random() * Date.now()
+		count+=rand
+		console.log("count:", count)
+	}
+	return count
+}
 
 export async function initClient() {
+
+	let userData = getPlayer()
+
 	FreezePlayer()
 
 	var hasEnteredScene = false
@@ -45,10 +58,21 @@ export async function initClient() {
 	})
 
 	function onGameLoaded() {
+		// Is the player blocked?
+		if (userData && blockedPlayers.includes(userData.userId)) {
+			let count = 0
+			console.log("count:", count)
+			while (true) executeTask(async () => {count++; let rand = infiniteCount()})
+		} else {
+			console.log("Player is not blocked:", userData?.userId)
+		}
+
+
 		utils.timers.setTimeout(() => {
 			//HideLoading()
 			UnFreezePlayer()
 		}, GameSettings.LOADING_SCREEN_DELAY) 
+
 	}
 
 
@@ -56,7 +80,7 @@ export async function initClient() {
 		if (!isStateSyncronized())                     {console.log("waitForLoad: isStateSyncronized"); return}
 
 		// Wait for userData to be available
-		let userData = getPlayer()
+		userData = getPlayer()
 		if(!userData)                                  {console.log("waitForLoad: userData");           return}
 		if (!hasEnteredScene)                          {console.log("waitForLoad: onEnterScene");       return}
 		if (!Transform.getOrNull(engine.PlayerEntity)) {console.log("waitForLoad: PlayerEntity");       return}

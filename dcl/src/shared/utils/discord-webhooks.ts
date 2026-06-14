@@ -1,3 +1,4 @@
+import { Vector3 } from "@dcl/sdk/math"
 import { isServer } from "@dcl/sdk/network"
 import { EnvVar } from "@dcl/sdk/server"
 
@@ -38,9 +39,17 @@ export namespace DiscordWebhooks {
 
 
 	// MARK: newPlayer
-	export const newPlayer = (username: string, userId: string) => {
+	export const newPlayer = (
+		username: string, 
+		userId  : string,
+		position?: Vector3
+	) => {
 		const title       = `:bowling: ${username} has joined the game!`
-		const description = `${userId}`
+		let description = `${userId}`
+
+		if (position) {
+			description += `\nPosition: ${position.x}, ${position.y}, ${position.z}`
+		}
 
 		const body = buildMessage(title, description)
 

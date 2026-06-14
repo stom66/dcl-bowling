@@ -10,6 +10,7 @@ import { serverHandler } from "src/server/serverHandler"
 import { notifyServerTime } from "src/server/serverMessaging"
 import { DiscordWebhooks } from "src/shared/utils/discord-webhooks"
 import { Metrics } from "./metrics/client"
+import { Transform } from "@dcl/sdk/ecs"
 
 
 export async function initServer(): Promise<void> {
@@ -34,7 +35,8 @@ export async function initServer(): Promise<void> {
 		// Placeholder
 		if (player) {
 			Metrics.startSession(player.userId, player.name)
-			DiscordWebhooks.newPlayer(player.name, player.userId)
+			const playerPosition = Transform.getOrNull(player.entity)?.position
+			DiscordWebhooks.newPlayer(player.name, player.userId, playerPosition)
 		}
 	})
 	onLeaveScene((userId) => {
