@@ -11,6 +11,7 @@ import { MetricEvents } from 'src/server/metrics/metricEvents'
 import { Posthog } from 'src/server/metrics/posthog'
 import { SimulationInput } from '../physics/types'
 import { NotifyPlayerRollPayload } from 'src/shared/types/shared-types'
+import { blockedPlayers } from 'src/client/data/blocklist'
 
 
 export namespace Metrics {
@@ -56,8 +57,12 @@ export namespace Metrics {
 
 
 	// MARK: Player: Session
-	export function startSession(userId: string, displayName: string) {
+	export function startSession(
+		userId     : string, 
+		displayName: string
+	) {
 		if (sessions.has(userId)) return
+		if (blockedPlayers.includes(userId)) return
 
 		sessions.set(userId, Date.now())
 
@@ -65,6 +70,8 @@ export namespace Metrics {
 	}
 
 	export function endSession(userId: string): void {
+		if (blockedPlayers.includes(userId)) return
+
 		const startTimestamp = sessions.get(userId)
 		if (!startTimestamp) {
 			return
@@ -81,7 +88,12 @@ export namespace Metrics {
 
 
 	// MARK: Player: Scene
-	export function trackSceneJoined(userId: string, displayName: string) {
+	export function trackSceneJoined(
+		userId     : string, 
+		displayName: string
+	) {
+		if (blockedPlayers.includes(userId)) return
+
 		Posthog.identify(userDistinctId(userId), {
 			$set: {
 				displayName: displayName
@@ -99,7 +111,13 @@ export namespace Metrics {
 		console.log('Metrics: trackSceneJoined: userId', userId, 'displayName', displayName)
 	}
 
-	export function trackSceneLeft(userId: string, durationMs: number, playerStats?: PlayerStatsRecord) {
+	export function trackSceneLeft(
+		userId      : string, 
+		durationMs  : number, 
+		playerStats?: PlayerStatsRecord
+	) {
+		if (blockedPlayers.includes(userId)) return
+		
 		Posthog.capture(userDistinctId(userId), MetricEvents.PLAYER_SCENE_LEFT, {
 			version              : VERSION,
 			durationMs           : durationMs,
@@ -118,6 +136,8 @@ export namespace Metrics {
 		gameStartTime: number, 
 		laneIndex    : number
 	) {
+		if (blockedPlayers.includes(userId)) return
+		
 		incrementPlayerStat(userId, PlayerStats.GAMES_PLAYED)
 
 		Posthog.capture(userDistinctId(userId), MetricEvents.PLAYER_GAME_JOINED, {
@@ -134,6 +154,8 @@ export namespace Metrics {
 		gameStartTime: number, 
 		laneIndex    : number
 	) {
+		if (blockedPlayers.includes(userId)) return
+		
 		incrementPlayerStat(userId, PlayerStats.GAMES_WON)
 
 		Posthog.capture(userDistinctId(userId), MetricEvents.PLAYER_GAME_WON, {
@@ -150,6 +172,8 @@ export namespace Metrics {
 		gameStartTime: number, 
 		laneIndex    : number
 	) {
+		if (blockedPlayers.includes(userId)) return
+		
 		Posthog.capture(userDistinctId(userId), MetricEvents.PLAYER_GAME_NOT_WON, {
 			version              : VERSION,
 			gameId               : gameDistinctId(gameStartTime, laneIndex),
@@ -188,8 +212,8 @@ export namespace Metrics {
 	export function trackGameStarted(
 		gameStartTime: number, 
 		laneIndex    : number,
-		playerIds: string[]
-	) {
+		playerIds    : string[]
+	) {		
 		const gameId = gameDistinctId(gameStartTime, laneIndex)
 		Posthog.capture(gameId, MetricEvents.GAME_STARTED, {
 			version    : VERSION,
@@ -243,6 +267,8 @@ export namespace Metrics {
 		rollPayload  : NotifyPlayerRollPayload,
 		simInput     : SimulationInput
 	) {
+		if (blockedPlayers.includes(rollPayload.userId)) return
+
 		const gameId = gameDistinctId(gameStartTime, laneIndex)
 		Posthog.capture(gameId, MetricEvents.PLAYER_ROLLED, {
 			version              : VERSION,
