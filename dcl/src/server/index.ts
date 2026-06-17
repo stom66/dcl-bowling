@@ -11,6 +11,7 @@ import { notifyServerTime } from "src/server/serverMessaging"
 import { DiscordWebhooks } from "src/shared/utils/discord-webhooks"
 import { Metrics } from "./metrics/client"
 import { Transform } from "@dcl/sdk/ecs"
+import { blockedPlayers } from "src/client/data/blocklist"
 
 
 export async function initServer(): Promise<void> {
@@ -33,14 +34,17 @@ export async function initServer(): Promise<void> {
 	// MARK: Event bindings
 	onEnterScene((player) => {
 		// Placeholder
-		if (player) {
+		if (player && !blockedPlayers.includes(player.userId)) {
 			Metrics.startSession(player.userId, player.name)
+			
 			const playerPosition = Transform.getOrNull(player.entity)?.position
 			DiscordWebhooks.newPlayer(player.name, player.userId, playerPosition)
 		}
 	})
 	onLeaveScene((userId) => {
-		Metrics.endSession(userId)
 		LaneStore.removePlayerFromAllLanes(userId)
+		if (!blockedPlayers.includes(userId)) {
+			Metrics.endSession(userId)
+		}
 	})
 }
