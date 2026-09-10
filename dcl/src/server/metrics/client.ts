@@ -184,6 +184,29 @@ export namespace Metrics {
 	}
 
 
+	// MARK: trackGameScore
+	/**
+	 * Tracks a player's final score when a game ends.
+	 */
+	export function trackGameScore(
+		userId       : string,
+		gameStartTime: number,
+		laneIndex    : number,
+		score        : number
+	): void {
+		if (blockedPlayers.includes(userId)) return
+
+		Posthog.capture(userDistinctId(userId), MetricEvents.PLAYER_GAME_SCORE, {
+			version              : VERSION,
+			gameId               : gameDistinctId(gameStartTime, laneIndex),
+			score                : score,
+			sessionStartTimestamp: sessions.get(userId)
+		})
+
+		console.log('Metrics: trackGameScore: userId', userId, 'gameStartTime', gameStartTime, 'laneIndex', laneIndex, 'score', score)
+	}
+
+
 	// MARK: Game
 	export function trackGameCreated(
 		userId       : string, 

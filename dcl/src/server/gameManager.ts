@@ -6,6 +6,7 @@ import { LaneStore } from "src/shared/laneStore"
 import { LanePhase } from "src/shared/enums"
 import { GameSettings } from "src/shared/settings"
 import { NotifyPlayerRollPayload, RequestPlayRollPayload, RollPayload } from "src/shared/types/shared-types"
+import { isValidLaneIndex } from "src/shared/utils/laneIndex"
 import { userProfileCache } from "src/shared/utils/userProfileCache"
 
 import { PIN_LANE_LOCAL_POSITIONS } from 'src/server/physics/physics.pin-layout'
@@ -75,7 +76,7 @@ class GameManager {
 		}
 
 		// Did they request an invalid lane?
-		if (laneIndex < 0 || laneIndex >= GameSettings.MAX_LANES) {
+		if (!isValidLaneIndex(laneIndex)) {
 			console.log('gameManager: onPlayerRequestJoin: laneIndex out of range', laneIndex)
 			return
 		}
@@ -556,6 +557,11 @@ class GameManager {
 				Metrics.trackGameWon(userId, gameStartTime, laneIndex)
 			} else {
 				Metrics.trackGameNotWon(userId, gameStartTime, laneIndex)
+			}
+
+			const score = LaneStore.getScoreForUserId(userId)
+			if (score !== undefined && Number.isInteger(score) && score >= 0) {
+				Metrics.trackGameScore(userId, gameStartTime, laneIndex, score)
 			}
 		}
 

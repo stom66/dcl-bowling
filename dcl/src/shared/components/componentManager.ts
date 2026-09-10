@@ -5,6 +5,7 @@ import { AUTH_SERVER_PEER_ID } from "@dcl/sdk/network/message-bus-sync"
 import * as LaneComponent from "src/shared/components/lane"
 import { LanePhase } from "src/shared/enums"
 import { GameSettings } from "src/shared/settings"
+import { isValidLaneIndex } from "src/shared/utils/laneIndex"
 
 
 /**
@@ -102,7 +103,7 @@ export namespace ComponentManager {
 			let foundCount = 0
 			for (const [entity, gameData] of engine.getEntitiesWith(LaneComponent.LaneGameData)) {
 				const laneIndex = gameData.laneIndex
-				if (laneIndex < 0 || laneIndex >= GameSettings.MAX_LANES) continue
+				if (!isValidLaneIndex(laneIndex)) continue
 
 				if (laneComponentEntities[laneIndex] === undefined) {
 					laneComponentEntities[laneIndex] = entity

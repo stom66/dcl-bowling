@@ -15,6 +15,7 @@ export const MetricEvents = {
 	PLAYER_GAME_SPECTATED     : "playerSpectatedGame",     // When a player spectates a game
 	PLAYER_GAME_WON           : "playerWonGame",           // When a player wins a game
 	PLAYER_GAME_NOT_WON       : "playerDidNotWinGame",     // When a player doesn't win a game
+	PLAYER_GAME_SCORE         : "playerGameScore",         // A player's final score when a game ends
 
 	PLAYER_ROLLED        : "playerRolled",            // When a player rolls
 

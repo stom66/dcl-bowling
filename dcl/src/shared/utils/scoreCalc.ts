@@ -11,8 +11,13 @@ export type FrameResult = {
 }
 
 
+// MARK: getPlayerTotalScore
+/**
+ * Returns the final running score, or zero when there are no frame results.
+ */
 export function getPlayerTotalScore(frameResults: FrameResult[]): number {
-	return frameResults[frameResults.length - 1].runningScore ?? 0
+	const finalFrame = frameResults[frameResults.length - 1]
+	return finalFrame?.runningScore ?? 0
 }
 
 function IsFinalFrame(frameNumber: number): boolean {

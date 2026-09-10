@@ -4,6 +4,7 @@ import * as LaneComponent from "src/shared/components/lane"
 import { ComponentManager } from "src/shared/components/componentManager"
 import { LanePhase } from "src/shared/enums"
 import { LanePlayers, LaneScores as LaneScoresRow, LaneSnapshot } from "src/shared/types/shared-types"
+import { isValidLaneIndex } from "src/shared/utils/laneIndex"
 import { GameSettings } from "./settings"
 import { userProfileCache } from "./utils/userProfileCache"
 import { FrameResult, getFrameResults, getPlayerTotalScore } from "./utils/scoreCalc"
@@ -334,5 +335,37 @@ export namespace LaneStore {
 		}
 
 		return winnerUserId
+	}
+
+	// MARK: getFramesForUserId
+	/**
+	 * Returns a copy of the player's frames when the player and scorecard exist.
+	 */
+	export function getFramesForUserId(userId: string): number[][] | undefined {
+		const laneIndex = findLaneByUserId(userId)
+		if (!isValidLaneIndex(laneIndex)) {
+			console.log('LaneStore: getFramesForUserId: valid laneIndex not found for userId:', userId)
+			return undefined
+		}
+
+		return getScores(laneIndex).find((score) => score.userId === userId)?.frames
+	}
+
+
+	// MARK: getScoreForUserId
+	/**
+	 * Returns the player's current total score when their scorecard exists.
+	 */
+	export function getScoreForUserId(userId: string): number | undefined {
+		const frames = getFramesForUserId(userId)
+
+		if (!frames) {
+			console.log('LaneStore: getScoreForUserId: frames not found for userId:', userId)
+			return undefined
+		}
+
+		const frameResults = getFrameResults(frames)
+		const totalScore   = getPlayerTotalScore(frameResults)
+		return totalScore
 	}
 }
