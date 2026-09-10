@@ -2,38 +2,6 @@
   "version": 1,
   "components": [
     {
-      "name": "composite::root",
-      "jsonSchema": {
-        "type": "object",
-        "properties": {
-          "src": {
-            "type": "string",
-            "serializationType": "utf8-string"
-          },
-          "entities": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "src": {
-                  "type": "integer",
-                  "serializationType": "entity"
-                },
-                "dest": {
-                  "type": "integer",
-                  "serializationType": "entity"
-                }
-              },
-              "serializationType": "map"
-            },
-            "serializationType": "array"
-          }
-        },
-        "serializationType": "map"
-      },
-      "data": {}
-    },
-    {
       "name": "core::Transform",
       "jsonSchema": {
         "type": "object",
@@ -289,7 +257,7 @@
       }
     },
     {
-      "name": "inspector::SceneMetadata-v4",
+      "name": "inspector::SceneMetadata-v5",
       "jsonSchema": {
         "type": "object",
         "properties": {
@@ -326,7 +294,7 @@
                 "T",
                 "A"
               ],
-              "default": "T",
+              "default": "A",
               "serializationType": "enum-string",
               "enumObject": {
                 "Teen": "T",
@@ -615,6 +583,14 @@
               "type": "boolean",
               "serializationType": "boolean"
             }
+          },
+          "hideLandscapeTerrain": {
+            "type": "boolean",
+            "serializationType": "optional",
+            "optionalJsonSchema": {
+              "type": "boolean",
+              "serializationType": "boolean"
+            }
           }
         },
         "serializationType": "map"
@@ -815,7 +791,8 @@
             ],
             "skyboxConfig": {},
             "creator": "0xCEC7e38e088A87D77F2B60Fcae6840D00E018155",
-            "disableNearbyVoiceChat": false
+            "disableNearbyVoiceChat": false,
+            "hideLandscapeTerrain": false
           }
         }
       }
@@ -1097,6 +1074,10 @@
               {
                 "type": "delete",
                 "jsonSchema": "{\"type\":\"object\",\"properties\":{},\"serializationType\":\"map\"}"
+              },
+              {
+                "type": "spawn_entity",
+                "jsonSchema": "{\"type\":\"object\",\"properties\":{\"src\":{\"type\":\"string\",\"serializationType\":\"utf8-string\"},\"position\":{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"number\"},\"y\":{\"type\":\"number\"},\"z\":{\"type\":\"number\"},\"w\":{\"type\":\"number\"}},\"serializationType\":\"vector3\"}},\"serializationType\":\"map\"}"
               }
             ]
           }
