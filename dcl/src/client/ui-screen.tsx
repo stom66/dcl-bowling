@@ -1,5 +1,4 @@
 import { ReactEcsRenderer } from '@dcl/sdk/react-ecs'
-import { NpcUtilsUi } from 'dcl-npc-toolkit'
 
 import { DebugUI } from 'src/client/ui-screen/layers/debug.info'
 
@@ -27,8 +26,6 @@ const SHOW_DEBUG = false
 
 // MARK: Main
 const uiComponent = () => [
-	NpcUtilsUi(),
-
 	// GAME UIS GO HERE
 	GameStatusUI(),
 	ScoresUI(),

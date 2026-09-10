@@ -12,7 +12,7 @@ import { ClientStore } from 'src/client/clientStore'
 
 import { gameStateHandler } from 'src/client/gameStateHandler'
 import { LaneWatcher } from 'src/client/laneWatcher'
-import { setupBowlingHostNpc } from 'src/client/npcGameHost.new'
+import { setupBowlingHostNpc } from 'src/client/npcGameHost'
 
 import { SetupScreenUI } from 'src/client/ui-screen'
 import { setupLights } from 'src/client/lights'

@@ -21,8 +21,10 @@
   },
   "dependencies": {
     "@dcl-sdk/utils": "^1.4.0",
-    "cannon-es": "^0.20.0",
-    "dcl-npc-toolkit": "^1.7.3"
+    "@dcl/js-runtime": "7.27.1-33533530571.commit-451d001",
+    "@dcl/sdk": "7.27.1-33533530571.commit-451d001",
+    "@stom66/dcl-ui-component-kit": "^0.2.0",
+    "cannon-es": "^0.20.0"
   },
   "engines": {
     "node": ">=16.0.0",
@@ -33,9 +35,5 @@
     "singleQuote": true,
     "printWidth": 120,
     "trailingComma": "none"
-  },
-  "devDependencies": {
-    "@dcl/js-runtime": "7.27.1-33533530571.commit-451d001",
-    "@dcl/sdk": "7.27.1-33533530571.commit-451d001"
   }
 }
