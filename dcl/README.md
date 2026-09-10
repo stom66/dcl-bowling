@@ -10,20 +10,20 @@ The scene lives in `/dcl` rather than at the repo root so that non-deployable pr
 
 ## Preview locally
 
-**First-time setup**
+### First-time setup
 
 1. Launch the [Decentraland Creator Hub](https://decentraland.org/download/creator-hub/)
 2. Open the **Scenes** tab
 3. Choose **Import Scene**
 4. Select this `dcl` folder (not the repository root)
 
-**Normal use**
+### Normal use
 
 1. Open the scene from the Creator Hub home screen
 2. Choose **Preview**
 
 Alternatively, from this directory:
 
-```
+```bash
 npm run start
 ```
