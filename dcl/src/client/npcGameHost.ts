@@ -1,7 +1,7 @@
 import { AvatarShape, ColliderLayer, engine, Entity, Transform, TriggerArea, triggerAreaEventsSystem } from '@dcl/sdk/ecs'
 import { Color3, Quaternion, Vector3 } from '@dcl/sdk/math'
 
-import { HideJoinGameUI, ShowJoinGameUI } from 'src/client/ui-screen/layers/lobby.joinGame'
+import { HideJoinGameUI, ShowJoinGameUI } from 'src/client/ui/themes/bowling/layers/joinGame.layer'
 
 let bowlingHostNpc: Entity
 let triggerZone: Entity

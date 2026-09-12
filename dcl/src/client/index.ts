@@ -1,124 +1,146 @@
-import { engine, executeTask, LightSource, MeshRenderer, Transform } from '@dcl/sdk/ecs'
-import { Color3, Vector3 } from '@dcl/sdk/math'
+import * as utils from '@dcl-sdk/utils'
+import { engine, executeTask, Transform } from '@dcl/sdk/ecs'
+import { isStateSyncronized } from '@dcl/sdk/network'
 import { getPlayer, onEnterScene } from '@dcl/sdk/players'
-import * as utils from "@dcl-sdk/utils"
-
 
 import { ComponentManager } from 'src/shared/components/componentManager'
-import { MessageType, room } from 'src/shared/room'
+import { GameSettings } from 'src/shared/settings'
+import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
+import { FreezePlayer, UnFreezePlayer } from 'src/shared/utils/inputModifiers'
 
+import { CameraController } from 'src/client/cameraController'
 import { ClientHandler } from 'src/client/clientHandler'
 import { ClientStore } from 'src/client/clientStore'
-
+import { blockedPlayers } from 'src/client/data/blocklist'
 import { gameStateHandler } from 'src/client/gameStateHandler'
 import { LaneWatcher } from 'src/client/laneWatcher'
-import { setupBowlingHostNpc } from 'src/client/npcGameHost'
-
-import { SetupScreenUI } from 'src/client/ui-screen'
 import { setupLights } from 'src/client/lights'
+import { setLoadingStage } from 'src/client/loadingState'
+import { setupBowlingHostNpc } from 'src/client/npcGameHost'
 import { playerMover } from 'src/client/playerMover'
 import { SoundManager } from 'src/client/soundManager'
-import { CameraController } from 'src/client/cameraController'
-import { UiWorld } from './ui-world'
-import { FreezePlayer, UnFreezePlayer } from 'src/shared/utils/inputModifiers'
-import { GameSettings } from 'src/shared/settings'
-import { isStateSyncronized } from '@dcl/sdk/network'
-import { blockedPlayers } from './data/blocklist'
+import { SetupUI } from 'src/client/ui'
+import { UiWorld } from 'src/client/ui-world'
 
-
-
-// MARK: Vars
-declare var process: {
-	env: {
-		NODE_ENV: string
-	}
-}
-const env = process.env.NODE_ENV
-const IS_DEV = env == "development"
 
 function infiniteCount() {
 	let count = 0
 	while (true) {
-		var rand = Math.random() * Date.now()
-		count+=rand
-		console.log("count:", count)
+		const rand = Math.random() * Date.now()
+		count += rand
+		console.log('count:', count)
 	}
 	return count
 }
 
+
+// MARK: initClient
+/**
+ * Freezes the player, mounts UI first, then waits for scene, components, and
+ * the client store before starting gameplay systems.
+ */
 export async function initClient() {
-
-	let userData = getPlayer()
-
 	FreezePlayer()
+	SetupUI()
 
-	var hasEnteredScene = false
-	onEnterScene((player) => {
+	let hasEnteredScene = false
+	onEnterScene(() => {
 		hasEnteredScene = true
 	})
-
-	function onGameLoaded() {
-		// Is the player blocked?
-		if (userData && blockedPlayers.includes(userData.userId)) {
-			let count = 0
-			console.log("count:", count)
-			while (true) executeTask(async () => {count++; let rand = infiniteCount()})
-		} else {
-			console.log("Player is not blocked:", userData?.userId)
-		}
-
-
-		utils.timers.setTimeout(() => {
-			//HideLoading()
-			UnFreezePlayer()
-		}, GameSettings.LOADING_SCREEN_DELAY) 
-
-	}
-
-
-	function waitForLoad() {
-		if (!isStateSyncronized())                     {console.log("waitForLoad: isStateSyncronized"); return}
-
-		// Wait for userData to be available
-		userData = getPlayer()
-		if(!userData)                                  {console.log("waitForLoad: userData");           return}
-		if (!hasEnteredScene)                          {console.log("waitForLoad: onEnterScene");       return}
-		if (!Transform.getOrNull(engine.PlayerEntity)) {console.log("waitForLoad: PlayerEntity");       return}
-		if (!Transform.getOrNull(engine.CameraEntity)) {console.log("waitForLoad: CameraEntity");       return}
-
-		engine.removeSystem(waitForLoad)
-
-		onGameLoaded()
-	}
 
 	ComponentManager.init()
-	await ComponentManager.onClientReady().then(() => {
-		console.log("ComponentManager.onClientReady")
-		
-		// Fire-and-forget: MyLane awaits CRDT discovery internally, then binds onChange.
-		void LaneWatcher.init()
-	
-		ClientHandler.init()
-		gameStateHandler.init()
-		playerMover.init()
-		CameraController.init()
-		SoundManager.init()
-	
-		SetupScreenUI()
-		UiWorld.init()
-		
-		setupBowlingHostNpc()
-		setupLights()
-	})
-
-
 	const store = ClientStore.getInstance()
-	await store.init()
 
 
-	onEnterScene((player) => {
-		hasEnteredScene = true
-	})
+	// MARK: waitForSceneReady
+	/**
+	 * Resolves once the local player, camera, scene entry, and network sync
+	 * are available.
+	 */
+	function waitForSceneReady(): Promise<void> {
+		return new Promise((resolve) => {
+			function sys_waitForLoad() {
+				setLoadingStage('getPlayer()')
+				if (!getPlayer()) {
+					console.log('waitForLoad: userData')
+					return
+				}
 
-	engine.addSystem(waitForLoad)
+				setLoadingStage('onEnterScene()')
+				if (!hasEnteredScene) {
+					console.log('waitForLoad: onEnterScene')
+					return
+				}
+
+				setLoadingStage('isStateSyncronized()')
+				if (!isStateSyncronized()) {
+					console.log('waitForLoad: isStateSyncronized')
+					return
+				}
+
+				setLoadingStage('engine.PlayerEntity')
+				if (!Transform.getOrNull(engine.PlayerEntity)) {
+					console.log('waitForLoad: PlayerEntity')
+					return
+				}
+
+				setLoadingStage('engine.CameraEntity')
+				if (!Transform.getOrNull(engine.CameraEntity)) {
+					console.log('waitForLoad: CameraEntity')
+					return
+				}
+
+				engine.removeSystem(sys_waitForLoad)
+				resolve()
+			}
+
+			engine.addSystem(sys_waitForLoad)
+		})
+	}
+
+
+	// MARK: onGameLoaded
+	/**
+	 * Emits `LOAD_COMPLETE` after the loading-screen delay and unfreezes once.
+	 * Call only after SetupUI so layer constructors have already subscribed.
+	 */
+	function onGameLoaded() {
+		const userData = getPlayer()
+		if (userData && blockedPlayers.includes(userData.userId)) {
+			let count = 0
+			console.log('count:', count)
+			while (true) executeTask(async () => { count++; infiniteCount() })
+		} else {
+			console.log('Player is not blocked:', userData?.userId)
+		}
+
+		utils.timers.setTimeout(() => {
+			eventBus.emit(ClientEvents.LOAD_COMPLETE, {})
+			UnFreezePlayer()
+		}, GameSettings.LOADING_SCREEN_DELAY)
+	}
+
+	await Promise.all([
+		waitForSceneReady(),
+		(async () => {
+			setLoadingStage('ComponentManager.onClientReady()')
+			await ComponentManager.onClientReady()
+		})(),
+		(async () => {
+			setLoadingStage('ClientStore.init()')
+			await store.init()
+		})(),
+	])
+
+	void LaneWatcher.init()
+	ClientHandler.init()
+	gameStateHandler.init()
+	playerMover.init()
+	CameraController.init()
+	SoundManager.init()
+	UiWorld.init()
+	setupBowlingHostNpc()
+	setupLights()
+
+	onGameLoaded()
 }

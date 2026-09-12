@@ -8,7 +8,7 @@ import { ClientEvents } from "./clientEvents";
 import { sfx, SoundManager } from "./soundManager";
 import { LaneSnapshot } from "src/shared/types/shared-types";
 import { lanePositions } from "./data/lanePositions";
-import { SetIndicator } from "./ui-screen/layers/game.bowlingControls";
+import { SetIndicator } from 'src/client/ui/themes/bowling/layers/bowlingControls.layer'
 
 
 enum CONTROL_TYPE {
