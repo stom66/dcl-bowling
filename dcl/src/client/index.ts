@@ -4,6 +4,8 @@ import { isStateSyncronized } from '@dcl/sdk/network'
 import { getPlayer, onEnterScene } from '@dcl/sdk/players'
 
 import { ComponentManager } from 'src/shared/components/componentManager'
+import { ComponentStore } from 'src/shared/components/componentStore'
+import { LaneStore } from 'src/shared/laneStore'
 import { GameSettings } from 'src/shared/settings'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 import { FreezePlayer, UnFreezePlayer } from 'src/shared/utils/inputModifiers'
@@ -125,6 +127,9 @@ export async function initClient() {
 		(async () => {
 			setLoadingStage('ComponentManager.onClientReady()')
 			await ComponentManager.onClientReady()
+			setLoadingStage('LaneStore.onLanesReady()')
+			await LaneStore.onLanesReady()
+			ComponentStore.init()
 		})(),
 		(async () => {
 			setLoadingStage('ClientStore.init()')

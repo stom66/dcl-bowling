@@ -5,8 +5,8 @@ export type EventBus = ReturnType<typeof createEventBus>
 import { ClientEvents } from 'src/client/clientEvents'
 export { ClientEvents } from 'src/client/clientEvents'
 
-//import { ServerEvents } from 'src/server/serverEvents'
-//export { ServerEvents } from 'src/server/serverEvents'
+import { ServerEvents } from 'src/server/serverEvents'
+export { ServerEvents } from 'src/server/serverEvents'
 
 const createEventBus = () => {
 	const listeners = new Map<string, Listener[]>()

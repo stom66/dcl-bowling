@@ -21,8 +21,8 @@
   },
   "dependencies": {
     "@dcl-sdk/utils": "^1.4.0",
-    "@dcl/js-runtime": "7.27.1-33533530571.commit-451d001",
-    "@dcl/sdk": "7.27.1-33533530571.commit-451d001",
+    "@dcl/js-runtime": "7.28.1-34624845556.commit-7d0808b",
+    "@dcl/sdk": "7.28.1-34624845556.commit-7d0808b",
     "@stom66/dcl-ui-component-kit": "^0.2.2",
     "cannon-es": "^0.20.0"
   },

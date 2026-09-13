@@ -14,7 +14,6 @@ import {
 } from '@stom66/dcl-ui-component-kit'
 import { movePlayerTo } from '~system/RestrictedActions'
 
-import { ComponentManager } from 'src/shared/components/componentManager'
 import { LaneStore } from 'src/shared/laneStore'
 import { GameSettings } from 'src/shared/settings'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
@@ -112,7 +111,7 @@ export class DebugLayer extends Layer {
 
 	// MARK: getAllLanesRows
 	private getAllLanesRows() {
-		if (!ComponentManager.isReady()) {
+		if (!LaneStore.areLanesReady()) {
 			return [
 				this.field('lanes-syncing', 'Lanes', 'syncing...'),
 			]

@@ -9,7 +9,6 @@ import {
 	ZoneType,
 } from '@stom66/dcl-ui-component-kit'
 
-import { ComponentManager } from 'src/shared/components/componentManager'
 import { LanePhase } from 'src/shared/enums'
 import { LaneStore } from 'src/shared/laneStore'
 import { GameSettings } from 'src/shared/settings'
@@ -134,7 +133,7 @@ export class JoinGameLayer extends Layer {
 		eventBus.on(ClientEvents.ON_MY_ROLL_START,    () => { this.hide(0.3) })
 
 		engine.addSystem(() => {
-			if (!ComponentManager.isReady()) return
+			if (!LaneStore.areLanesReady()) return
 
 			for (let i = 0; i < GameSettings.MAX_LANES; i++) {
 				const newLanePhase      = LaneStore.getPhase(i)

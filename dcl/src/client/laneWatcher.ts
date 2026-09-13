@@ -1,9 +1,8 @@
 import * as utils from "@dcl-sdk/utils"
 
-import { ComponentManager } from "src/shared/components/componentManager"
 import * as LaneComponent from "src/shared/components/lane"
-import { LaneStore } from "src/shared/laneStore"
 import { LanePhase } from "src/shared/enums"
+import { LaneStore } from "src/shared/laneStore"
 import { GameSettings } from "src/shared/settings"
 import { LaneSnapshot } from "src/shared/types/shared-types"
 import { ClientEvents, eventBus } from "src/shared/utils/eventBus"
@@ -41,7 +40,7 @@ export namespace LaneWatcher {
 	// MARK: init
 	/**
 	 * Binds an `onChange` listener to each lane's synced components, once. Awaits
-	 * `ComponentManager.onClientReady` first because in authoritative-server mode
+	 * `LaneStore.onLanesReady` first because in authoritative-server mode
 	 * the lane entities only become available on the client after CRDT sync arrives.
 	 * Call from client startup, after `ComponentManager.init`. Subsequent calls
 	 * are no-ops.
@@ -50,13 +49,13 @@ export namespace LaneWatcher {
 		if (isInitialised) return
 		isInitialised = true
 
-		console.log('MyLane: init: waiting for ComponentManager.onClientReady')
-		await ComponentManager.onClientReady()
+		console.log('MyLane: init: waiting for LaneStore.onLanesReady')
+		await LaneStore.onLanesReady()
 
 		console.log('MyLane: init: binding onChange for', GameSettings.MAX_LANES, 'lanes')
 
 		for (let i = 0; i < GameSettings.MAX_LANES; i++) {
-			const entity = ComponentManager.getLaneEntity(i)
+			const entity = LaneStore.getLaneEntity(i)
 
 			LaneComponent.LanePhaseEnum.onChange(entity,   () => onLaneChanged(i))
 			LaneComponent.LaneCurrentTurn.onChange(entity, () => onLaneChanged(i))
