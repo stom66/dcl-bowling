@@ -1,10 +1,13 @@
 import * as utils from '@dcl-sdk/utils'
-import { AudioSource, engine, Entity, Transform } from '@dcl/sdk/ecs'
+import { AssetLoad, AudioSource, engine, Entity, Transform } from '@dcl/sdk/ecs'
 
-import { eventBus, ClientEvents } from 'src/shared/utils/eventBus'
+import { ComponentStore } from 'src/shared/components/componentStore'
+import { PlayerPreferences } from 'src/shared/components/definitions/shared.playerPreferences'
+import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 
+import { ClientMessaging } from 'src/client/clientMessaging'
+import { ClientStore } from 'src/client/clientStore'
 import { sfx } from 'src/client/data/sfx'
-import { Vector2, Vector3 } from '@dcl/sdk/math'
 export { sfx } from 'src/client/data/sfx'
 
 export namespace SoundManager {
@@ -34,6 +37,9 @@ export namespace SoundManager {
 	const sfxCache               : Record<string, Entity> = {}        // preloaded sound effect entities
 	let lastPlayedSfx            : string | undefined     = undefined // last played sound effect - used to avoid playing the same sound effect twice in a row
 	let countdownTimerIds        : number[]               = []        // timer ids for the countdown sounds
+	let bgmMuted                 = false                              // user mute preference; startBgm no-ops while true
+	let mutePersistPending       = false                              // ignore stale preference sync while a mute persist is in flight
+	let bgmRequested             = false                              // true between game join and game end; unmute only starts when this is set
 
 
 	// MARK: init
@@ -61,9 +67,11 @@ export namespace SoundManager {
 		preloadSfx()
 
 		engine.addSystem(systemUpdateSound)
+		bindPlayerPreferences()
 
 		// Bind the game joined event to start the background music
 		eventBus.on(ClientEvents.ON_GAME_JOINED, () => {
+			bgmRequested = true
 			startBgm()
 		})
 
@@ -76,6 +84,7 @@ export namespace SoundManager {
 		})
 
 		eventBus.on(ClientEvents.ON_GROUP_GAME_END, () => {
+			bgmRequested = false
 			stopBgm()
 		})
 	}
@@ -83,23 +92,21 @@ export namespace SoundManager {
 
 	// MARK: preloadSfx
 	/**
-	 * Creates one global {@link AudioSource} per known clip in {@link sfx} so
-	 * {@link playSound} can retrigger without loading at play time.
+	 * Warm-loads every clip in {@link sfx} via {@link AssetLoad} so first playback
+	 * does not stall on disk. Playback entities are created lazily by
+	 * {@link getOrCreateSfxEntity} on first use.
 	 */
 	function preloadSfx(): void {
+		const preload: string[] = []
 		for (const paths of Object.values(sfx)) {
 			for (const soundPath of paths) {
-				const soundEntity = engine.addEntity()
-				Transform.create(soundEntity, {})
-				AudioSource.create(soundEntity, {
-					audioClipUrl: soundPath,
-					global      : true,
-					playing     : false,
-					volume      : SFX_ENTITY_VOLUME,
-				})
-				sfxCache[soundPath] = soundEntity
+				preload.push(soundPath)
 			}
 		}
+
+		AssetLoad.createOrReplace(engine.RootEntity, {
+			assets: preload,
+		})
 	}
 
 
@@ -118,11 +125,12 @@ export namespace SoundManager {
 	// MARK: startBgm
 	/**
 	 * Starts background music: picks a random track from {@link sfx.music}, fades volume up
-	 * from zero. If music is already playing (idle or fading in), does nothing. If a
-	 * fade-out is in progress, interrupts it and starts a fresh fade-in.
+	 * from zero. No-op while {@link isBgmMuted} is true. If music is already playing
+	 * (idle or fading in), does nothing. If a fade-out is in progress, interrupts it
+	 * and starts a fresh fade-in.
 	 */
 	export function startBgm(): void {
-		if (!bgmEntity) return
+		if (!bgmEntity || bgmMuted) return
 
 		const audio = AudioSource.getMutableOrNull(bgmEntity)
 		if (!audio) return
@@ -154,6 +162,93 @@ export namespace SoundManager {
 		bgmFadePhase           = 'fadingOut'
 		fadeElapsed            = 0
 		fadeSegmentStartVolume = audio.volume ?? BGM_VOLUME
+	}
+
+
+	// MARK: isBgmPlaying
+	/**
+	 * Whether the background-music {@link AudioSource} is currently playing,
+	 * including mid fade-in or fade-out.
+	 *
+	 * @returns `true` while the BGM entity reports `playing`.
+	 */
+	export function isBgmPlaying(): boolean {
+		if (!bgmEntity) return false
+		const audio = AudioSource.getOrNull(bgmEntity)
+		return !!audio?.playing
+	}
+
+
+	// MARK: isBgmMuted
+	/**
+	 * Whether the player has muted background music. Independent of whether a
+	 * track is currently fading or silent after a match.
+	 *
+	 * @returns `true` when BGM is muted and should stay off until unmuted.
+	 */
+	export function isBgmMuted(): boolean {
+		return bgmMuted
+	}
+
+
+	// MARK: toggleBgmMute
+	/**
+	 * Toggles the background-music mute preference. Muting stops playback if it
+	 * is currently playing. Unmuting starts playback only when a game has
+	 * already requested BGM ({@link startBgm} on join); it does not start music
+	 * in the lobby.
+	 *
+	 * @returns The mute state after the toggle (`true` = muted).
+	 */
+	export function toggleBgmMute(): boolean {
+		applyBgmMuted(!bgmMuted)
+		mutePersistPending = true
+		ClientMessaging.requestSetPreferences({ bgmMuted })
+		return bgmMuted
+	}
+
+
+	// MARK: bindPlayerPreferences
+	/**
+	 * Applies stored mute (and future preference fields) from the local player's
+	 * synced {@link PlayerPreferences} component. Ignores stale snapshots while a
+	 * persist request is in flight so optimistic toggles are not reverted.
+	 */
+	function bindPlayerPreferences(): void {
+		const userId = ClientStore.getInstance().getUserId()
+		if (!userId) {
+			console.error('SoundManager: bindPlayerPreferences: no userId')
+			return
+		}
+
+		ComponentStore.onChange(PlayerPreferences, (data) => {
+			if (!data) return
+			if (mutePersistPending) {
+				if (data.bgmMuted === bgmMuted) {
+					mutePersistPending = false
+				}
+				return
+			}
+			applyBgmMuted(data.bgmMuted)
+		}, { key: userId })
+	}
+
+
+	// MARK: applyBgmMuted
+	/**
+	 * Sets the local mute flag and fades background music in or out to match.
+	 * Does not persist; callers that change the preference must request a save.
+	 * Unmuting only starts playback when a game has requested BGM.
+	 */
+	function applyBgmMuted(muted: boolean): void {
+		if (bgmMuted === muted) return
+		bgmMuted = muted
+		console.log('SoundManager: applyBgmMuted: muted', bgmMuted)
+		if (bgmMuted) {
+			if (isBgmPlaying()) stopBgm()
+		} else if (bgmRequested) {
+			startBgm()
+		}
 	}
 
 
@@ -199,13 +294,36 @@ export namespace SoundManager {
 	}
 
 
+	// MARK: getOrCreateSfxEntity
+	/**
+	 * Returns the cached global {@link AudioSource} entity for `soundPath`, creating
+	 * and caching it if this clip has not been played yet.
+	 */
+	function getOrCreateSfxEntity(soundPath: string): Entity {
+		const cached = sfxCache[soundPath]
+		if (cached) return cached
+
+		const soundEntity = engine.addEntity()
+		Transform.create(soundEntity, {})
+		AudioSource.create(soundEntity, {
+			audioClipUrl: soundPath,
+			global      : true,
+			playing     : false,
+			volume      : SFX_ENTITY_VOLUME,
+		})
+		sfxCache[soundPath] = soundEntity
+		return soundEntity
+	}
+
+
 	// MARK: playSound
 	/**
-	 * Plays a one-shot SFX from the preload cache. Like {@link startBgm}, this expects
-	 * {@link init} to have run already so entities exist; otherwise the clip lookup fails.
-	 * Pass a single URL or an array; arrays pick a random clip and avoid repeating the same
-	 * pick as the previous call when multiple options exist. Retriggers from the start if
-	 * the same clip plays again.
+	 * Plays a one-shot SFX. Clips are warm-loaded by {@link preloadSfx}; the
+	 * playback entity is created on first use via {@link getOrCreateSfxEntity}.
+	 * Pass a single URL or an array; arrays pick a random clip and avoid repeating
+	 * the same pick as the previous call when multiple options exist. Retriggers
+	 * from the start if the same clip plays again. When `parentEntity` is set, a
+	 * spatial one-shot is spawned on that entity instead of using the global cache.
 	 *
 	 * @param sound - One asset path, or an array of paths (same shape as values in {@link sfx}).
 	 */
@@ -226,19 +344,18 @@ export namespace SoundManager {
 		}
 		lastPlayedSfx = randomSound
 
-		var soundEntity = sfxCache[randomSound]
-		if (!soundEntity) {
-			console.error('SoundManager: playSound: no preloaded entity for clip (check sfx paths and preload):', randomSound)
-			return
-		}
-
+		let soundEntity: Entity
 		if (parentEntity) {
 			soundEntity = engine.addEntity()
 			Transform.create(soundEntity, { parent: parentEntity })
 			AudioSource.create(soundEntity, {
 				audioClipUrl: randomSound,
-				global: false,
+				global      : false,
+				playing     : false,
+				volume      : SFX_ENTITY_VOLUME,
 			})
+		} else {
+			soundEntity = getOrCreateSfxEntity(randomSound)
 		}
 
 		const audioSrc = AudioSource.getMutableOrNull(soundEntity)
