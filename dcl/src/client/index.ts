@@ -5,6 +5,7 @@ import { getPlayer, onEnterScene } from '@dcl/sdk/players'
 
 import { ComponentManager } from 'src/shared/components/componentManager'
 import { ComponentStore } from 'src/shared/components/componentStore'
+import { blockedPlayers } from 'src/shared/data/blocklist'
 import { LaneStore } from 'src/shared/laneStore'
 import { GameSettings } from 'src/shared/settings'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
@@ -13,8 +14,8 @@ import { FreezePlayer, UnFreezePlayer } from 'src/shared/utils/inputModifiers'
 import { CameraController } from 'src/client/cameraController'
 import { ClientHandler } from 'src/client/clientHandler'
 import { ClientStore } from 'src/client/clientStore'
-import { blockedPlayers } from 'src/client/data/blocklist'
 import { gameStateHandler } from 'src/client/gameStateHandler'
+import { LaneModels } from 'src/client/laneModels'
 import { LaneWatcher } from 'src/client/laneWatcher'
 import { setupLights } from 'src/client/lights'
 import { setLoadingStage } from 'src/client/loadingState'
@@ -140,6 +141,7 @@ export async function initClient() {
 	void LaneWatcher.init()
 	ClientHandler.init()
 	gameStateHandler.init()
+	LaneModels.init()
 	playerMover.init()
 	CameraController.init()
 	SoundManager.init()

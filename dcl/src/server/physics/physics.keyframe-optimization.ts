@@ -1,4 +1,5 @@
-import { DEFAULT_STORED_ROTATION, quaternionToStoredRotation, storedRotationToQuaternion } from './physics.utils'
+import { DEFAULT_STORED_ROTATION, quaternionToStoredRotation, storedRotationToQuaternion } from 'src/shared/physics/physics.utils'
+
 import type { OptimizationSettings, QuaternionType, SimulationRunResult, SimObjectKeyframe, SimObjectKeyframes, Vector3Type } from './types'
 
 /**

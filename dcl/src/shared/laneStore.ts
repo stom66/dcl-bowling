@@ -92,9 +92,10 @@ export namespace LaneStore {
 			currentRollIndex       : 0,
 			currentRollStartTime   : 0,
 		})
-		LaneComponent.LaneGameData.createOrReplace(entity, { laneIndex, startTime: 0, players: [] })
+		LaneComponent.LaneGameData.createOrReplace(entity, { laneIndex, startTime: 0, frameCount: 0, players: [] })
 		LaneComponent.LanePhaseEnum.createOrReplace(entity, { phase: LanePhase.NONE })
 		LaneComponent.LaneScores.createOrReplace(entity, { scores: [] })
+		LaneComponent.LaneBumpers.createOrReplace(entity, { enabled: false })
 	}
 
 
@@ -106,7 +107,7 @@ export namespace LaneStore {
 		const gameData    = LaneComponent.LaneGameData.get(entity)
 		const phase       = LaneComponent.LanePhaseEnum.get(entity)
 		const scores      = LaneComponent.LaneScores.get(entity)
-		const players     = gameData?.players ?? []
+		const players     = [...(gameData?.players ?? [])]
 
 		const frames = new Map<string, number[][]>(
 			(scores?.scores ?? []).map((s) => [s.userId, s.frames.map((f) => f.slice())])
@@ -118,6 +119,7 @@ export namespace LaneStore {
 			currentFrameUserId     : currentTurn.currentFrameUserId,
 			currentRollIndex       : currentTurn.currentRollIndex,
 			currentRollStartTime   : currentTurn.currentRollStartTime,
+			frameCount             : gameData?.frameCount ?? 0,
 			frames                 : frames,
 			gameStartTime          : gameData?.startTime ?? 0,
 			laneIndex              : laneIndex,
@@ -260,10 +262,29 @@ export namespace LaneStore {
 	}
 
 
+	// MARK: FrameCount
+	/**
+	 * Host-chosen length for this lane's current game. `0` while the lane is idle.
+	 */
+	export function getFrameCount(laneIndex: number): number {
+		const c = LaneComponent.LaneGameData.get(getLaneEntity(laneIndex))
+		return c?.frameCount ?? 0
+	}
+
+	export function setFrameCount(
+		laneIndex : number,
+		frameCount: number
+	): void {
+		if (!isServer()) return
+		const c = LaneComponent.LaneGameData.getMutable(getLaneEntity(laneIndex))
+		c.frameCount = frameCount
+	}
+
+
 	// MARK: Players
 	export function getPlayers(laneIndex: number): string[] {
 		const c = LaneComponent.LaneGameData.get(getLaneEntity(laneIndex))
-		return c?.players ?? []
+		return [...(c?.players ?? [])]
 	}/* 
 
 	export function getPlayersMappedToDisplayNames(laneIndex: number): Map<string, string> {
@@ -279,7 +300,7 @@ export namespace LaneStore {
 	/** Returns the `userId` of every player on the given lane. */
 	export function getLaneUserIds(laneIndex: number): string[] {
 		const data = LaneComponent.LaneGameData.get(getLaneEntity(laneIndex))
-		return data?.players ?? []
+		return [...(data?.players ?? [])]
 	}
 
 
@@ -361,6 +382,34 @@ export namespace LaneStore {
 	}
 
 
+	// MARK: Bumpers
+	/**
+	 * True when gutter bumpers are raised on `laneIndex`.
+	 */
+	export function getBumpersEnabled(laneIndex: number): boolean {
+		const c = LaneComponent.LaneBumpers.getOrNull(getLaneEntity(laneIndex))
+		return c?.enabled ?? false
+	}
+
+
+	/**
+	 * Raises or lowers gutter bumpers on `laneIndex`. Server-only.
+	 */
+	export function setBumpersEnabled(
+		laneIndex: number,
+		enabled  : boolean
+	): void {
+		if (!isServer()) return
+		const entity = getLaneEntity(laneIndex)
+		const c      = LaneComponent.LaneBumpers.getMutableOrNull(entity)
+		if (c) {
+			c.enabled = enabled
+			return
+		}
+		LaneComponent.LaneBumpers.createOrReplace(entity, { enabled })
+	}
+
+
 	// MARK: Scores
 	export function getScores(laneIndex: number): LaneScoresRow[] {
 		const c = LaneComponent.LaneScores.get(getLaneEntity(laneIndex))
@@ -399,8 +448,10 @@ export namespace LaneStore {
 
 		const scores = getScores(laneIndex)
 
+		const frameCount = getFrameCount(laneIndex)
+
 		for (const score of scores) {
-			const frameResults = getFrameResults(score.frames)
+			const frameResults = getFrameResults(score.frames, frameCount)
 			const totalScore   = getPlayerTotalScore(frameResults)
 
 			if (totalScore > maxScore) {
@@ -439,7 +490,13 @@ export namespace LaneStore {
 			return undefined
 		}
 
-		const frameResults = getFrameResults(frames)
+		const laneIndex = findLaneByUserId(userId)
+		if (!isValidLaneIndex(laneIndex)) {
+			console.log('LaneStore: getScoreForUserId: valid laneIndex not found for userId:', userId)
+			return undefined
+		}
+
+		const frameResults = getFrameResults(frames, getFrameCount(laneIndex))
 		const totalScore   = getPlayerTotalScore(frameResults)
 		return totalScore
 	}

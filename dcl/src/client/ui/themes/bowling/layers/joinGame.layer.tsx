@@ -3,15 +3,18 @@ import { Color4 } from '@dcl/sdk/math'
 import ReactEcs from '@dcl/sdk/react-ecs'
 import {
 	Background,
+	ButtonText,
+	getTheme,
 	Icon,
 	Layer,
+	PropsController,
 	UiBox,
 	ZoneType,
 } from '@stom66/dcl-ui-component-kit'
 
 import { LanePhase } from 'src/shared/enums'
 import { LaneStore } from 'src/shared/laneStore'
-import { GameSettings } from 'src/shared/settings'
+import { GameFrameCount, GameSettings } from 'src/shared/settings'
 import { clockSync } from 'src/shared/utils/clockSync'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 
@@ -29,6 +32,7 @@ import {
 
 const FORCE_SHOW = false
 const breakAfter = Math.ceil(GameSettings.MAX_LANES / 2) - 1
+const FRAME_PICKER_HEIGHT = 52
 
 /** 1-based UV rows on the 4-state button sheets (bottom → top). */
 enum LaneButtonRow {
@@ -58,6 +62,7 @@ type LaneCache = {
 	players   : number[]
 	countdown : number[]
 	frame     : number[]
+	frameCount: number[]
 }
 
 
@@ -68,6 +73,7 @@ const laneCache: LaneCache = {
 	players   : [],
 	countdown : [],
 	frame     : [],
+	frameCount: [],
 }
 
 
@@ -115,6 +121,8 @@ function getCountdownDigits(ms: number): [number, number] {
  * Bottom-center lane picker shown when the player is near the bowling host.
  */
 export class JoinGameLayer extends Layer {
+	private joinProps: PropsController<{ frameCount: GameFrameCount }>
+
 	constructor() {
 		super({
 			id         : 'bowling-join-game',
@@ -125,8 +133,12 @@ export class JoinGameLayer extends Layer {
 			hideTo     : 'bottom',
 			uiTransform: {
 				width : 1024,
-				height: 320,
+				height: 372,
 			},
+		})
+
+		this.joinProps = new PropsController<{ frameCount: GameFrameCount }>({
+			frameCount: GameSettings.DEFAULT_FRAME_COUNT,
 		})
 
 		eventBus.on(ClientEvents.ON_GROUP_GAME_START, () => { this.hide(0.3) })
@@ -142,13 +154,15 @@ export class JoinGameLayer extends Layer {
 				const newPlayerCount    = LaneStore.getLaneUserIds(i).length
 				const newCountdown      = clockSync.toLocalTime(LaneStore.getGameStartTime(i)) - Date.now()
 				const newFrameNumber    = LaneStore.getCurrentFrameIndex(i)
+				const newFrameCount     = LaneStore.getFrameCount(i)
 
-				if (laneCache.phase[i] !== newLanePhase)           laneCache.phase[i]     = newLanePhase
-				if (laneCache.starting[i] !== newGameIsStarting)   laneCache.starting[i]  = newGameIsStarting
-				if (laneCache.running[i] !== newGameIsRunning)     laneCache.running[i]   = newGameIsRunning
-				if (laneCache.players[i] !== newPlayerCount)       laneCache.players[i]   = newPlayerCount
-				if (laneCache.countdown[i] !== newCountdown)       laneCache.countdown[i] = newCountdown
-				if (laneCache.frame[i] !== newFrameNumber)         laneCache.frame[i]     = newFrameNumber
+				if (laneCache.phase[i] !== newLanePhase)           laneCache.phase[i]      = newLanePhase
+				if (laneCache.starting[i] !== newGameIsStarting)   laneCache.starting[i]   = newGameIsStarting
+				if (laneCache.running[i] !== newGameIsRunning)     laneCache.running[i]    = newGameIsRunning
+				if (laneCache.players[i] !== newPlayerCount)       laneCache.players[i]    = newPlayerCount
+				if (laneCache.countdown[i] !== newCountdown)       laneCache.countdown[i]  = newCountdown
+				if (laneCache.frame[i] !== newFrameNumber)         laneCache.frame[i]      = newFrameNumber
+				if (laneCache.frameCount[i] !== newFrameCount)     laneCache.frameCount[i] = newFrameCount
 			}
 		})
 	}
@@ -221,6 +235,20 @@ export class JoinGameLayer extends Layer {
 						position    : {
 							left: pixelsScaledRelative(218, 256, buttonWidth),
 							top : pixelsScaledRelative(51, 256, buttonWidth),
+						},
+					}}
+				/>,
+				<Icon
+					key    = {`ui_joinGame_laneButton_${i}_frameCount`}
+					src    = {bowlingIconAtlas.source}
+					uvs    = {getBowlingDigitUvs(laneCache.frameCount[i] || GameSettings.DEFAULT_FRAME_COUNT)}
+					width  = {pixelsScaledRelative(20, 256, buttonWidth)}
+					height = {pixelsScaledRelative(20, 256, buttonWidth)}
+					uiTransform = {{
+						positionType: 'absolute',
+						position    : {
+							left: pixelsScaledRelative(174, 256, buttonWidth),
+							top : pixelsScaledRelative(72, 256, buttonWidth),
 						},
 					}}
 				/>,
@@ -304,7 +332,7 @@ export class JoinGameLayer extends Layer {
 					if (laneButtonRow[i] === LaneButtonRow.DISABLED) return
 					laneButtonRow[i] = LaneButtonRow.PRESS
 					if (!isRunning) {
-						ClientMessaging.requestJoinLane(i + 1)
+						ClientMessaging.requestJoinLane(i + 1, this.joinProps.get('frameCount'))
 					}
 				}}
 				onMouseUp     = {() => {
@@ -352,6 +380,46 @@ export class JoinGameLayer extends Layer {
 	}
 
 
+
+	// MARK: selectFrameCount
+	/**
+	 * Sets the length used when this player opens an idle lane.
+	 */
+	private selectFrameCount(frameCount: GameFrameCount) {
+		this.joinProps.set('frameCount', frameCount)
+	}
+
+
+
+	// MARK: frameCountPicker
+	/**
+	 * 3 / 6 / 10 control shown above the lane buttons.
+	 */
+	private frameCountPicker() {
+		const theme    = getTheme()
+		const selected = this.joinProps.get('frameCount')
+
+		return GameSettings.GAME_FRAME_COUNTS.map((count) => {
+			const isSelected = count === selected
+			return (
+				<ButtonText
+					key             = {`join_frames_${count}`}
+					id              = {`btn_join_frames_${count}`}
+					textLabel       = {`${count}`}
+					width           = {72}
+					height          = {40}
+					backgroundColor = {theme.colors.secondary}
+					borderColor     = {isSelected ? theme.colors.primary : theme.colors.tertiary}
+					borderWidth     = {3}
+					fontColor       = {isSelected ? theme.colors.primary : theme.colors.light}
+					callback        = {() => { this.selectFrameCount(count) }}
+				/>
+			)
+		})
+	}
+
+
+
 	// MARK: body
 	protected body() {
 		const mainWidth = 1024
@@ -364,7 +432,7 @@ export class JoinGameLayer extends Layer {
 			<UiBox
 				key            = "join-panel"
 				width          = {mainWidth}
-				height         = {buttonWidth + padding.top + padding.bottom}
+				height         = {buttonWidth + padding.top + padding.bottom + FRAME_PICKER_HEIGHT}
 				justifyContent = "center"
 				alignItems     = "center"
 				padding        = {padding}
@@ -392,12 +460,24 @@ export class JoinGameLayer extends Layer {
 				<UiBox
 					key            = "join-lanes"
 					width          = {mainWidthMinusPadding * 0.75}
-					height         = {mainWidthMinusPadding * 0.25}
+					height         = {mainWidthMinusPadding * 0.25 + FRAME_PICKER_HEIGHT}
 					alignItems     = "center"
 					justifyContent = "center"
 					borderWidth    = {0}
 					uiTransform    = {{ flexDirection: 'column' }}
 				>
+					<UiBox
+						key            = "join-frames"
+						width          = {mainWidth * 0.75}
+						height         = {FRAME_PICKER_HEIGHT}
+						alignItems     = "center"
+						justifyContent = "space-between"
+						padding        = {{ left: 32, right: 32 }}
+						borderWidth    = {0}
+						uiTransform    = {{ flexDirection: 'row' }}
+					>
+						{this.frameCountPicker()}
+					</UiBox>
 					<UiBox
 						key            = "join-row-1"
 						width          = {mainWidth * 0.75}

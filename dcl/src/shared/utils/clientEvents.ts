@@ -15,7 +15,7 @@ export enum ClientEvents {
 	//ON_MY_ROLL_PLAYBACK_END             = "onMyRollPlaybackEnd",            // Lane visuals finished for the local player
 	ON_MY_ROLL_REQUEST                  = "onMyRollRequest",                // When the local player requests a roll
 	ON_MY_ROLL_END                      = "onMyRollEnd",                    // When the local player ends their roll
-	
+
 	ON_GROUP_GAME_START                 = "onGroupGameStart",               // When the group game starts
 	ON_GROUP_FRAME_START                = "onGroupFrameStart",              // When someone else in the group starts their frame
 	ON_GROUP_ROLL_START                 = "onGroupRollStart",               // When someone else in the group starts their roll
@@ -37,7 +37,7 @@ export enum ClientEvents {
 	ON_NON_GROUP_ROLL_END               = "onNonGroupRollEnd",               // When a non-group member ends their roll
 	ON_NON_GROUP_FRAME_END              = "onNonGroupFrameEnd",              // When a non-group member ends their frame
 	ON_NON_GROUP_GAME_END               = "onNonGroupGameEnd",              // When a non-group game ends
- 
+
 	REQUEST_LEAVE_GAME                  = "requestLeaveGame",               // When the local player requests to leave the game
 
 

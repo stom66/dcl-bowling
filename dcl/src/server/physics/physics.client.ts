@@ -1,6 +1,7 @@
+import { PIN_LANE_LOCAL_POSITIONS } from 'src/shared/physics/physics.pin-layout'
+
 import { CannonBowlingPhysicsSimulator } from './physics.cannon-bowling-physics'
 import { compressSimulationResult } from './physics.keyframe-optimization'
-import { PIN_LANE_LOCAL_POSITIONS } from './physics.pin-layout'
 import { DefaultOptimizationSettings, GameSettings } from './physics.settings'
 import type {
 	BowlingPhysicsSimulator,

@@ -1,7 +1,15 @@
-import { LaneCurrentTurn, LaneGameData, LanePhaseEnum, LaneScores } from "src/shared/components/definitions/shared.lane"
+import { LaneBumpers, LaneCurrentTurn, LaneGameData, LanePhaseEnum, LaneScores } from "src/shared/components/definitions/shared.lane"
+import { PlayerActivity } from "src/shared/components/definitions/shared.playerActivity"
 import { PlayerIdentity } from "src/shared/components/definitions/shared.playerIdentity"
+import { PlayerLoadout } from "src/shared/components/definitions/shared.playerLoadout"
+import { PlayerPreferences } from "src/shared/components/definitions/shared.playerPreferences"
+import { PlayerStats } from "src/shared/components/definitions/shared.playerStats"
+import { PlayerTickets } from "src/shared/components/definitions/shared.playerTickets"
+import { PlayerUnlocks } from "src/shared/components/definitions/shared.playerUnlocks"
 import { SceneState } from "src/shared/components/definitions/shared.sceneState"
+import { PerfectGames, SceneScoreboards } from "src/shared/components/definitions/shared.scoreboards"
 import { ComponentRegistration, KeyedEntityGroupConfig } from "src/shared/components/types"
+import { getDefaultLoadout, getDefaultUnlockedIds } from "src/shared/data/unlocks"
 import { LanePhase } from "src/shared/enums"
 
 
@@ -18,7 +26,7 @@ export const MAIN_DISCOVERY_COMPONENT = SceneState
 
 
 /**
- * Keyed group for per-player identity (storage-backed fields land here in stage 2).
+ * Keyed group for per-player identity and storage-backed profile fields.
  */
 export const PLAYERS_GROUP_ID = 'players'
 
@@ -69,13 +77,35 @@ export const registry: ComponentRegistration[] = [
 		}),
 	},
 	{
+		component  : SceneScoreboards,
+		mode       : 'synced',
+		entityGroup: 'main',
+		defaults   : () => ({
+			alltime3 : [],
+			alltime6 : [],
+			alltime10: [],
+			weekly3  : [],
+			weekly6  : [],
+			weekly10 : [],
+		}),
+	},
+	{
+		component  : PerfectGames,
+		mode       : 'synced',
+		entityGroup: 'main',
+		defaults   : () => ({
+			entries: [],
+		}),
+	},
+	{
 		component  : LaneGameData,
 		mode       : 'synced',
 		entityGroup: LANES_GROUP_ID,
 		defaults   : () => ({
-			laneIndex: 0,
-			startTime: 0,
-			players  : [],
+			laneIndex : 0,
+			startTime : 0,
+			frameCount: 0,
+			players   : [],
 		}),
 	},
 	{
@@ -107,8 +137,78 @@ export const registry: ComponentRegistration[] = [
 		}),
 	},
 	{
+		component  : LaneBumpers,
+		mode       : 'synced',
+		entityGroup: LANES_GROUP_ID,
+		defaults   : () => ({
+			enabled: false,
+		}),
+	},
+	{
 		component  : PlayerIdentity,
 		mode       : 'synced',
 		entityGroup: PLAYERS_GROUP_ID,
+	},
+	{
+		component  : PlayerActivity,
+		mode       : 'synced',
+		entityGroup: PLAYERS_GROUP_ID,
+		defaults   : () => ({
+			firstPlayedAt : 0,
+			lastPlayedAt  : 0,
+			currentStreak : 0,
+			maxStreak     : 0,
+			gamesPlayed   : 0,
+		}),
+	},
+	{
+		component  : PlayerStats,
+		mode       : 'synced',
+		entityGroup: PLAYERS_GROUP_ID,
+		defaults   : () => ({
+			gamesCreated      : 0,
+			gamesPlayed       : 0,
+			gamesWon          : 0,
+			gamesLost         : 0,
+			gamesLeftEarly    : 0,
+			rolledBalls       : 0,
+			rolledStrikes     : 0,
+			rolledSpares      : 0,
+			rolledGutterBalls : 0,
+			pinsKnockedDown   : 0,
+			perfectGames      : 0,
+			matches           : [],
+		}),
+	},
+	{
+		component  : PlayerTickets,
+		mode       : 'synced',
+		entityGroup: PLAYERS_GROUP_ID,
+		defaults   : () => ({
+			balance: 0,
+		}),
+	},
+	{
+		component  : PlayerUnlocks,
+		mode       : 'synced',
+		entityGroup: PLAYERS_GROUP_ID,
+		defaults   : () => ({
+			unlockedItemIds: getDefaultUnlockedIds(),
+		}),
+	},
+	{
+		component  : PlayerLoadout,
+		mode       : 'synced',
+		entityGroup: PLAYERS_GROUP_ID,
+		defaults   : () => getDefaultLoadout(),
+	},
+	{
+		component  : PlayerPreferences,
+		mode       : 'synced',
+		entityGroup: PLAYERS_GROUP_ID,
+		defaults   : () => ({
+			bgmMuted       : false,
+			bumpersEnabled : false,
+		}),
 	},
 ]

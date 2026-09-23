@@ -2,17 +2,19 @@ import * as utils from "@dcl-sdk/utils"
 import { engine } from "@dcl/sdk/ecs"
 import { Quaternion, Vector3 } from "@dcl/sdk/math"
 
-import { LaneStore } from "src/shared/laneStore"
 import { LanePhase } from "src/shared/enums"
-import { GameSettings } from "src/shared/settings"
+import { LaneStore } from "src/shared/laneStore"
+import { PIN_LANE_LOCAL_POSITIONS } from "src/shared/physics/physics.pin-layout"
+import { GameFrameCount, GameSettings, normalizeFrameCount } from "src/shared/settings"
 import { NotifyPlayerRollPayload, RequestPlayRollPayload, RollPayload } from "src/shared/types/shared-types"
 import { isValidLaneIndex } from "src/shared/utils/laneIndex"
 import { userProfileCache } from "src/shared/utils/userProfileCache"
 
-import { PIN_LANE_LOCAL_POSITIONS } from 'src/server/physics/physics.pin-layout'
+import { LeaderboardManager } from "src/server/leaderboardManager"
 import { getSimulationResults } from "src/server/physics/physics.client"
 import { GameSettings as PhysicsSimulationSettings } from "src/server/physics/physics.settings"
 import { SimulationInput, SimulationResult } from "src/server/physics/types"
+import { PlayerProfileManager } from "src/server/playerProfileManager"
 import * as ServerMessaging from "src/server/serverMessaging"
 import { Metrics } from "./metrics/client"
 import { PlayerStats } from "./metrics/playerStats"
@@ -56,6 +58,7 @@ class GameManager {
 		}
 
 		Metrics.incrementPlayerStat(userId, PlayerStats.GAMES_LEFT_EARLY)
+		PlayerProfileManager.recordLeaveEarly(userId)
 	}
 
 
@@ -66,8 +69,12 @@ class GameManager {
 	 * Entry point for a player joining a lane. Decides whether to add them to
 	 * an existing game or to kick off a fresh Start Game Countdown.
 	 */
-	async onPlayerRequestJoin(userId: string, laneIndex: number | undefined) {
-		console.log('gameManager: onPlayerRequestJoin: userId', userId, 'laneIndex', laneIndex)
+	async onPlayerRequestJoin(
+		userId    : string,
+		laneIndex : number | undefined,
+		frameCount: number | undefined,
+	) {
+		console.log('gameManager: onPlayerRequestJoin: userId', userId, 'laneIndex', laneIndex, 'frameCount', frameCount)
 
 		if (laneIndex === undefined) {
 			// TODO: find a random IDLE/STARTING lane for the player
@@ -110,10 +117,12 @@ class GameManager {
 		const isFirstPlayer = lanePlayerCount === 0
 		
 		if (isFirstPlayer && LaneStore.getPhase(laneIndex) === LanePhase.NONE) {
+			LaneStore.setFrameCount(laneIndex, normalizeFrameCount(frameCount))
 			const gameStartTime = Date.now() + GameSettings.GAME_START_COUNTDOWN_DURATION
 			this.startGameCountdown(laneIndex, gameStartTime)
 
 			Metrics.trackGameCreated(userId, gameStartTime, laneIndex)
+			PlayerProfileManager.recordGameCreated(userId)
 		}
 		else {
 			const gameStartTime = LaneStore.getGameStartTime(laneIndex)
@@ -297,6 +306,40 @@ class GameManager {
 	}
 
 
+	// =========================================================================
+	// MARK: Handle Lane Bumpers
+	// =========================================================================
+	/**
+	 * Raises or lowers gutter bumpers for the sender's current lane. Accepted
+	 * only while it is that player's roll and the phase is ROLL_AWAITING.
+	 */
+	onPlayerRequestSetLaneBumpers(
+		userId : string,
+		enabled: boolean
+	) {
+		console.log('gameManager: onPlayerRequestSetLaneBumpers: userId', userId, 'enabled', enabled)
+
+		const laneIndex = LaneStore.findLaneByUserId(userId)
+		if (laneIndex === undefined) {
+			console.log('gameManager: onPlayerRequestSetLaneBumpers: user not in any lane')
+			return
+		}
+		if (LaneStore.getCurrentFrameUserId(laneIndex) !== userId) {
+			console.log('gameManager: onPlayerRequestSetLaneBumpers: not this player\'s turn, ignoring')
+			return
+		}
+
+		const rt = this.getRuntime(laneIndex)
+		if (rt.phase !== LanePhase.ROLL_AWAITING) {
+			console.log('gameManager: onPlayerRequestSetLaneBumpers: wrong phase', rt.phase, '— ignoring')
+			return
+		}
+
+		LaneStore.setBumpersEnabled(laneIndex, enabled)
+		console.log('gameManager: onPlayerRequestSetLaneBumpers: lane', laneIndex, 'enabled', enabled)
+	}
+
+
 	/**
 	 * Run the Physics simulation for this roll, assemble a replay payload and
 	 * broadcast it via NOTIFY_PLAYER_ROLL_PLAYBACK. Enters ROLL_PLAYBACK phase.
@@ -319,7 +362,9 @@ class GameManager {
 			strength : data.power,
 		}
 		//console.log('gameManager: simulateAndPlaybackRoll: simInput', JSON.stringify(simInput, null, 2))
-		const simResults: SimulationResult = getSimulationResults(simInput)
+		const simResults: SimulationResult = getSimulationResults(simInput, {
+			laneBumpersEnabled: LaneStore.getBumpersEnabled(laneIndex),
+		})
 
 		//const simDuration = Date.now() - simStartTime
 		//console.log(`gameManager: simulateAndPlaybackRoll: simDuration ${simDuration}ms`)
@@ -355,7 +400,7 @@ class GameManager {
 		const frameRolls             = LaneStore.getScoresMap(laneIndex).get(userId)?.[frameIndex] ?? []
 		const pinsStandingAtStart    = this.countTrueValues(startingPinStates)
 		const clearedAllStandingPins = score === pinsStandingAtStart
-		const isFinalFrame           = frameIndex === GameSettings.MAX_FRAMES_PER_GAME - 1
+		const isFinalFrame           = frameIndex === this.getLaneFrameCount(laneIndex) - 1
 
 		let isStrike = false
 		let isSpare  = false
@@ -402,6 +447,13 @@ class GameManager {
 		if (payload.isSpare)    Metrics.incrementPlayerStat(userId, PlayerStats.ROLLED_SPARES)
 		if (payload.gutterBall) Metrics.incrementPlayerStat(userId, PlayerStats.ROLLED_GUTTER_BALLS)
 
+		PlayerProfileManager.recordRoll(userId, {
+			pins       : payload.score,
+			isStrike   : payload.isStrike,
+			isSpare    : payload.isSpare,
+			gutterBall : payload.gutterBall,
+		})
+
 		const gameStartTime = LaneStore.getGameStartTime(laneIndex)
 
 		Metrics.trackRoll(gameStartTime, laneIndex, payload, simInput)
@@ -433,6 +485,7 @@ class GameManager {
 		}
 
 		LaneStore.setCurrentRollStartTime(laneIndex, 0)
+		LaneStore.setBumpersEnabled(laneIndex, false)
 
 		this.schedulePhase(laneIndex, LanePhase.ROLL_END, GameSettings.FRAME_DELAY_BETWEEN_TURNS)
 	}
@@ -447,15 +500,13 @@ class GameManager {
 		const rollIndex    = LaneStore.getCurrentRollIndex(laneIndex)
 		const frameIndex   = LaneStore.getCurrentFrameIndex(laneIndex)
 		const allDown      = rt.pinStanding.every(s => !s)
-		const isFinalFrame = frameIndex == (GameSettings.MAX_FRAMES_PER_GAME - 1)
+		const isFinalFrame = frameIndex === (this.getLaneFrameCount(laneIndex) - 1)
 		const userId       = LaneStore.getCurrentFrameUserId(laneIndex) || ''
 		const frames       = LaneStore.getScoresMap(laneIndex).get(userId) || []
 		const firstRollWasAStrike  = frames?.[frameIndex]?.[0] === 10
 		const secondRollWasAStrike = frames?.[frameIndex]?.[1] === 10
 		const secondRollWasASpare  = frames?.[frameIndex]?.[0] + frames?.[frameIndex]?.[1] === 10
 
-		// Standard frames 0–8: two rolls unless a strike on the first.
-		// TODO: 10th-frame bonus rolls (strike/spare ⇒ up to 3 rolls).
 		console.log('gameManager: afterRollEnd: rollIndex:', rollIndex, '- allDown:', allDown, '- isFinalFrame:', isFinalFrame, '- firstRollWasAStrike:', firstRollWasAStrike, '- secondRollWasAStrike:', secondRollWasAStrike, '- secondRollWasASpare:', secondRollWasASpare)
 		if (rollIndex === 0 && !allDown) {
 			LaneStore.setCurrentRollIndex(laneIndex, 1)
@@ -530,7 +581,7 @@ class GameManager {
 			frameIndex++
 		}
 
-		if (frameIndex >= GameSettings.MAX_FRAMES_PER_GAME) {
+		if (frameIndex >= this.getLaneFrameCount(laneIndex)) {
 			this.endGame(laneIndex)
 			return
 		}
@@ -548,6 +599,8 @@ class GameManager {
 		const gameStartTime = LaneStore.getGameStartTime(laneIndex)
 		const playerIds     = LaneStore.getLaneUserIds(laneIndex)
 		const winnerUserId  = LaneStore.getWinnerUserId(laneIndex)
+		const frameCount    = this.getLaneFrameCount(laneIndex)
+		const durationMs    = Math.max(0, Date.now() - gameStartTime)
 
 		Metrics.trackGameEnded(gameStartTime, laneIndex, playerIds, winnerUserId)
 
@@ -565,7 +618,20 @@ class GameManager {
 			}
 		}
 
-		
+		PlayerProfileManager.onGameComplete(playerIds.map((userId) => ({
+			userId     : userId,
+			startedAt  : gameStartTime,
+			durationMs : durationMs,
+			frameCount : frameCount,
+			score      : LaneStore.getScoreForUserId(userId) ?? 0,
+			won        : userId === winnerUserId,
+		})))
+
+		const boardScores = playerIds.map((userId) => ({
+			userId: userId,
+			score : LaneStore.getScoreForUserId(userId) ?? 0,
+		}))
+		void LeaderboardManager.submitGameResults(frameCount, boardScores)
 
 		// Setting phase=NONE is the trigger clients use (via MyLane) to fire
 		// ON_GROUP_GAME_END and clear their local laneIndex.
@@ -683,6 +749,15 @@ class GameManager {
 		runtime.phaseEndTime = Date.now() + durationMs
 		
 		LaneStore.setPhase(laneIndex, phase)
+	}
+
+
+	// MARK: getLaneFrameCount
+	/**
+	 * Host-chosen length for this lane, or the default when the lane has none yet.
+	 */
+	private getLaneFrameCount(laneIndex: number): GameFrameCount {
+		return normalizeFrameCount(LaneStore.getFrameCount(laneIndex))
 	}
 
 	private getRuntime(laneIndex: number): LaneRuntime {

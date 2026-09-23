@@ -26,6 +26,8 @@ const FRAME_CELL_WIDTH  = 52
 const FRAME_CELL_HEIGHT = 45
 const FRAME_CELL_MARGIN = 4
 
+const FONT_SIZE_SCORE = 9
+
 const clientStore = ClientStore.getInstance()
 
 
@@ -34,7 +36,8 @@ const clientStore = ClientStore.getInstance()
  * Bottom-center scoreboard. Slides in after roll playback and after a game ends.
  */
 export class ScoresLayer extends Layer {
-	private lastKnownScores: Map<string, number[][]> | null = null
+	private lastKnownScores    : Map<string, number[][]> | null = null
+	private lastKnownFrameCount: number = GameSettings.DEFAULT_FRAME_COUNT
 	private gameHasEnded = false
 
 	constructor() {
@@ -53,7 +56,11 @@ export class ScoresLayer extends Layer {
 
 		eventBus.on(ClientEvents.ON_MY_ROLL_START,             () => { this.hide(0.8) })
 		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, () => { this.hide(0.8) })
-		eventBus.on(ClientEvents.ON_GROUP_GAME_START,          () => { this.gameHasEnded = false })
+		eventBus.on(ClientEvents.ON_GROUP_GAME_START,          () => {
+			this.gameHasEnded = false
+			const liveCount = clientStore.getFrameCount()
+			if (liveCount > 0) this.lastKnownFrameCount = liveCount
+		})
 		eventBus.on(ClientEvents.ON_GROUP_GAME_END,            () => {
 			this.gameHasEnded = true
 			this.showFinalScores()
@@ -78,7 +85,9 @@ export class ScoresLayer extends Layer {
 			frames = clientStore.getFrames() ?? new Map<string, number[][]>()
 			if (DEBUG_FORCE_SHOW) frames = getDummyScoreData()
 			if (frames.size > 0) {
-				this.lastKnownScores = frames
+				this.lastKnownScores     = frames
+				const liveCount          = clientStore.getFrameCount()
+				this.lastKnownFrameCount = liveCount > 0 ? liveCount : this.lastKnownFrameCount
 			}
 		} else {
 			frames = this.lastKnownScores
@@ -88,9 +97,10 @@ export class ScoresLayer extends Layer {
 			return new Map<string, FrameResult[]>()
 		}
 
+		const frameCount = this.getActiveFrameCount(frames)
 		const frameResults = new Map<string, FrameResult[]>()
 		for (const [userId, frame] of frames.entries()) {
-			frameResults.set(userId, getFrameResults(frame))
+			frameResults.set(userId, getFrameResults(frame, frameCount))
 		}
 
 		if (!sortResults) return frameResults
@@ -101,12 +111,35 @@ export class ScoresLayer extends Layer {
 	}
 
 
+
+	// MARK: getActiveFrameCount
+	/**
+	 * Frame length for the scorecard currently on screen.
+	 */
+	private getActiveFrameCount(frames: Map<string, number[][]> | null): number {
+		if (DEBUG_FORCE_SHOW) return 5
+
+		const liveCount = clientStore.getFrameCount()
+		if (liveCount > 0) return liveCount
+		if (this.lastKnownFrameCount > 0) return this.lastKnownFrameCount
+
+		let max = 0
+		if (frames) {
+			for (const frame of frames.values()) {
+				if (frame.length > max) max = frame.length
+			}
+		}
+		return max || GameSettings.DEFAULT_FRAME_COUNT
+	}
+
+
+
 	// MARK: getRowWidth
 	private getRowWidth(
 		showRanks     : boolean,
 		showTotalScore: boolean,
 	): number {
-		let rowWidth = (FRAME_CELL_WIDTH + FRAME_CELL_MARGIN) * GameSettings.MAX_FRAMES_PER_GAME
+		let rowWidth = (FRAME_CELL_WIDTH + FRAME_CELL_MARGIN) * this.getActiveFrameCount(this.lastKnownScores)
 		rowWidth += FRAME_CELL_HEIGHT + FRAME_CELL_MARGIN
 		if (showRanks)      rowWidth += FRAME_CELL_HEIGHT + FRAME_CELL_MARGIN
 		if (showTotalScore) rowWidth += FRAME_CELL_HEIGHT + FRAME_CELL_MARGIN

@@ -5,14 +5,16 @@ import { onEnterScene, onLeaveScene } from "@dcl/sdk/players"
 import { ComponentManager } from "src/shared/components/componentManager"
 import { ComponentStore } from "src/shared/components/componentStore"
 import { LANES_GROUP_ID } from "src/shared/components/registry"
+import { blockedPlayers } from "src/shared/data/blocklist"
 import { LaneStore } from "src/shared/laneStore"
 import { GameSettings } from "src/shared/settings"
 import { DiscordWebhooks } from "src/shared/utils/discord-webhooks"
 import { eventBus, ServerEvents } from "src/shared/utils/eventBus"
 
-import { blockedPlayers } from "src/client/data/blocklist"
 import { gameManager } from "src/server/gameManager"
+import { LeaderboardManager } from "src/server/leaderboardManager"
 import { Metrics } from "src/server/metrics/client"
+import { PlayerProfileManager } from "src/server/playerProfileManager"
 import { serverHandler } from "src/server/serverHandler"
 import { notifyServerTime } from "src/server/serverMessaging"
 
@@ -31,6 +33,8 @@ export async function initServer(): Promise<void> {
 		ComponentManager.createGroupEntity(LANES_GROUP_ID, String(i))
 	}
 	ComponentStore.init()
+	PlayerProfileManager.init()
+	LeaderboardManager.init()
 
 	serverHandler.init()
 	gameManager.init()
@@ -53,8 +57,12 @@ export async function initServer(): Promise<void> {
 		}
 	})
 	onLeaveScene((userId) => {
+		const wasInGame = LaneStore.findLaneByUserId(userId) !== undefined
 		LaneStore.removePlayerFromAllLanes(userId)
 		if (!blockedPlayers.includes(userId)) {
+			if (wasInGame) {
+				PlayerProfileManager.recordLeaveEarly(userId)
+			}
 			Metrics.endSession(userId)
 			eventBus.emit(ServerEvents.PLAYER_SCENE_LEAVE, { userId })
 		}

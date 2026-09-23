@@ -8,7 +8,7 @@ import {
 	ZoneType,
 } from '@stom66/dcl-ui-component-kit'
 
-import { VERSION } from 'src/client/data/version'
+import { VERSION } from 'src/shared/data/version'
 
 
 // MARK: VersionLayer

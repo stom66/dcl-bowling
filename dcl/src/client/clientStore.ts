@@ -157,6 +157,16 @@ export class ClientStore {
 		return LaneStore.getGameStartTime(this.laneIndex)
 	}
 
+
+	// MARK: getFrameCount
+	/**
+	 * Host-chosen length for the local player's current game, or `0` when idle.
+	 */
+	getFrameCount(): number {
+		if (this.laneIndex === undefined) return 0
+		return LaneStore.getFrameCount(this.laneIndex)
+	}
+
 	getPlayers(): string[] | undefined {
 		if (this.laneIndex === undefined) return undefined
 		return LaneStore.getPlayers(this.laneIndex)

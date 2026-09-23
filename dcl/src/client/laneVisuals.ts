@@ -1,18 +1,19 @@
 import * as utils from "@dcl-sdk/utils"
-import { Animator, EasingFunction, engine, Entity, GltfContainer, GltfContainerLoadingState, LoadingState, Transform, Tween, TweenSequence, tweenSystem } from "@dcl/sdk/ecs"
+import { Animator, EasingFunction, engine, Entity, GltfContainer, GltfContainerLoadingState, LoadingState, ParticleSystem, Transform, Tween, TweenSequence, tweenSystem } from "@dcl/sdk/ecs"
 import { Quaternion, Vector3 } from "@dcl/sdk/math"
 
-import { PIN_LANE_LOCAL_POSITIONS } from "src/server/physics/physics.pin-layout"
-import { SimObjectKeyframes } from "src/server/physics/types"
-import { DEFAULT_STORED_ROTATION, storedRotationToQuaternion } from "src/server/physics/physics.utils"
-import { NotifyPlayerRollPayload, SimObjectKeyframe } from "src/shared/types/shared-types"
+import { getBallModelSrc, getPinModelSrc } from "src/shared/data/unlocks"
+import { resolvePlayerLoadout, resolveScoringAnimation } from "src/shared/data/unlocks/resolveLoadout"
+import { LaneStore } from "src/shared/laneStore"
+import { PIN_LANE_LOCAL_POSITIONS } from "src/shared/physics/physics.pin-layout"
+import { DEFAULT_STORED_ROTATION, storedRotationToQuaternion } from "src/shared/physics/physics.utils"
+import { NotifyPlayerRollPayload, SimObjectKeyframe, SimObjectKeyframes } from "src/shared/types/shared-types"
 import { ClientEvents, eventBus } from "src/shared/utils/eventBus"
 
 import { ClientStore } from "src/client/clientStore"
-import { LaneStore } from "src/shared/laneStore"
-import { sfx, SoundManager } from "./soundManager"
-import { lanePositions } from "./data/lanePositions"
-import { GameSettings } from "src/shared/settings"
+import { applyBallTrail, applyFollowSpotlight, stopBallTrail } from "src/client/cosmetics"
+import { lanePositions } from "src/client/data/lanePositions"
+import { sfx, SoundManager } from "src/client/soundManager"
 
 
 // MARK: Types
@@ -60,6 +61,19 @@ const CHANCE_OF_PIGEON = 20 // 1 in n
 /** Delay between countdown visuals and each replay attempt (local player's roll). */
 const REPLAY_WAIT_MS = 3000
 
+/**
+ * Replay follow-spot. Height is static above ball spawn Y. The beam points
+ * straight down; appearance (color / gobo) comes from the roller's loadout.
+ */
+const REPLAY_SPOTLIGHT = {
+	height     : 10,
+	innerAngle : 20,
+	outerAngle : 40,
+	intensity  : 800,
+	range      : 14,
+	shadow     : false,
+}
+
 
 /**
  * Owns the visible meshes on a single lane (ball + pins). Stateless w.r.t.
@@ -75,6 +89,7 @@ export class LaneVisuals {
 	/** Indexed 0..9 to match the Cannon sim / payload layout. Undefined = pin not currently displayed. */
 	private pinEntities: (Entity | undefined)[] = new Array(PIN_COUNT).fill(undefined)
 	private ball?: Entity
+	private spotlight?: Entity
 
 	private rollStartTimestamp: number = 0
 
@@ -213,6 +228,8 @@ export class LaneVisuals {
 		const scaleEnd = Vector3.create(PIN_VISUAL_SCALE, PIN_VISUAL_SCALE, PIN_VISUAL_SCALE)
 
 		const id = Quaternion.Identity()
+		const loadout     = resolvePlayerLoadout(this.rollOwnerUserId)
+		const pinModelSrc = getPinModelSrc(loadout.pinId)
 		for (let i = 0; i < PIN_COUNT; i++) {
 			if (!pinStates[i]) continue
 
@@ -233,11 +250,12 @@ export class LaneVisuals {
 				scale   : Vector3.Zero(),
 			})
 
-			// Add a chance to display a pigeon pin
-			var pinFilename = "pin"
-			if (i === 0 && this.rollStartTimestamp % CHANCE_OF_PIGEON == 0) pinFilename = "pinPigeon"
-			
-			GltfContainer.create(pinScale, { src: `assets/models/${pinFilename}.gltf` })
+			// Pin-1 pigeon is a rare override, not a catalog row
+			const src = (i === 0 && this.rollStartTimestamp % CHANCE_OF_PIGEON == 0)
+				? "assets/models/pinPigeon.gltf"
+				: pinModelSrc
+
+			GltfContainer.create(pinScale, { src })
 
 			GltfContainerLoadingState.onChange(pinScale, (state) => {
 				if (state?.currentState !== LoadingState.FINISHED) return
@@ -319,32 +337,40 @@ export class LaneVisuals {
 	showScoreNumber(score: number): void {
 		console.log("laneVisuals: showScoreNumber(): score", score)
 		score = Math.min(9, Math.max(1, score))
-		this.showScoreObject("Score_Score_" + score.toString())
+		const anim = resolveScoringAnimation(this.rollOwnerUserId, 'number', score)
+		this.showScoreObject(anim.modelSrc, anim.clipName)
 		SoundManager.playSound(sfx.bowl_result_good)
 	}
 
 	showScoreStrike() {
-		this.showScoreObject("Score_Strike")
+		const anim = resolveScoringAnimation(this.rollOwnerUserId, 'strike')
+		this.showScoreObject(anim.modelSrc, anim.clipName)
 		SoundManager.playSound(sfx.bowl_result_great)
 	}
 
 	showScoreSpare() {
-		this.showScoreObject("Score_Spare")
+		const anim = resolveScoringAnimation(this.rollOwnerUserId, 'spare')
+		this.showScoreObject(anim.modelSrc, anim.clipName)
 		SoundManager.playSound(sfx.bowl_result_good)
 	}
 
 	showScoreZero() {
-		this.showScoreObject("Score_Zero")
+		const anim = resolveScoringAnimation(this.rollOwnerUserId, 'zero')
+		this.showScoreObject(anim.modelSrc, anim.clipName)
 		SoundManager.playSound(sfx.bowl_result_bad)
 	}
 
 	showScoreGutterBall() { 
-		this.showScoreObject("Score_GutterBall")
+		const anim = resolveScoringAnimation(this.rollOwnerUserId, 'gutter')
+		this.showScoreObject(anim.modelSrc, anim.clipName)
 		SoundManager.playSound(sfx.bowl_result_bad)
 	}
 
-	showScoreObject(filename: string) {
-		console.log("laneVisuals: showScoreObject(): filename", filename)
+	showScoreObject(
+		modelSrc : string,
+		clipName : string
+	) {
+		console.log("laneVisuals: showScoreObject(): modelSrc", modelSrc)
 
 		const scoreEntity = engine.addEntity()
 		Transform.create(scoreEntity, { 
@@ -352,11 +378,11 @@ export class LaneVisuals {
 			rotation: Quaternion.fromEulerDegrees(0, 180, 0),
 			scale: Vector3.Zero()
 		 })
-		GltfContainer.create(scoreEntity, { src: `assets/models/${filename}.gltf` })
+		GltfContainer.create(scoreEntity, { src: modelSrc })
 		Animator.create(scoreEntity, {
 			states: [
 				{
-					clip: filename,
+					clip: clipName,
 					playing: false,
 					loop: false,
 				}
@@ -367,10 +393,8 @@ export class LaneVisuals {
 
 			Tween.setScale(scoreEntity, Vector3.Zero(), SCORE_OBJECT_SCALE, 0.1, EasingFunction.EF_EASEINCUBIC)
 
-			// Tirgger the animation
-			Animator.playSingleAnimation(scoreEntity, filename, true)
+			Animator.playSingleAnimation(scoreEntity, clipName, true)
 
-			// Remove the entity after the animation has finished
 			utils.timers.setTimeout(() => {
 				engine.removeEntity(scoreEntity)
 			}, 5000)
@@ -382,11 +406,12 @@ export class LaneVisuals {
 	// MARK: Ball
 	setupBall(laneLocalPosition: Vector3 = Vector3.create(0, BALL_SPAWN_LANE_LOCAL_Y, 0)): void {
 		const worldPos = Vector3.add(this.lanePosition, laneLocalPosition)
+		const loadout  = resolvePlayerLoadout(this.rollOwnerUserId)
 
 		if (this.ball === undefined) {
 			this.ball = engine.addEntity()
 			Transform.create(this.ball, { position: worldPos, scale: Vector3.One() })
-			GltfContainer.create(this.ball, { src: "assets/models/bowlingBall.gltf" })
+			GltfContainer.create(this.ball, { src: getBallModelSrc(loadout.ballId) })
 		} else {
 			Transform.getMutable(this.ball).position = worldPos
 		}
@@ -399,7 +424,9 @@ export class LaneVisuals {
 
 
 	removeBall(): void {
+		this.removeSpotlight()
 		if (this.ball === undefined) return
+		ParticleSystem.deleteFrom(this.ball)
 		engine.removeEntity(this.ball)
 		this.ball = undefined
 	}
@@ -410,10 +437,61 @@ export class LaneVisuals {
 	// =========================================================================
 
 
+	// MARK: removeSpotlight
+	/**
+	 * Drops the replay follow-spot if one is in the scene.
+	 */
+	private removeSpotlight(): void {
+		if (this.spotlight === undefined) return
+		engine.removeEntity(this.spotlight)
+		this.spotlight = undefined
+	}
+
+
+
+	// MARK: spawnReplaySpotlight
+	/**
+	 * Creates the unparented replay light using the roller's equipped color and gobo.
+	 */
+	private spawnReplaySpotlight(): void {
+		this.removeSpotlight()
+
+		const loadout = resolvePlayerLoadout(this.rollOwnerUserId)
+		this.spotlight = applyFollowSpotlight(
+			loadout.spotlightId,
+			loadout.spotlightColorId,
+			REPLAY_SPOTLIGHT,
+			this.rollOwnerUserId === ClientStore.getInstance().getUserId(),
+		)
+	}
+
+
+
+	// MARK: updateReplaySpotlight
+	/**
+	 * Keeps the light on the lane centerline at a fixed height, tracking ball Z only.
+	 */
+	private updateReplaySpotlight(ballLaneLocalZ: number): void {
+		if (this.spotlight === undefined) return
+
+		const transform = Transform.getMutableOrNull(this.spotlight)
+		if (!transform) return
+
+		transform.position = Vector3.add(
+			this.lanePosition,
+			Vector3.create(0, BALL_SPAWN_LANE_LOCAL_Y + REPLAY_SPOTLIGHT.height, ballLaneLocalZ),
+		)
+		transform.rotation = Quaternion.fromEulerDegrees(-90, 0, 0)
+	}
+
+
+
 	// MARK: onReplayEnd
 	onReplayEnd(): void {
 		console.log("laneVisuals: onReplayEnd()")
-		
+
+		if (this.ball !== undefined) stopBallTrail(this.ball)
+
 		// Was it a strike?
 		if (this.rollPayload?.gutterBall === true) {
 			this.showScoreGutterBall()
@@ -558,6 +636,9 @@ export class LaneVisuals {
 			return
 		}
 
+		this.spawnReplaySpotlight()
+		applyBallTrail(this.ball, resolvePlayerLoadout(this.rollOwnerUserId).trailId)
+
 		const ballKf  = data.ballKeyframes as SimObjectKeyframes
 		const pinsKfs = data.pinsKeyframes as SimObjectKeyframes[]
 
@@ -593,6 +674,7 @@ export class LaneVisuals {
 				const ballLaneLocal = replaySampleLaneLocal(replayState.ballKeyframes, elapsed)
 				ballTransform.position = Vector3.add(this.lanePosition, ballLaneLocal)
 				ballTransform.rotation = replaySampleRotation(replayState.ballKeyframes, elapsed)
+				this.updateReplaySpotlight(ballLaneLocal.z)
 			}
 
 			const pinTracks = replayState.pinsKeyframes

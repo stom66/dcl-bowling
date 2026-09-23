@@ -7,9 +7,10 @@ export const LaneGameData = engine.defineComponent(
 	'LaneGameData',
 	{
 		// Stable lane index. Identity field for the `lanes` keyed group.
-		laneIndex: Schemas.Int,
-		startTime: Schemas.Int64,
-		players  : Schemas.Optional(
+		laneIndex : Schemas.Int,
+		startTime : Schemas.Int64,
+		frameCount: Schemas.Int,
+		players   : Schemas.Optional(
 			Schemas.Array(Schemas.String)
 		)
 	}
@@ -47,5 +48,13 @@ export const LaneScores = engine.defineComponent(
 				})
 			)
 		)
+	}
+)
+
+
+export const LaneBumpers = engine.defineComponent(
+	'LaneBumpers',
+	{
+		enabled: Schemas.Boolean,
 	}
 )

@@ -18,13 +18,18 @@ export type PinColliderFile = {
 	positions : number[][]
 }
 
+
+// MARK: pinCollidersConfig
 /**
  * Authoring data from `colliders/pin-colliders.json`. Not tied to a specific physics engine; any backend that
  * simulates this lane should use the same rest layout and collider dimensions.
  */
 export const pinCollidersConfig = pinCollidersData as PinColliderFile
 
+
+// MARK: PIN_LANE_LOCAL_POSITIONS
 /**
  * Pin rack rest positions in lane-local space; same source as {@link pinCollidersConfig}.
  */
 export const PIN_LANE_LOCAL_POSITIONS: ReadonlyArray<ReadonlyArray<number>> = pinCollidersConfig.positions
+

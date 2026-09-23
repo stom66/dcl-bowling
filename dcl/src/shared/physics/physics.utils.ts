@@ -1,9 +1,8 @@
 /**
  * Engine-agnostic helpers shared by physics backends and the keyframe pipeline (vectors, rounding, wire-format rotation).
  */
+import type { QuaternionType, Vector3Type } from '@dcl/ecs'
 import { Quaternion } from '@dcl/sdk/math'
-
-import type { QuaternionType, Vector3Type } from './types'
 
 
 // MARK: lengthSquared
@@ -32,6 +31,7 @@ export function roundVec3(
 }
 
 
+// MARK: DEFAULT_STORED_ROTATION
 /**
  * `SimObjectKeyframe.rotation` wire format: **Euler angle degrees** in **(x, y, z)** — the values returned by
  * `Quaternion.toEulerAngles` and accepted by `Quaternion.fromEulerDegrees` in `@dcl/ecs-math` / DCL runtime.
@@ -63,3 +63,4 @@ export function quaternionToStoredRotation(quaternion: QuaternionType): Vector3T
 export function storedRotationToQuaternion(rotation: Vector3Type): QuaternionType {
 	return Quaternion.fromEulerDegrees(rotation.x, rotation.y, rotation.z)
 }
+

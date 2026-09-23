@@ -1,14 +1,14 @@
 import { Quaternion, Vector3 } from '@dcl/sdk/math'
 import { Body, Box, Cylinder, Material, Quaternion as CannonQuaternion, Sphere, Vec3 as CannonVec3, World } from 'cannon-es'
 
+import { PIN_LANE_LOCAL_POSITIONS, pinCollidersConfig } from 'src/shared/physics/physics.pin-layout'
+import { quaternionToStoredRotation, storedRotationToQuaternion } from 'src/shared/physics/physics.utils'
+import { TimeLogger } from 'src/shared/utils/timeLogging'
+
 import bumperCollidersData from './colliders/bumper-colliders.json'
 import laneCollidersData from './colliders/lane-colliders.json'
-import pinCollidersData from './colliders/pin-colliders.json'
 import { GameSettings } from './physics.settings'
-import type { SimulationSettings, SimulationCollision } from './types'
-import {quaternionToStoredRotation,	storedRotationToQuaternion } from './physics.utils'
-import type { QuaternionType, SimulationRunResult, SimObjectKeyframe, Vector3Type } from './types'
-import { TimeLogger } from 'src/shared/utils/timeLogging'
+import type { QuaternionType, SimObjectKeyframe, SimulationCollision, SimulationRunResult, SimulationSettings, Vector3Type } from './types'
 
 
 // MARK: Types
@@ -38,27 +38,10 @@ interface BoxColliderEntry {
 	rotation   : [number, number, number, number]
 }
 
-interface PinColliderFile {
-	_comment? : string
-	cylinder  : {
-		radiusTop   : number
-		radiusBottom: number
-		height      : number
-		numSegments : number
-		friction    : number
-		restitution : number
-		mass        : number
-	}
-	positions : number[][]
-}
-
 
 // MARK: Constants
-const bumperColliders         = bumperCollidersData as BoxColliderEntry[]
-const laneColliders           = laneCollidersData as BoxColliderEntry[]
-const pinConfig               = pinCollidersData as PinColliderFile
-
-const PIN_LANE_LOCAL_POSITIONS: ReadonlyArray<ReadonlyArray<number>> = pinConfig.positions
+const bumperColliders = bumperCollidersData as BoxColliderEntry[]
+const laneColliders   = laneCollidersData as BoxColliderEntry[]
 
 
 /** Cannon cylinder is Y-up at identity; `lookRotation(forward, up)` per @dcl/ecs-math (forward first). */
@@ -140,10 +123,10 @@ export class CannonSim {
 
 		this.pinBodies = []
 		const bodyCylinder = new Cylinder(
-			pinConfig.cylinder.radiusTop,
-			pinConfig.cylinder.radiusBottom,
-			pinConfig.cylinder.height,
-			pinConfig.cylinder.numSegments,
+			pinCollidersConfig.cylinder.radiusTop,
+			pinCollidersConfig.cylinder.radiusBottom,
+			pinCollidersConfig.cylinder.height,
+			pinCollidersConfig.cylinder.numSegments,
 		)
 		for (let index = 0; index < PIN_LANE_LOCAL_POSITIONS.length; index += 1) {
 			if (!this.initialPinStates[index]) continue

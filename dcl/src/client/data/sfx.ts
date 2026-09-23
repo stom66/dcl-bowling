@@ -48,6 +48,27 @@ export const sfx = {
 		"assets/sfx/cursor_style_5b.mp3",
 	],
 
+	ui_success: [
+		"assets/sfx/ui_success.wav",
+	],
+	ui_error: [
+		"assets/sfx/ui_error.wav",
+	],
+	ui_purchase_success: [
+		"assets/sfx/ui-success-01.mp3",
+		"assets/sfx/ui-success-02.mp3",
+		"assets/sfx/ui-success-03.mp3",
+	],
+	ui_purchase_error: [
+		"assets/sfx/ui-purchase-error-01.mp3",
+		"assets/sfx/ui-purchase-error-02.mp3",
+	],
+	ui_equip: [
+		"assets/sfx/ui-equip-01.mp3",
+		"assets/sfx/ui-equip-02.mp3",
+		"assets/sfx/ui-equip-03.mp3",
+	],
+
 	collisionPinHitPin: [
 		"assets/sfx/impactGeneric_light_000.wav",
 		"assets/sfx/impactGeneric_light_001.wav",

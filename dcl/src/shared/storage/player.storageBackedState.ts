@@ -5,7 +5,8 @@ import { StorageBackedState, StorageBackedStateOptions } from "src/shared/storag
 
 
 export type PlayerBackedStateOptions<T extends object> = StorageBackedStateOptions<T> & {
-	userId: string
+	userId     : string
+	legacyKey ?: string
 }
 
 
@@ -15,13 +16,15 @@ export type PlayerBackedStateOptions<T extends object> = StorageBackedStateOptio
  */
 export class PlayerBackedState<T extends object> extends StorageBackedState<T> {
 
-	private readonly userId: string
+	private readonly userId     : string
+	private readonly legacyKey ?: string
 
 
 	// MARK: constructor
 	constructor(options: PlayerBackedStateOptions<T>) {
 		super(options)
-		this.userId = options.userId
+		this.userId    = options.userId
+		this.legacyKey = options.legacyKey
 	}
 
 
@@ -38,7 +41,12 @@ export class PlayerBackedState<T extends object> extends StorageBackedState<T> {
 			return undefined
 		}
 
-		return Storage.player.get<string>(this.userId, this.key)
+		const value = await Storage.player.get<string>(this.userId, this.key)
+		if (value || !this.legacyKey) {
+			return value
+		}
+
+		return Storage.player.get<string>(this.userId, this.legacyKey)
 	}
 
 
