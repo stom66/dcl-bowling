@@ -9,6 +9,12 @@ const TRAIL_ATLAS_DIR = 'assets/images/unlocks/trails'
 const COLOR_WHITE    = Color4.create(1, 1, 1, 1)
 const COLOR_FADE_OUT = Color4.create(1, 1, 1, 0)
 
+/** Tight backward spray. Aiming is applied on the unparented emitter in cosmetics. */
+const TRAIL_CONE_SHAPE = ParticleSystem.Shape.Cone({
+	angle  : 20,
+	radius : 0.05,
+})
+
 
 type AtlasTrailConfig = {
 	fileName             : string
@@ -50,7 +56,7 @@ function atlasTrailEmitter(
 		billboard           : true,
 		faceTravelDirection : false,
 		loop                : true,
-		shape               : ParticleSystem.Shape.Point(),
+		shape               : TRAIL_CONE_SHAPE,
 		simulationSpace     : PBParticleSystem_SimulationSpace.PSS_WORLD,
 		texture             : { src: `${TRAIL_ATLAS_DIR}/${config.fileName}` },
 		spriteSheet         : {
@@ -93,12 +99,13 @@ export const trails: Record<string, TrailItem> = {
 				end  : Color4.create(0.2, 0, 0, 0),
 			},
 			initialVelocitySpeed: { start: 0.4, end: 1.2 },
-			gravity             : -0.3,
+			gravity             : -0.35,
 			blendMode           : PBParticleSystem_BlendMode.PSB_ADD,
 			billboard           : true,
 			faceTravelDirection : false,
 			loop                : true,
-			shape               : ParticleSystem.Shape.Point(),
+			shape               : TRAIL_CONE_SHAPE,
+			simulationSpace     : PBParticleSystem_SimulationSpace.PSS_WORLD,
 		},
 	},
 	'trail-dust': {
@@ -117,7 +124,7 @@ export const trails: Record<string, TrailItem> = {
 			lifetime             : 1.2,
 			maxParticles         : 128,
 			initialSize          : { start: 0.22, end: 0.36 },
-			gravity             : -0.3,
+			gravity              : 0.4,
 			blendMode            : PBParticleSystem_BlendMode.PSB_ALPHA,
 			initialVelocitySpeed : { start: 0.3, end: 0.8 },
 		}),
@@ -138,7 +145,7 @@ export const trails: Record<string, TrailItem> = {
 			lifetime             : 1.2,
 			maxParticles         : 128,
 			initialSize          : { start: 0.28, end: 0.45 },
-			gravity              : -0.15,
+			gravity              : -0.3,
 			blendMode            : PBParticleSystem_BlendMode.PSB_ADD,
 			initialVelocitySpeed : { start: 0.3, end: 0.8 },
 		}),
@@ -159,7 +166,7 @@ export const trails: Record<string, TrailItem> = {
 			lifetime             : 1.3,
 			maxParticles         : 128,
 			initialSize          : { start: 0.2, end: 0.34 },
-			gravity             : -0.3,
+			gravity              : 0.4,
 			blendMode            : PBParticleSystem_BlendMode.PSB_ALPHA,
 			initialVelocitySpeed : { start: 0.4, end: 1.0 },
 		}),
@@ -180,7 +187,7 @@ export const trails: Record<string, TrailItem> = {
 			lifetime             : 1.6,
 			maxParticles         : 128,
 			initialSize          : { start: 0.12, end: 0.22 },
-			gravity             : -0.3,
+			gravity              : 0.2,
 			blendMode            : PBParticleSystem_BlendMode.PSB_ALPHA,
 			initialVelocitySpeed : { start: 0.3, end: 0.9 },
 		}),
@@ -201,7 +208,7 @@ export const trails: Record<string, TrailItem> = {
 			lifetime             : 0.9,
 			maxParticles         : 128,
 			initialSize          : { start: 0.3, end: 0.5 },
-			gravity              : 0.05,
+			gravity              : -0.4,
 			blendMode            : PBParticleSystem_BlendMode.PSB_ADD,
 			initialVelocitySpeed : { start: 0.4, end: 1.0 },
 			initialColor         : {
@@ -230,7 +237,7 @@ export const trails: Record<string, TrailItem> = {
 			lifetime             : 1.2,
 			maxParticles         : 128,
 			initialSize          : { start: 0.22, end: 0.38 },
-			gravity              : 0.4,
+			gravity              : 0.45,
 			blendMode            : PBParticleSystem_BlendMode.PSB_ADD,
 			initialVelocitySpeed : { start: 0.2, end: 0.7 },
 		}),
@@ -272,7 +279,7 @@ export const trails: Record<string, TrailItem> = {
 			lifetime             : 0.4,
 			maxParticles         : 128,
 			initialSize          : { start: 0.2, end: 0.34 },
-			gravity              : 0.12,
+			gravity              : -0.25,
 			blendMode            : PBParticleSystem_BlendMode.PSB_ADD,
 			initialVelocitySpeed : { start: 0.3, end: 0.8 },
 		}),
@@ -293,7 +300,7 @@ export const trails: Record<string, TrailItem> = {
 			lifetime             : 0.6,
 			maxParticles         : 128,
 			initialSize          : { start: 0.24, end: 0.4 },
-			gravity              : -0.1,
+			gravity              : 0.35,
 			blendMode            : PBParticleSystem_BlendMode.PSB_ADD,
 			initialVelocitySpeed : { start: 0.2, end: 0.6 },
 		}),

@@ -81,6 +81,7 @@ export class LaneVisuals {
 	private pinEntities: (Entity | undefined)[] = new Array(PIN_COUNT).fill(undefined)
 	private ball?: Entity
 	private spotlight?: Entity
+	private trailEmitter?: Entity
 
 	private rollStartTimestamp: number = 0
 
@@ -416,6 +417,7 @@ export class LaneVisuals {
 
 	removeBall(): void {
 		this.removeSpotlight()
+		this.removeTrailEmitter()
 		if (this.ball === undefined) return
 		ParticleSystem.deleteFrom(this.ball)
 		engine.removeEntity(this.ball)
@@ -481,11 +483,38 @@ export class LaneVisuals {
 
 
 
+	// MARK: updateTrailEmitter
+	/**
+	 * Keeps the trail cone on the ball without inheriting ball spin.
+	 */
+	private updateTrailEmitter(ballWorldPos: Vector3): void {
+		if (this.trailEmitter === undefined) return
+
+		const transform = Transform.getMutableOrNull(this.trailEmitter)
+		if (!transform) return
+
+		transform.position = Vector3.create(ballWorldPos.x, ballWorldPos.y, ballWorldPos.z)
+	}
+
+
+
+	// MARK: removeTrailEmitter
+	/**
+	 * Drops the unparented trail emitter if one is in the scene.
+	 */
+	private removeTrailEmitter(): void {
+		if (this.trailEmitter === undefined) return
+		engine.removeEntity(this.trailEmitter)
+		this.trailEmitter = undefined
+	}
+
+
+
 	// MARK: onReplayEnd
 	onReplayEnd(): void {
 		console.log("laneVisuals: onReplayEnd()")
 
-		if (this.ball !== undefined) stopBallTrail(this.ball)
+		stopBallTrail(this.trailEmitter)
 
 		// Was it a strike?
 		if (this.rollPayload?.gutterBall === true) {
@@ -632,7 +661,8 @@ export class LaneVisuals {
 		}
 
 		this.spawnReplaySpotlight()
-		applyBallTrail(this.ball, resolvePlayerLoadout(this.rollOwnerUserId).trailId)
+		this.removeTrailEmitter()
+		this.trailEmitter = applyBallTrail(this.ball, resolvePlayerLoadout(this.rollOwnerUserId).trailId)
 
 		const ballKf  = data.ballKeyframes as SimObjectKeyframes
 		const pinsKfs = data.pinsKeyframes as SimObjectKeyframes[]
@@ -670,6 +700,7 @@ export class LaneVisuals {
 				ballTransform.position = Vector3.add(this.lanePosition, ballLaneLocal)
 				ballTransform.rotation = replaySampleRotation(replayState.ballKeyframes, elapsed)
 				this.updateReplaySpotlight(ballLaneLocal.z)
+				this.updateTrailEmitter(ballTransform.position)
 			}
 
 			const pinTracks = replayState.pinsKeyframes

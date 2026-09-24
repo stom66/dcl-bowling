@@ -6,33 +6,61 @@ import { DEFAULT_SPOTLIGHT_COLOR_ID, DEFAULT_SPOTLIGHT_ID, DEFAULT_TRAIL_ID, spo
 
 const MAX_TRAIL_PARTICLES = 80
 
+/** Rolls travel world +Z toward the pins. Wake emission is the opposite, world -Z. */
+const TRAIL_WAKE_HORIZONTAL = Vector3.create(0, 0, -1)
+const TRAIL_WAKE_ARC        = Vector3.create(0, 0.70710678, -0.70710678)
+
+
+
+// MARK: trailEmitRotation
+/**
+ * Aims the trail cone. Rising trails shoot horizontally backward; falling
+ * trails shoot 45 degrees up and back. Independent of ball spin.
+ */
+function trailEmitRotation(
+	rises : boolean
+): Quaternion {
+	return Quaternion.lookRotation(
+		rises ? TRAIL_WAKE_HORIZONTAL : TRAIL_WAKE_ARC,
+		Vector3.Up(),
+	)
+}
+
 
 
 // MARK: applyBallTrail
 /**
- * Attaches or clears a catalog particle trail on the ball. Caps `maxParticles`.
+ * Spawns an unparented trail emitter at the ball. Caps `maxParticles`.
  * Call only when roll playback starts — not during aiming or countdown.
  */
 export function applyBallTrail(
 	ball    : Entity,
 	trailId : string
-): void {
+): Entity | undefined {
 	ParticleSystem.deleteFrom(ball)
-	if (trailId === DEFAULT_TRAIL_ID) return
+	if (trailId === DEFAULT_TRAIL_ID) return undefined
 
 	const item = trails[trailId]
-	if (!item?.emitter) return
+	if (!item?.emitter) return undefined
 
-	const emitter      = item.emitter as Record<string, unknown>
-	const listedMax    = typeof emitter.maxParticles === 'number' ? emitter.maxParticles : MAX_TRAIL_PARTICLES
-	const maxParticles = Math.min(listedMax, MAX_TRAIL_PARTICLES)
+	const emitter       = item.emitter as Record<string, unknown>
+	const listedMax     = typeof emitter.maxParticles === 'number' ? emitter.maxParticles : MAX_TRAIL_PARTICLES
+	const maxParticles  = Math.min(listedMax, MAX_TRAIL_PARTICLES)
+	const gravity       = typeof emitter.gravity === 'number' ? emitter.gravity : 0
+	const ballTransform = Transform.getOrNull(ball)
 
-	ParticleSystem.create(ball, {
+	const trail = engine.addEntity()
+	Transform.create(trail, {
+		position: ballTransform?.position ?? Vector3.Zero(),
+		rotation: trailEmitRotation(gravity < 0),
+	})
+	ParticleSystem.create(trail, {
 		...emitter,
 		maxParticles,
 		active        : true,
 		playbackState : PBParticleSystem_PlaybackState.PS_PLAYING,
 	} as Parameters<typeof ParticleSystem.create>[1])
+	return trail
 }
 
 
@@ -42,9 +70,10 @@ export function applyBallTrail(
  * Stops new trail particles so remaining ones fade out. No-op if none attached.
  */
 export function stopBallTrail(
-	ball : Entity
+	emitter : Entity | undefined
 ): void {
-	const ps = ParticleSystem.getMutableOrNull(ball)
+	if (emitter === undefined) return
+	const ps = ParticleSystem.getMutableOrNull(emitter)
 	if (!ps) return
 	ps.active = false
 }
