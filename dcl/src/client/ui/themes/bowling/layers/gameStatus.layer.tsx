@@ -10,7 +10,7 @@ import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 import { userProfileCache } from 'src/shared/utils/userProfileCache'
 
 import { ClientStore } from 'src/client/clientStore'
-import { bowlingCharsAtlas, bowlingTextLabelsAtlas, gameIconsAtlas, getBowlingTextLabelSize } from 'src/client/ui/themes/bowling/atlases'
+import { bowlingRussoOneAlphaNumericAtlas, bowlingRussoOneSymbolsAtlas, gameIconsAtlas } from 'src/client/ui/themes/bowling/atlases'
 
 
 type GameStatusProps = {
@@ -25,13 +25,15 @@ const clientStore = ClientStore.getInstance()
 const PANEL_WIDTH         = 520
 const OUTER_PADDING       = 3
 const OUTER_BORDER_WIDTH  = 4
-const INNER_PADDING       = 8
+const INNER_PADDING       = { top: 8, bottom: 8, right: 8, left: 8 }
 const BALL_SIZE           = 80
 const BALL_ICON_PADDING   = 4
 const COUNTDOWN_NUM_SIZE  = 32
-const STATUS_HEADING_SIZE = 24
-const STATUS_NAME_SIZE    = 18
-const STATUS_LINE_SIZE    = 24
+
+const STATUS_HEADING_SIZE = 18
+const STATUS_NAME_SIZE    = 34
+const STATUS_LINE_SIZE    = 20
+
 const SECONDS_LABEL_SIZE  = 10
 const BALL_BORDER_WIDTH   = 2
 const INNER_BORDER_WIDTH  = 1
@@ -45,7 +47,7 @@ const STATUS_LABEL_MAX_WIDTH =
 		- OUTER_BORDER_WIDTH * 2
 		- OUTER_PADDING      * 2
 		- INNER_BORDER_WIDTH * 2
-		- INNER_PADDING      * 2
+		- (INNER_PADDING.left + INNER_PADDING.right)
 		- 8                  * 2
 	) * 6 / 12)
 
@@ -55,7 +57,7 @@ const STATUS_LABEL_MAX_WIDTH =
  */
 export const GAME_STATUS_PANEL_HEIGHT =
 	BALL_SIZE
-	+ INNER_PADDING * 2
+	+ (INNER_PADDING.left + INNER_PADDING.right)
 	+ INNER_BORDER_WIDTH * 2
 	+ OUTER_PADDING * 2
 	+ OUTER_BORDER_WIDTH * 2
@@ -79,7 +81,7 @@ export class GameStatusLayer extends Layer {
 		})
 
 		this.statusProps = new PropsController<GameStatusProps>({
-			playerName: '~',
+			playerName: '',
 			endTime   : 0,
 			durationMs: 0,
 		})
@@ -90,8 +92,10 @@ export class GameStatusLayer extends Layer {
 
 			if (data.currentFrameUserId) {
 				void userProfileCache.getDisplayName(data.currentFrameUserId).then((displayName) => {
-					this.statusProps.set('playerName', displayName || '~')
+					this.statusProps.set('playerName', displayName || '')
 				})
+			} else {
+				this.statusProps.set('playerName', '')
 			}
 
 			if (data.currentRollStartTime) {
@@ -109,22 +113,41 @@ export class GameStatusLayer extends Layer {
 
 
 
-	// MARK: getStatusLabelKey
-	/** Named cell in {@link bowlingTextLabelsAtlas} for the current lane phase. */
-	private getStatusLabelKey(): keyof typeof bowlingTextLabelsAtlas.named {
+	// MARK: getStatusText
+	/** Phase copy for the third status row (name lives in its own row). */
+	private getStatusText(): string {
 		const lanePhase = clientStore.getLanePhase()
 
-		if (lanePhase === LanePhase.GAME_STARTING)    return 'gameIsStarting'
-		if (lanePhase === LanePhase.WAITING)          return 'waitingForNextFrame'
-		if (lanePhase === LanePhase.FRAME_START)      return 'turnIsStarting'
-		if (lanePhase === LanePhase.ROLL_AWAITING)    return 'waitingToRoll'
-		if (lanePhase === LanePhase.ROLL_PROCESSING)  return 'rolling'
-		if (lanePhase === LanePhase.ROLL_PLAYBACK)    return 'rolling'
-		if (lanePhase === LanePhase.ROLL_END)         return 'hasFinishedRolling'
-		if (lanePhase === LanePhase.FRAME_END)        return 'hasFinishedTheirFrame'
-		if (lanePhase === LanePhase.GAME_ENDING)      return 'gameIsEnding'
-		if (lanePhase === LanePhase.NONE)             return 'youAreNotInAGame'
-		return 'idle'
+		if (lanePhase === LanePhase.GAME_STARTING)    return 'Game is starting'
+		if (lanePhase === LanePhase.WAITING)          return 'Waiting for the next frame'
+		if (lanePhase === LanePhase.FRAME_START)      return 'Turn is starting'
+		if (lanePhase === LanePhase.ROLL_AWAITING)    return 'Waiting to roll'
+		if (lanePhase === LanePhase.ROLL_PROCESSING)  return 'Rolling'
+		if (lanePhase === LanePhase.ROLL_PLAYBACK)    return 'Rolling'
+		if (lanePhase === LanePhase.ROLL_END)         return 'Has finished rolling'
+		if (lanePhase === LanePhase.FRAME_END)        return 'Has finished their frame'
+		if (lanePhase === LanePhase.GAME_ENDING)      return 'Game is ending'
+		return 'You are not in a game'
+	}
+
+
+
+	// MARK: isInGame
+	/** True once this client is on a lane that has a match underway. */
+	private isInGame(): boolean {
+		return clientStore.getLanePhase() !== LanePhase.NONE
+	}
+
+
+
+	// MARK: hasCurrentTurn
+	/** True when a named player currently owns the frame. */
+	private hasCurrentTurn(): boolean {
+		if (!this.isInGame()) return false
+		if (clientStore.getLanePhase() === LanePhase.GAME_STARTING) return false
+
+		const playerName = this.statusProps.get('playerName')
+		return playerName.length > 0
 	}
 
 
@@ -184,43 +207,47 @@ export class GameStatusLayer extends Layer {
 	// MARK: statusCopy
 	/** Center column: heading, current player, and phase status. */
 	private statusCopy() {
-		const theme        = getTheme()
-		const lightPrimary = lighten(theme.colors.primary, 0.35)
-		const playerName   = this.statusProps.get('playerName')
-		const headingSize  = getBowlingTextLabelSize('currentTurn', STATUS_HEADING_SIZE, STATUS_LABEL_MAX_WIDTH)
-		const statusKey    = this.getStatusLabelKey()
-		const statusSize   = getBowlingTextLabelSize(statusKey, STATUS_LINE_SIZE, STATUS_LABEL_MAX_WIDTH)
+		const theme          = getTheme()
+		const lightPurple    = lighten(COLOR_INNER_BORDER, 0.45)
+		const playerName     = this.statusProps.get('playerName')
+		const hasCurrentTurn = this.hasCurrentTurn()
+		const stringAtlases  = {
+			characters: bowlingRussoOneAlphaNumericAtlas,
+			symbols   : bowlingRussoOneSymbolsAtlas,
+		}
 
 		return (
 			<Column
 				width          = "100%"
 				spacing        = {2}
-				alignItems     = "center"
+				alignItems     = "flex-start"
 				justifyContent = "center"
 			>
-				<Icon
-					src          = {bowlingTextLabelsAtlas.source}
-					uvs          = {bowlingTextLabelsAtlas.uv.currentTurn}
-					width        = {headingSize.width}
-					height       = {headingSize.height}
-					iconColor    = {theme.colors.warning}
-					alignSelf    = "center"
-					uiBackground = {{ texture: bowlingTextLabelsAtlas.texture }}
-				/>
+				{hasCurrentTurn ? (
+					<IconString
+						value     = "CURRENT TURN"
+						height    = {STATUS_HEADING_SIZE}
+						iconColor = {lightPurple}
+						atlases   = {stringAtlases}
+					/>
+				) : null}
+				{hasCurrentTurn ? (
+					<IconString
+						value     = {playerName}
+						height    = {STATUS_NAME_SIZE}
+						iconColor = {Color4.White()}
+						atlases   = {stringAtlases}
+					/>
+				) : null}
 				<IconString
-					value     = {playerName}
-					height    = {STATUS_NAME_SIZE}
-					iconColor = {lightPrimary}
-					atlases   = {{ characters: bowlingCharsAtlas }}
-				/>
-				<Icon
-					src          = {bowlingTextLabelsAtlas.source}
-					uvs          = {bowlingTextLabelsAtlas.uv[statusKey]}
-					width        = {statusSize.width}
-					height       = {statusSize.height}
-					iconColor    = {theme.colors.light}
-					alignSelf    = "center"
-					uiBackground = {{ texture: bowlingTextLabelsAtlas.texture }}
+					value       = {this.getStatusText()}
+					height      = {STATUS_LINE_SIZE}
+					width       = {STATUS_LABEL_MAX_WIDTH}
+					iconColor   = {theme.colors.primary}
+					atlases     = {stringAtlases}
+					uiTransform = {{
+						justifyContent: 'flex-start',
+					}}
 				/>
 			</Column>
 		)
@@ -237,7 +264,6 @@ export class GameStatusLayer extends Layer {
 		const theme        = getTheme()
 		const lightPrimary = lighten(theme.colors.warning, 0.0)
 		const seconds      = this.getCountdownSeconds()
-		const secondsSize  = getBowlingTextLabelSize('seconds', SECONDS_LABEL_SIZE)
 
 		return (
 			<ProgressBarRadial
@@ -261,14 +287,16 @@ export class GameStatusLayer extends Layer {
 						value     = {seconds}
 						height    = {COUNTDOWN_NUM_SIZE}
 						iconColor = {Color4.White()}
+						atlas     = {bowlingRussoOneAlphaNumericAtlas}
 					/>
-					<Icon
-						src          = {bowlingTextLabelsAtlas.source}
-						uvs          = {bowlingTextLabelsAtlas.uv.seconds}
-						width        = {secondsSize.width}
-						height       = {secondsSize.height}
-						iconColor    = {lightPrimary}
-						uiBackground = {{ texture: bowlingTextLabelsAtlas.texture }}
+					<IconString
+						value     = "SECONDS"
+						height    = {SECONDS_LABEL_SIZE}
+						iconColor = {lightPrimary}
+						atlases   = {{
+							characters: bowlingRussoOneAlphaNumericAtlas,
+							symbols   : bowlingRussoOneSymbolsAtlas,
+						}}
 					/>
 				</Column>
 			</ProgressBarRadial>
@@ -297,21 +325,21 @@ export class GameStatusLayer extends Layer {
 				<Row
 					width           = "100%"
 					padding         = {INNER_PADDING}
-					spacing         = {8}
+					spacing         = {0}
 					alignItems      = "center"
 					backgroundColor = {COLOR_PANEL_FILL}
 					borderColor     = {COLOR_INNER_BORDER}
 					borderWidth     = {INNER_BORDER_WIDTH}
 					borderRadius    = {innerRadius}
 				>
-					<Column cols={3} justifyContent="center" alignItems="center">
+					<Column cols={3} justifyContent="flex-start" alignItems="flex-start">
 						{this.ballIcon()}
 					</Column>
-					<Column cols={6} justifyContent="center" alignItems="center">
+					<Column cols={6} justifyContent="center" alignItems="flex-start">
 						{this.statusCopy()}
 					</Column>
-					<Column cols={3} justifyContent="center" alignItems="center">
-						{this.countdownTimer()}
+					<Column cols={3} justifyContent="flex-end" alignItems="flex-end">
+						{this.isInGame() ? this.countdownTimer() : null}
 					</Column>
 				</Row>
 			</UiBox>,

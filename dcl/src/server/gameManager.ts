@@ -8,6 +8,7 @@ import { PIN_LANE_LOCAL_POSITIONS } from "src/shared/physics/physics.pin-layout"
 import { GameFrameCount, GameSettings, normalizeFrameCount } from "src/shared/settings"
 import { NotifyPlayerRollPayload, RequestPlayRollPayload, RollPayload } from "src/shared/types/shared-types"
 import { isValidLaneIndex } from "src/shared/utils/laneIndex"
+import { pinStatesToLeaveBitmask } from "src/shared/utils/splits"
 import { userProfileCache } from "src/shared/utils/userProfileCache"
 
 import { LeaderboardManager } from "src/server/leaderboardManager"
@@ -375,6 +376,9 @@ class GameManager {
 		// Update lane runtime + scorecard from the simulation result.
 		rt.pinStanding = simResults.finalPinStates
 		LaneStore.addScore(laneIndex, frameIndex, userId, score)
+		if (rollIndex === 0) {
+			LaneStore.setFrameLeave(laneIndex, frameIndex, userId, pinStatesToLeaveBitmask(simResults.finalPinStates))
+		}
 
 		this.schedulePhase(laneIndex, LanePhase.ROLL_PLAYBACK, GameSettings.ROLL_REPLAY_DURATION)
 

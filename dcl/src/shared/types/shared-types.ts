@@ -42,6 +42,8 @@ export type LaneSnapshot = {
 export type LaneScores = {
 	userId: string
 	frames: number[][]
+	/** Roll-0 standing-pin bitmask per frame. Bit `n` means pin `n + 1` was standing. */
+	leaves: number[]
 }
 export type LanePlayers = {
 	userId     : string
@@ -137,7 +139,7 @@ export type RequestCatalogItemPayload = {
 	itemId: string
 }
 
-/** Client → server: admin-only ticket grant. */
+/** Client → server: ticket grant. Admins, or any player when the playtest panel is on. */
 export type RequestTicketPayload = {
 	amount: number
 }

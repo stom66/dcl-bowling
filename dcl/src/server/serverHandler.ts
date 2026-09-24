@@ -1,8 +1,7 @@
 import * as utils from "@dcl-sdk/utils"
 
-import { isAdmin } from 'src/shared/data/admins'
 import { MessageType, room } from 'src/shared/room'
-import { GameSettings } from 'src/shared/settings'
+import { canUsePlaytestDebug, GameSettings } from 'src/shared/settings'
 import { RequestCatalogItemPayload, RequestJoinGamePayload, RequestPlayRollPayload, RequestSetLaneBumpersPayload, RequestSetPreferencesPayload, RequestTicketPayload } from 'src/shared/types/shared-types'
 
 import { gameManager } from 'src/server/gameManager'
@@ -24,6 +23,7 @@ export namespace serverHandler {
 		room.onMessage(MessageType.REQUEST_PLAY_ROLL, (data, context) => handleRequestPlayRoll(data, context))
 		room.onMessage(MessageType.REQUEST_LEAVE_GAME, (data, context) => handleRequestLeaveGame(data, context))
 		room.onMessage(MessageType.REQUEST_UNLOCK_ITEM, (data, context) => handleRequestUnlockItem(data, context))
+		room.onMessage(MessageType.REQUEST_RESET_UNLOCKS, (_data, context) => handleRequestResetUnlocks(context))
 		room.onMessage(MessageType.REQUEST_EQUIP_ITEM, (data, context) => handleRequestEquipItem(data, context))
 		room.onMessage(MessageType.REQUEST_TICKET, (data, context) => handleRequestTicket(data, context))
 		room.onMessage(MessageType.REQUEST_SET_PREFERENCES, (data, context) => handleRequestSetPreferences(data, context))
@@ -83,6 +83,21 @@ export namespace serverHandler {
 	}
 
 
+	// MARK: Reset Unlocks
+	/**
+	 * Relocks the sender's items when they are an admin or the playtest panel is on.
+	 */
+	export function handleRequestResetUnlocks(context: any) {
+		const userId = getUserId(context)
+		console.log('serverHandler: handleRequestResetUnlocks: userId', userId)
+		if (!canUsePlaytestDebug(userId)) {
+			console.log('serverHandler: handleRequestResetUnlocks: playtest debug disabled and not an admin', userId)
+			return
+		}
+		PlayerProfileManager.requestResetUnlocks(userId)
+	}
+
+
 	// MARK: Equip Item
 	export function handleRequestEquipItem(data: RequestCatalogItemPayload, context: any) {
 		const userId = getUserId(context)
@@ -99,8 +114,8 @@ export namespace serverHandler {
 	) {
 		const userId = getUserId(context)
 		console.log('serverHandler: handleRequestTicket: userId', userId, 'amount', data?.amount)
-		if (!isAdmin(userId)) {
-			console.log('serverHandler: handleRequestTicket: not an admin', userId)
+		if (!canUsePlaytestDebug(userId)) {
+			console.log('serverHandler: handleRequestTicket: playtest debug disabled and not an admin', userId)
 			return
 		}
 		if (typeof data?.amount !== 'number') return

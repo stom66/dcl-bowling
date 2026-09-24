@@ -81,9 +81,20 @@ export namespace ClientMessaging {
 	}
 
 
+	// MARK: requestResetUnlocks
+	/**
+	 * Asks the server to relock purchased items and restore the default loadout.
+	 */
+	export function requestResetUnlocks(): void {
+		console.log('ClientMessaging: requestResetUnlocks')
+		room.send(MessageType.REQUEST_RESET_UNLOCKS, {})
+	}
+
+
 	// MARK: requestTicket
 	/**
-	 * Asks the server to add tickets to this player. Non-admins are rejected.
+	 * Asks the server to add tickets to this player.
+	 * Granted for admins, and for any player while the playtest panel is enabled.
 	 */
 	export function requestTicket(amount: number): void {
 		console.log('ClientMessaging: requestTicket: amount', amount)

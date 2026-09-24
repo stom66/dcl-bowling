@@ -1,14 +1,18 @@
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs from '@dcl/sdk/react-ecs'
 import {
+	atlasIconsFontAwesome,
+	ButtonText,
 	easingFunctions,
 	FlashColor,
 	getTheme,
 	Icon,
+	IconString,
 	Layer,
 	lighten,
 	playOnce,
 	PropsController,
+	Spinner,
 	tweenValue,
 	UiBox,
 	ZoneType,
@@ -17,7 +21,8 @@ import {
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 import { timers } from 'src/shared/utils/timers'
 
-import { bowlingIconAtlas } from 'src/client/ui/themes/bowling/atlases'
+import { areLaneBumpersEnabled, toggleLaneBumpers } from 'src/client/bowlingControls'
+import { bowlingIconAtlas, bowlingRussoOneAlphaNumericAtlas, bowlingRussoOneSymbolsAtlas } from 'src/client/ui/themes/bowling/atlases'
 
 
 type IndicatorName = 'POSITION' | 'DIRECTION' | 'STRENGTH'
@@ -29,6 +34,21 @@ const INDICATOR_OFFSET = {
 }
 
 const FLASH_ID = 'bowling-click-to-set-flash'
+
+const CONTROLS_WIDTH       = 960
+const CLICK_WIDTH          = 544
+const CLICK_HEIGHT         = 107
+const CLICK_BORDER         = 4
+const CLICK_RADIUS         = 12
+const BUMPER_SIZE          = CLICK_HEIGHT
+const BUMPER_ICON          = 48
+const BUMPER_LABEL_HEIGHT  = 16
+const BUMPER_GAP           = 24
+const BUMPER_LEFT          = (CONTROLS_WIDTH + CLICK_WIDTH) / 2 + BUMPER_GAP
+const BUMPER_TOP           = (CLICK_HEIGHT - BUMPER_SIZE) / 2
+const BUMPER_SPIN_ID       = 'bowling-bumper-spin'
+const BUMPER_SPIN_DEGREES  = 720
+const BUMPER_SPIN_DURATION = 0.5
 
 type BowlingControlsProps = {
 	indicatorOffset : number
@@ -69,7 +89,8 @@ function tweenColor(
 
 // MARK: BowlingControlsLayer
 /**
- * Bottom-center roll input HUD: click-to-set plus the position/direction/strength tab.
+ * Bottom-center roll input HUD: click-to-set, the bumper toggle to its right,
+ * and the position/direction/strength tab.
  */
 export class BowlingControlsLayer extends Layer {
 	private controlProps: PropsController<BowlingControlsProps>
@@ -83,7 +104,7 @@ export class BowlingControlsLayer extends Layer {
 			showFrom   : 'bottom',
 			hideTo     : 'bottom',
 			uiTransform: {
-				width : 960,
+				width : CONTROLS_WIDTH,
 				height: 320,
 			},
 		})
@@ -162,6 +183,76 @@ export class BowlingControlsLayer extends Layer {
 	}
 
 
+	// MARK: bumperButton
+	/**
+	 * Square toggle to the right of click-to-set. Raises and lowers gutter bumpers.
+	 * The icon spins two full turns on each click.
+	 */
+	private bumperButton() {
+		const theme   = getTheme()
+		const enabled = areLaneBumpersEnabled()
+		const iconUv  = enabled
+			? atlasIconsFontAwesome.uv.arrowDown
+			: atlasIconsFontAwesome.uv.arrowUp
+
+		return (
+			<ButtonText
+				id              = "btn_bumper_toggle"
+				width           = {BUMPER_SIZE}
+				height          = {BUMPER_SIZE}
+				aspectRatio     = {1}
+				backgroundColor = {theme.colors.secondary}
+				borderColor     = {theme.colors.primary}
+				borderWidth     = {CLICK_BORDER}
+				borderRadius    = {CLICK_RADIUS}
+				callback        = {() => {
+					toggleLaneBumpers()
+					playOnce(BUMPER_SPIN_ID)
+				}}
+				uiTransform     = {{
+					positionType: 'absolute',
+					position    : { left: BUMPER_LEFT, top: BUMPER_TOP },
+					padding     : { top: 8, bottom: 22 },
+				}}
+			>
+				<Spinner
+					id        = {BUMPER_SPIN_ID}
+					playing   = {false}
+					looping   = {false}
+					duration  = {BUMPER_SPIN_DURATION}
+					degrees   = {BUMPER_SPIN_DEGREES}
+					burstCount= {1}
+					width     = {BUMPER_ICON}
+					height    = {BUMPER_ICON}
+				>
+					<Icon
+						uvs         = {iconUv}
+						width       = {BUMPER_ICON}
+						height      = {BUMPER_ICON}
+						aspectRatio = {1}
+						iconColor   = {theme.colors.primary}
+					/>
+				</Spinner>
+				<IconString
+					value     = "BUMPERS"
+					height    = {BUMPER_LABEL_HEIGHT}
+					iconColor = {Color4.White()}
+					atlases   = {{
+						characters: bowlingRussoOneAlphaNumericAtlas,
+						symbols   : bowlingRussoOneSymbolsAtlas,
+					}}
+					uiTransform={{
+						positionType  : 'absolute',
+						position      : { left: 0, right: 0, bottom: 6 },
+						width         : '100%',
+						justifyContent: 'center',
+					}}
+				/>
+			</ButtonText>
+		)
+	}
+
+
 	// MARK: body
 	protected body() {
 		const theme = getTheme()
@@ -177,7 +268,7 @@ export class BowlingControlsLayer extends Layer {
 		return [
 			<UiBox
 				key            = "bowling-controls-stack"
-				width          = {960}
+				width          = {CONTROLS_WIDTH}
 				height         = {320}
 				alignItems     = "center"
 				justifyContent = "flex-end"
@@ -185,45 +276,56 @@ export class BowlingControlsLayer extends Layer {
 				uiTransform    = {{ flexDirection: 'column' }}
 			>
 				<UiBox
-					key             = "btn_click_to_set_box"
-					width           = {544}
-					height          = {107}
-					borderColor     = {clickBorderColor}
-					borderWidth     = {4}
-					borderRadius    = {12}
-					backgroundColor = {theme.colors.secondary}
-					justifyContent  = "center"
-					alignItems      = "center"
-					onMouseDown     = {() => { this.onClickToSet() }}
-					onMouseEnter    = {() => {
-						tweenColor(props, 'clickColor',       lighten(theme.colors.primary, 0.75), 0.1)
-						tweenColor(props, 'clickBorderColor', lighten(theme.colors.success, 0.01), 0.1)
-					}}
-					onMouseLeave    = {() => {
-						tweenColor(props, 'clickColor',       theme.colors.light,   0.1)
-						tweenColor(props, 'clickBorderColor', theme.colors.primary, 0.1)
-					}}
+					key            = "click_row"
+					width          = {CONTROLS_WIDTH}
+					height         = {CLICK_HEIGHT}
+					borderWidth    = {0}
+					justifyContent = "center"
+					alignItems     = "center"
+					uiTransform    = {{ flexDirection: 'row' }}
 				>
-					<FlashColor
-						id            = {FLASH_ID}
-						playing       = {false}
-						looping       = {false}
-						duration      = {0.1}
-						burstCount    = {2}
-						burstInterval = {0.3}
-						flashColor    = {theme.colors.primary}
-						easingFunction= {easingFunctions.easeBounce}
-						width         = {512}
-						height        = {64}
+					<UiBox
+						key             = "btn_click_to_set_box"
+						width           = {CLICK_WIDTH}
+						height          = {CLICK_HEIGHT}
+						borderColor     = {clickBorderColor}
+						borderWidth     = {CLICK_BORDER}
+						borderRadius    = {CLICK_RADIUS}
+						backgroundColor = {theme.colors.secondary}
+						justifyContent  = "center"
+						alignItems      = "center"
+						onMouseDown     = {() => { this.onClickToSet() }}
+						onMouseEnter    = {() => {
+							tweenColor(props, 'clickColor',       lighten(theme.colors.primary, 0.75), 0.1)
+							tweenColor(props, 'clickBorderColor', lighten(theme.colors.success, 0.01), 0.1)
+						}}
+						onMouseLeave    = {() => {
+							tweenColor(props, 'clickColor',       theme.colors.light,   0.1)
+							tweenColor(props, 'clickBorderColor', theme.colors.primary, 0.1)
+						}}
 					>
-						<Icon
-							src       = {bowlingIconAtlas.source}
-							uvs       = {bowlingIconAtlas.uv.clickToSet}
-							width     = {512}
-							height    = {64}
-							iconColor = {clickColor}
-						/>
-					</FlashColor>
+						<FlashColor
+							id            = {FLASH_ID}
+							playing       = {false}
+							looping       = {false}
+							duration      = {0.1}
+							burstCount    = {2}
+							burstInterval = {0.3}
+							flashColor    = {theme.colors.primary}
+							easingFunction= {easingFunctions.easeBounce}
+							width         = {512}
+							height        = {64}
+						>
+							<Icon
+								src       = {bowlingIconAtlas.source}
+								uvs       = {bowlingIconAtlas.uv.clickToSet}
+								width     = {512}
+								height    = {64}
+								iconColor = {clickColor}
+							/>
+						</FlashColor>
+					</UiBox>
+					{this.bumperButton()}
 				</UiBox>
 
 				<UiBox

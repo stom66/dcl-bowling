@@ -3,7 +3,7 @@ import { LaneItem } from "src/shared/data/unlocks/types"
 
 export const lanes: Record<string, LaneItem> = {
 	'lane-default': {
-		name            : 'Default Lane',
+		name            : 'Default',
 		description     : 'The standard house lane.',
 		ticketCost      : 0,
 		defaultUnlocked : true,

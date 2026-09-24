@@ -3,11 +3,14 @@ import { Color4 } from '@dcl/sdk/math'
 import ReactEcs from '@dcl/sdk/react-ecs'
 import {
 	Background,
-	ButtonText,
+	Column,
 	getTheme,
 	Icon,
+	IconString,
 	Layer,
+	lighten,
 	PropsController,
+	Row,
 	UiBox,
 	ZoneType,
 } from '@stom66/dcl-ui-component-kit'
@@ -21,6 +24,8 @@ import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 import { ClientMessaging } from 'src/client/clientMessaging'
 import {
 	bowlingIconAtlas,
+	bowlingRussoOneAlphaNumericAtlas,
+	bowlingRussoOneSymbolsAtlas,
 	bowlingThemeAssets,
 	getBowlingDigitUvs,
 	getLaneNumberUvs,
@@ -32,7 +37,18 @@ import {
 
 const FORCE_SHOW = false
 const breakAfter = Math.ceil(GameSettings.MAX_LANES / 2) - 1
-const FRAME_PICKER_HEIGHT = 52
+const FRAME_LABEL_HEIGHT        = 16
+const FRAME_BUTTON_HEIGHT       = 40
+const FRAME_BUTTON_WIDTH        = 132
+const FRAME_BUTTON_LABEL_HEIGHT = 14
+const FRAME_PICKER_HEIGHT       = 56
+
+const frameLabelAtlases = {
+	characters: bowlingRussoOneAlphaNumericAtlas,
+	symbols   : bowlingRussoOneSymbolsAtlas,
+}
+
+let hoveredFrameCount: GameFrameCount | null = null
 
 /** 1-based UV rows on the 4-state button sheets (bottom → top). */
 enum LaneButtonRow {
@@ -391,31 +407,96 @@ export class JoinGameLayer extends Layer {
 
 
 
+	// MARK: frameCountButton
+	/**
+	 * One game-length option. Filled orange when it is the length used to open an idle lane.
+	 */
+	private frameCountButton(
+		count   : GameFrameCount,
+		selected: GameFrameCount,
+	) {
+		const theme      = getTheme()
+		const isSelected = count === selected
+		const isHovered  = hoveredFrameCount === count
+		const fill       = isSelected
+			? theme.colors.primary
+			: isHovered
+				? lighten(theme.colors.dark, 0.12)
+				: theme.colors.dark
+
+		return (
+			<UiBox
+				key             = {`join_frames_${count}`}
+				width           = {FRAME_BUTTON_WIDTH}
+				height          = {FRAME_BUTTON_HEIGHT}
+				backgroundColor = {fill}
+				borderColor     = {isSelected ? theme.colors.warning : theme.colors.primary}
+				borderWidth     = {isSelected ? 3 : 2}
+				borderRadius    = {theme.border.radiusSmall}
+				alignItems      = "center"
+				justifyContent  = "center"
+				onMouseEnter    = {() => { hoveredFrameCount = count }}
+				onMouseLeave    = {() => {
+					if (hoveredFrameCount === count) hoveredFrameCount = null
+				}}
+				onMouseDown     = {() => { this.selectFrameCount(count) }}
+			>
+				<IconString
+					value     = {`${count} FRAMES`}
+					height    = {FRAME_BUTTON_LABEL_HEIGHT}
+					iconColor = {isSelected ? theme.colors.dark : theme.colors.light}
+					atlases   = {frameLabelAtlases}
+				/>
+			</UiBox>
+		)
+	}
+
+
+
 	// MARK: frameCountPicker
 	/**
-	 * 3 / 6 / 10 control shown above the lane buttons.
+	 * Game-length control above the lane buttons. The label and button copy
+	 * say these options are frame counts.
 	 */
 	private frameCountPicker() {
 		const theme    = getTheme()
 		const selected = this.joinProps.get('frameCount')
 
-		return GameSettings.GAME_FRAME_COUNTS.map((count) => {
-			const isSelected = count === selected
-			return (
-				<ButtonText
-					key             = {`join_frames_${count}`}
-					id              = {`btn_join_frames_${count}`}
-					textLabel       = {`${count}`}
-					width           = {72}
-					height          = {40}
-					backgroundColor = {theme.colors.secondary}
-					borderColor     = {isSelected ? theme.colors.primary : theme.colors.tertiary}
-					borderWidth     = {3}
-					fontColor       = {isSelected ? theme.colors.primary : theme.colors.light}
-					callback        = {() => { this.selectFrameCount(count) }}
-				/>
-			)
-		})
+		return (
+			<Column
+				key            = "join-frames"
+				width          = "100%"
+				height         = {FRAME_PICKER_HEIGHT}
+				spacing        = {0}
+				alignItems     = "center"
+				justifyContent = "center"
+			>
+				<Row
+					spacing        = {20}
+					height         = {FRAME_BUTTON_HEIGHT}
+					alignItems     = "center"
+					justifyContent = "center"
+				>
+					<IconString
+						value     = "SELECT FRAMES"
+						height    = {FRAME_LABEL_HEIGHT}
+						iconColor = {theme.colors.warning}
+						atlases   = {frameLabelAtlases}
+					/>
+					<Row
+						width          = "auto"
+						height         = {FRAME_BUTTON_HEIGHT}
+						spacing        = {10}
+						flexGrow       = {0}
+						flexShrink     = {0}
+						alignItems     = "center"
+						justifyContent = "center"
+					>
+						{GameSettings.GAME_FRAME_COUNTS.map((count) => this.frameCountButton(count, selected))}
+					</Row>
+				</Row>
+			</Column>
+		)
 	}
 
 
@@ -466,18 +547,7 @@ export class JoinGameLayer extends Layer {
 					borderWidth    = {0}
 					uiTransform    = {{ flexDirection: 'column' }}
 				>
-					<UiBox
-						key            = "join-frames"
-						width          = {mainWidth * 0.75}
-						height         = {FRAME_PICKER_HEIGHT}
-						alignItems     = "center"
-						justifyContent = "space-between"
-						padding        = {{ left: 32, right: 32 }}
-						borderWidth    = {0}
-						uiTransform    = {{ flexDirection: 'row' }}
-					>
-						{this.frameCountPicker()}
-					</UiBox>
+					{this.frameCountPicker()}
 					<UiBox
 						key            = "join-row-1"
 						width          = {mainWidth * 0.75}

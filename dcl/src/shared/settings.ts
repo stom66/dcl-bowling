@@ -1,3 +1,6 @@
+import { isAdmin } from 'src/shared/data/admins'
+
+
 // MARK: Vars
 declare var process: {
 	env: {
@@ -48,6 +51,22 @@ export class GameSettings {
 
 	static SHOW_FINAL_SCORES_DURATION     = 1000 * 5
 
+	/**
+	 * Shows the playtest debug panel and lets any player add tickets or reset
+	 * unlocks. Admins can always do both, even when this is false.
+	 */
+	static PLAYTEST_DEBUG_PANEL           = true
+
+}
+
+
+// MARK: canUsePlaytestDebug
+/**
+ * True when `userId` is an admin, or {@link GameSettings.PLAYTEST_DEBUG_PANEL}
+ * is on so any player may use the playtest actions.
+ */
+export function canUsePlaytestDebug(userId: string): boolean {
+	return GameSettings.PLAYTEST_DEBUG_PANEL || isAdmin(userId)
 }
 
 

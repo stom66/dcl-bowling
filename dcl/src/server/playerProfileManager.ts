@@ -8,7 +8,6 @@ import { PlayerTickets } from "src/shared/components/definitions/shared.playerTi
 import { PlayerUnlocks } from "src/shared/components/definitions/shared.playerUnlocks"
 import { PLAYERS_GROUP_ID } from "src/shared/components/registry"
 import { normalizeEntityKey } from "src/shared/components/types"
-import { isAdmin } from "src/shared/data/admins"
 import {
 	type CatalogKind,
 	getCatalogEntry,
@@ -27,7 +26,7 @@ import {
 	PlayerUnlocksState,
 	ScoringAnimationItem,
 } from "src/shared/data/unlocks/types"
-import { getPerfectScore, normalizeFrameCount } from "src/shared/settings"
+import { canUsePlaytestDebug, getPerfectScore, normalizeFrameCount } from "src/shared/settings"
 import { PlayerBackedState } from "src/shared/storage/player.storageBackedState"
 import { eventBus, ServerEvents } from "src/shared/utils/eventBus"
 
@@ -359,16 +358,44 @@ export namespace PlayerProfileManager {
 	}
 
 
+	// MARK: requestResetUnlocks
+	/**
+	 * Relocks purchased items and snaps the loadout back to defaults.
+	 * Admins can always do this. Other players can when the playtest panel is on.
+	 */
+	export function requestResetUnlocks(userId: string): void {
+		if (!canUsePlaytestDebug(userId)) {
+			console.log('PlayerProfileManager: requestResetUnlocks: playtest debug disabled and not an admin', userId)
+			return
+		}
+
+		const session = getSession(userId)
+		if (!session) {
+			console.log('PlayerProfileManager: requestResetUnlocks: no session', userId)
+			return
+		}
+
+		const unlockedItemIds = getDefaultUnlockedIds()
+		session.unlocks.update(() => ({ unlockedItemIds }))
+		session.loadout.update((state) => normalizeLoadout(state, unlockedItemIds))
+
+		void session.unlocks.persist()
+		void session.loadout.persist()
+		console.log('PlayerProfileManager: requestResetUnlocks: reset unlocks for', userId)
+	}
+
+
 	// MARK: requestAddTickets
 	/**
-	 * Adds tickets to an admin player's balance. Rejects non-admins and non-positive amounts.
+	 * Adds tickets to the player's balance.
+	 * Admins can always do this. Other players can when the playtest panel is on.
 	 */
 	export function requestAddTickets(
 		userId : string,
 		amount : number
 	): void {
-		if (!isAdmin(userId)) {
-			console.log('PlayerProfileManager: requestAddTickets: not an admin', userId)
+		if (!canUsePlaytestDebug(userId)) {
+			console.log('PlayerProfileManager: requestAddTickets: playtest debug disabled and not an admin', userId)
 			return
 		}
 

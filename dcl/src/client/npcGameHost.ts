@@ -24,7 +24,7 @@ export function setupBowlingHostNpc(): void {
 
 	AvatarShape.create(bowlingHostNpc, {
 		id       : 'bowling-host    ',
-		name     : 'Bowling Host',
+		name     : 'Start or Join a Game',
 		bodyShape: 'urn: decentraland: off-chain: base-avatars: BaseMale',
 		eyeColor : Color3.create(0.22, 0.49, 0.69),
 		skinColor: Color3.create(0.98, 0.82, 0.51),

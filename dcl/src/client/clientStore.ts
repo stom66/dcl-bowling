@@ -152,6 +152,18 @@ export class ClientStore {
 		return LaneStore.getScoresMap(this.laneIndex)
 	}
 
+
+
+	// MARK: getLeaves
+	/**
+	 * Roll-0 standing-pin bitmasks for the local lane, keyed by user id.
+	 * Bit `n` means pin `n + 1` was standing. Undefined when the player is not in a lane.
+	 */
+	getLeaves(): Map<string, number[]> | undefined {
+		if (this.laneIndex === undefined) return undefined
+		return LaneStore.getLeavesMap(this.laneIndex)
+	}
+
 	getGameStartTime(): number {
 		if (this.laneIndex === undefined) return 0
 		return LaneStore.getGameStartTime(this.laneIndex)

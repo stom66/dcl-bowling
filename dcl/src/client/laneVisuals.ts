@@ -61,18 +61,8 @@ const CHANCE_OF_PIGEON = 20 // 1 in n
 /** Delay between countdown visuals and each replay attempt (local player's roll). */
 const REPLAY_WAIT_MS = 3000
 
-/**
- * Replay follow-spot. Height is static above ball spawn Y. The beam points
- * straight down; appearance (color / gobo) comes from the roller's loadout.
- */
-const REPLAY_SPOTLIGHT = {
-	height     : 10,
-	innerAngle : 20,
-	outerAngle : 40,
-	intensity  : 800,
-	range      : 14,
-	shadow     : false,
-}
+/** Meters above the ball for the replay follow-spot. */
+const REPLAY_SPOTLIGHT_HEIGHT = 4
 
 
 /**
@@ -456,12 +446,17 @@ export class LaneVisuals {
 	private spawnReplaySpotlight(): void {
 		this.removeSpotlight()
 
-		const loadout = resolvePlayerLoadout(this.rollOwnerUserId)
+		const loadout       = resolvePlayerLoadout(this.rollOwnerUserId)
+		const ballTransform = this.ball ? Transform.getOrNull(this.ball) : null
+		const ballZ         = ballTransform ? ballTransform.position.z - this.lanePosition.z : 0
+
 		this.spotlight = applyFollowSpotlight(
 			loadout.spotlightId,
 			loadout.spotlightColorId,
-			REPLAY_SPOTLIGHT,
-			this.rollOwnerUserId === ClientStore.getInstance().getUserId(),
+			Vector3.add(
+				this.lanePosition,
+				Vector3.create(0, BALL_SPAWN_LANE_LOCAL_Y + REPLAY_SPOTLIGHT_HEIGHT, ballZ),
+			),
 		)
 	}
 
@@ -479,9 +474,8 @@ export class LaneVisuals {
 
 		transform.position = Vector3.add(
 			this.lanePosition,
-			Vector3.create(0, BALL_SPAWN_LANE_LOCAL_Y + REPLAY_SPOTLIGHT.height, ballLaneLocalZ),
+			Vector3.create(0, BALL_SPAWN_LANE_LOCAL_Y + REPLAY_SPOTLIGHT_HEIGHT, ballLaneLocalZ),
 		)
-		transform.rotation = Quaternion.fromEulerDegrees(-90, 0, 0)
 	}
 
 

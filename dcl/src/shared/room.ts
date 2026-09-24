@@ -15,6 +15,7 @@ export enum MessageType {
 	REQUEST_PLAY_ROLL           = 'requestPlayRoll',
 	REQUEST_LEAVE_GAME          = 'requestLeaveGame',
 	REQUEST_UNLOCK_ITEM         = 'requestUnlockItem',
+	REQUEST_RESET_UNLOCKS       = 'requestResetUnlocks',
 	REQUEST_EQUIP_ITEM          = 'requestEquipItem',
 	REQUEST_TICKET              = 'requestTicket',
 	REQUEST_SET_PREFERENCES     = 'requestSetPreferences',
@@ -103,6 +104,7 @@ const Messages = {
 	[MessageType.REQUEST_UNLOCK_ITEM]        : Schemas.Map({
 		itemId: Schemas.String,
 	}),
+	[MessageType.REQUEST_RESET_UNLOCKS]      : Schemas.Map({}),
 	[MessageType.REQUEST_EQUIP_ITEM]         : Schemas.Map({
 		itemId: Schemas.String,
 	}),

@@ -1,15 +1,6 @@
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs from '@dcl/sdk/react-ecs'
-import {
-	alpha,
-	AvatarIcon,
-	Background,
-	getTheme,
-	Layer,
-	Text,
-	UiBox,
-	ZoneType,
-} from '@stom66/dcl-ui-component-kit'
+import { alpha, AvatarIcon, Background, getTheme, IconString, Layer, Text, UiBox, ZoneType } from '@stom66/dcl-ui-component-kit'
 
 import { GameSettings } from 'src/shared/settings'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
@@ -18,15 +9,19 @@ import { getOrdinalSuffix } from 'src/shared/utils/strings'
 import { timers } from 'src/shared/utils/timers'
 
 import { ClientStore } from 'src/client/clientStore'
+import { bowlingRussoOneAlphaNumericAtlas, bowlingRussoOneSymbolsAtlas } from 'src/client/ui/themes/bowling/atlases'
 
 
+// Temporary preview: dummy frames, visible on load. Turn off before shipping.
 const DEBUG_FORCE_SHOW = false
 
 const FRAME_CELL_WIDTH  = 52
 const FRAME_CELL_HEIGHT = 45
 const FRAME_CELL_MARGIN = 4
 
-const FONT_SIZE_SCORE = 9
+const SCORE_BOX_WIDTH    = 16
+const SCORE_BOX_HEIGHT   = 18
+const SCORE_GLYPH_HEIGHT = 14
 
 const clientStore = ClientStore.getInstance()
 
@@ -37,6 +32,7 @@ const clientStore = ClientStore.getInstance()
  */
 export class ScoresLayer extends Layer {
 	private lastKnownScores    : Map<string, number[][]> | null = null
+	private lastKnownLeaves    : Map<string, number[]> | null = null
 	private lastKnownFrameCount: number = GameSettings.DEFAULT_FRAME_COUNT
 	private gameHasEnded = false
 
@@ -81,26 +77,34 @@ export class ScoresLayer extends Layer {
 	// MARK: getFrames
 	private getFrames(sortResults: boolean = false): Map<string, FrameResult[]> {
 		let frames: Map<string, number[][]> | null = null
+		let leaves: Map<string, number[]> | null   = null
 		if (!this.gameHasEnded) {
 			frames = clientStore.getFrames() ?? new Map<string, number[][]>()
-			if (DEBUG_FORCE_SHOW) frames = getDummyScoreData()
+			leaves = clientStore.getLeaves() ?? new Map<string, number[]>()
+			if (DEBUG_FORCE_SHOW) {
+				const dummy = getDummyScoreData()
+				frames = dummy.frames
+				leaves = dummy.leaves
+			}
 			if (frames.size > 0) {
 				this.lastKnownScores     = frames
+				this.lastKnownLeaves     = leaves
 				const liveCount          = clientStore.getFrameCount()
 				this.lastKnownFrameCount = liveCount > 0 ? liveCount : this.lastKnownFrameCount
 			}
 		} else {
 			frames = this.lastKnownScores
+			leaves = this.lastKnownLeaves
 		}
 
 		if (frames === null) {
 			return new Map<string, FrameResult[]>()
 		}
 
-		const frameCount = this.getActiveFrameCount(frames)
+		const frameCount   = this.getActiveFrameCount(frames)
 		const frameResults = new Map<string, FrameResult[]>()
 		for (const [userId, frame] of frames.entries()) {
-			frameResults.set(userId, getFrameResults(frame, frameCount))
+			frameResults.set(userId, getFrameResults(frame, frameCount, leaves?.get(userId)))
 		}
 
 		if (!sortResults) return frameResults
@@ -157,6 +161,7 @@ export class ScoresLayer extends Layer {
 
 		for (const [frameIndex, frameResult] of frameResults.entries()) {
 			const frameScores: ReactEcs.JSX.Element[] = []
+			const isLastFrame = frameResult.frameNumber === this.getActiveFrameCount(this.lastKnownScores)
 
 			for (let i = 0; i < frameResult.scores.length; i++) {
 				const score = frameResult.scores[i]
@@ -165,27 +170,67 @@ export class ScoresLayer extends Layer {
 				if (score === 10) scoreDisplay = 'X'
 				if (i === 1 && frameResult.isSpare) scoreDisplay = '/'
 
+
+				const isSplitMark = frameResult.isSplit && i === 0
+
 				frameScores.push(
 					<UiBox
 						key             = {`ui_Scores_row_${userId}_frame_${frameIndex}_score_${i}`}
-						width           = {16}
-						height          = {18}
+						width           = {SCORE_BOX_WIDTH}
+						height          = {SCORE_BOX_HEIGHT}
 						margin          = {{ right: 2 }}
-						borderRadius    = {3}
-						backgroundColor = {theme.colors.info}
+						borderRadius    = {isSplitMark ? SCORE_BOX_WIDTH / 2 : 3}
+						backgroundColor = {isSplitMark ? theme.colors.success : theme.colors.info}
 						alignItems      = "center"
 						justifyContent  = "center"
+						uiTransform     = {{ flexDirection: 'column' }}
 					>
-						<Text
+						<IconString
 							value     = {scoreDisplay}
-							fontSize  = {9}
-							fontColor = {theme.colors.light}
-							textAlign = "middle-center"
-							width     = "100%"
-							height    = "100%"
+							height    = {SCORE_GLYPH_HEIGHT}
+							iconColor = {theme.colors.light}
+							atlases   = {{
+								characters: bowlingRussoOneAlphaNumericAtlas,
+								symbols   : bowlingRussoOneSymbolsAtlas,
+							}}
 						/>
 					</UiBox>,
 				)
+
+				// Pad empty roll slots after the balls already thrown.
+				// Open frames leave a gap for the second ball unless the first was a strike.
+				// The last frame leaves a gap for each fill ball still owed: two after a
+				// lone strike, one after a strike or spare that does not yet have its fill.
+				const isLastRoll = i === frameResult.scores.length - 1
+				const firstScore = frameResult.scores[0] ?? 0
+				const secondScore = frameResult.scores[1]
+				const hasSecond  = secondScore !== undefined
+				const hasThird   = frameResult.scores.length >= 3
+				let padCount     = 0
+				if (isLastRoll && isLastFrame && firstScore === 10 && !hasSecond) {
+					padCount = 2
+				} else if (
+					isLastRoll && isLastFrame && !hasThird
+					&& (firstScore === 10 || (hasSecond && firstScore + secondScore === 10))
+				) {
+					padCount = 1
+				} else if (isLastRoll && score < 10 && frameResult.scores.length < 2) {
+					padCount = 1
+				}
+
+				for (let pad = 0; pad < padCount; pad++) {
+					frameScores.push(
+						<UiBox
+							key             = {`ui_Scores_row_${userId}_frame_${frameIndex}_pad_${pad}`}
+							width           = {16}
+							height          = {18}
+							margin          = {{ right: 2 }}
+							borderRadius    = {3}
+							alignItems      = "center"
+							justifyContent  = "center"
+						/>
+					)
+				}
 			}
 
 			ui.push(

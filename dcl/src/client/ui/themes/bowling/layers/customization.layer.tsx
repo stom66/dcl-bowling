@@ -45,7 +45,8 @@ const ACTION_BUTTON_HEIGHT       = 48
 const CATEGORY_ICON_SIZE         = 36
 const TICKET_ICON_SIZE           = 32
 const EQUIPPED_BADGE_SIZE        = 28
-const EQUIPPED_BADGE_INSET       = -8
+/** Kept inside the thumb so preview overflow does not clip the badge. */
+const EQUIPPED_BADGE_INSET       = 4
 const PANEL_WIDTH                = 1024
 const PANEL_MAX_HEIGHT_DESKTOP   = '70vh'
 const PANEL_MAX_HEIGHT_MOBILE    = '90vh'

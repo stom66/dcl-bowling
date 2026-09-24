@@ -7,16 +7,6 @@ import { DEFAULT_SPOTLIGHT_COLOR_ID, DEFAULT_SPOTLIGHT_ID, DEFAULT_TRAIL_ID, spo
 const MAX_TRAIL_PARTICLES = 80
 
 
-export type ReplaySpotlightConfig = {
-	height     : number
-	innerAngle : number
-	outerAngle : number
-	intensity  : number
-	range      : number
-	shadow     : boolean
-}
-
-
 
 // MARK: applyBallTrail
 /**
@@ -63,14 +53,13 @@ export function stopBallTrail(
 
 // MARK: applyFollowSpotlight
 /**
- * Unparented replay spotlight. Beam geometry comes from `config`; appearance
- * comes from the equipped color and optional gobo mask.
+ * Replay follow-spot. Same spot setup as the working lobby test light.
+ * Color and mask come from the equipped items.
  */
 export function applyFollowSpotlight(
 	spotlightId      : string,
 	spotlightColorId : string,
-	config           : ReplaySpotlightConfig,
-	allowShadow      : boolean
+	position         : Vector3,
 ): Entity {
 	const pattern   = spotlightPatterns[spotlightId]
 	const colorItem = spotlightColors[spotlightColorId] ?? spotlightColors[DEFAULT_SPOTLIGHT_COLOR_ID]
@@ -79,19 +68,17 @@ export function applyFollowSpotlight(
 
 	const light = engine.addEntity()
 	Transform.create(light, {
-		position: Vector3.Zero(),
-		rotation: Quaternion.fromEulerDegrees(-90, 0, 0),
+		position,
+		rotation: Quaternion.fromEulerDegrees(90, 0, 0),
 	})
 	LightSource.create(light, {
 		type              : LightSource.Type.Spot({
-			innerAngle: config.innerAngle,
-			outerAngle: config.outerAngle,
+			innerAngle: 10,
+			outerAngle: 20,
 		}),
 		color             : Color3.create(rgb.r, rgb.g, rgb.b),
-		intensity         : config.intensity,
-		range             : config.range,
-		shadow            : allowShadow && config.shadow,
-		shadowMaskTexture : maskSrc && allowShadow
+		intensity         : 5000000,
+		shadowMaskTexture : maskSrc
 			? Material.Texture.Common({ src: maskSrc })
 			: undefined,
 	})

@@ -158,7 +158,8 @@ export namespace LaneStore {
 
 		scores.scores = (gameData?.players ?? []).map((p) => ({
 			userId: p,
-			frames: [[]] as number[][]
+			frames: [[]] as number[][],
+			leaves: [] as number[],
 		}))
 	}
 
@@ -413,11 +414,25 @@ export namespace LaneStore {
 	// MARK: Scores
 	export function getScores(laneIndex: number): LaneScoresRow[] {
 		const c = LaneComponent.LaneScores.get(getLaneEntity(laneIndex))
-		return c.scores?.map((s) => ({ userId: s.userId, frames: s.frames.map((f) => f.slice()) })) ?? []
+		return c.scores?.map((s) => ({
+			userId: s.userId,
+			frames: s.frames.map((f) => f.slice()),
+			leaves: (s.leaves ?? []).slice(),
+		})) ?? []
 	}
 	export function getScoresMap(laneIndex: number): Map<string, number[][]> {
 		const scores = getScores(laneIndex)
 		return new Map(scores.map((s) => [s.userId, s.frames.map((f) => f.slice())]))
+	}
+
+
+	// MARK: getLeavesMap
+	/**
+	 * Roll-0 standing-pin bitmasks for each player on the lane, keyed by user id.
+	 */
+	export function getLeavesMap(laneIndex: number): Map<string, number[]> {
+		const scores = getScores(laneIndex)
+		return new Map(scores.map((s) => [s.userId, s.leaves.slice()]))
 	}
 	export function addScore(
 		laneIndex : number,
@@ -432,12 +447,41 @@ export namespace LaneStore {
 
 		let scores = c.scores.find((s) => s.userId === userId)
 		if (!scores) {
-			c.scores.push({ userId: userId, frames: [] })
+			c.scores.push({ userId: userId, frames: [], leaves: [] })
 			scores = c.scores.find((s) => s.userId === userId)
 		}
 
 		if (!scores!.frames[frameIndex]) scores!.frames[frameIndex] = []
 		scores!.frames[frameIndex]!.push(score)
+	}
+
+
+
+	// MARK: setFrameLeave
+	/**
+	 * Stores the roll-0 standing-pin bitmask for one frame.
+	 * Bit `n` means pin `n + 1` was still standing.
+	 */
+	export function setFrameLeave(
+		laneIndex : number,
+		frameIndex: number,
+		userId    : string,
+		leave     : number,
+	): void {
+		if (!isServer()) return
+
+		const c = LaneComponent.LaneScores.getMutable(getLaneEntity(laneIndex))
+		if (!c.scores) c.scores = []
+
+		let scores = c.scores.find((s) => s.userId === userId)
+		if (!scores) {
+			c.scores.push({ userId: userId, frames: [], leaves: [] })
+			scores = c.scores.find((s) => s.userId === userId)
+		}
+
+		if (!scores!.leaves) scores!.leaves = []
+		while (scores!.leaves.length <= frameIndex) scores!.leaves.push(0)
+		scores!.leaves[frameIndex] = leave
 	}
 
 
@@ -451,7 +495,7 @@ export namespace LaneStore {
 		const frameCount = getFrameCount(laneIndex)
 
 		for (const score of scores) {
-			const frameResults = getFrameResults(score.frames, frameCount)
+			const frameResults = getFrameResults(score.frames, frameCount, score.leaves)
 			const totalScore   = getPlayerTotalScore(frameResults)
 
 			if (totalScore > maxScore) {
@@ -496,7 +540,8 @@ export namespace LaneStore {
 			return undefined
 		}
 
-		const frameResults = getFrameResults(frames, getFrameCount(laneIndex))
+		const leaves       = getScores(laneIndex).find((score) => score.userId === userId)?.leaves
+		const frameResults = getFrameResults(frames, getFrameCount(laneIndex), leaves)
 		const totalScore   = getPlayerTotalScore(frameResults)
 		return totalScore
 	}
