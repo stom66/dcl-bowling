@@ -89,7 +89,7 @@
     "nearbyVoiceChat": "enabled"
   },
   "worldConfiguration": {
-    "name": "fastlane.dcl.eth"
+    "name": "stom.dcl.eth"
   },
   "creator": "0xCEC7e38e088A87D77F2B60Fcae6840D00E018155",
   "skyboxConfig": {},
@@ -103,5 +103,6 @@
     "0xe2b6024873d218b2e83b462d3658d8d7c3f55a18",
     "0x1e105bb213754519903788022b962fe2b9c4b263"
   ],
-  "landscapeTerrain": true
+  "landscapeTerrain": false,
+  "rating": "A"
 }

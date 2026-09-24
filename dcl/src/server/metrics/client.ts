@@ -2,16 +2,15 @@ import { engine } from '@dcl/sdk/ecs'
 import { onEnterScene } from '@dcl/sdk/players'
 import { EnvVar } from '@dcl/sdk/server'
 
-import { PlayerStats, PlayerStatsRecord } from 'src/server/metrics/playerStats'
+import { blockedPlayers } from 'src/shared/data/blocklist'
+import { VERSION } from 'src/shared/data/version'
 import { GameSettings } from 'src/shared/settings'
-
-import { VERSION } from 'src/client/data/version'
+import { NotifyPlayerRollPayload } from 'src/shared/types/shared-types'
 
 import { MetricEvents } from 'src/server/metrics/metricEvents'
+import { PlayerStats, PlayerStatsRecord } from 'src/server/metrics/playerStats'
 import { Posthog } from 'src/server/metrics/posthog'
-import { SimulationInput } from '../physics/types'
-import { NotifyPlayerRollPayload } from 'src/shared/types/shared-types'
-import { blockedPlayers } from 'src/client/data/blocklist'
+import { SimulationInput } from 'src/server/physics/types'
 
 
 export namespace Metrics {

@@ -1,0 +1,456 @@
+import { Color4 } from '@dcl/sdk/math'
+import ReactEcs from '@dcl/sdk/react-ecs'
+import { alpha, AvatarIcon, Background, getTheme, IconString, Layer, UiBox, ZoneType } from '@stom66/dcl-ui-component-kit'
+
+import { GameSettings } from 'src/shared/settings'
+import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
+import { FrameResult, getDummyScoreData, getFrameResults, getPlayerTotalScore } from 'src/shared/utils/scoreCalc'
+import { getOrdinalSuffix } from 'src/shared/utils/strings'
+import { timers } from 'src/shared/utils/timers'
+import { userProfileCache } from 'src/shared/utils/userProfileCache'
+
+import { ClientStore } from 'src/client/clientStore'
+import { bowlingRussoOneAlphaNumericAtlas, bowlingRussoOneSymbolsAtlas } from 'src/client/ui/themes/bowling/atlases'
+
+
+// Temporary preview: dummy frames, visible on load. Turn off before shipping.
+const DEBUG_FORCE_SHOW = false
+
+const FRAME_CELL_WIDTH  = 52
+const FRAME_CELL_HEIGHT = 45
+const FRAME_CELL_MARGIN = 4
+
+const SCORE_BOX_WIDTH     = 16
+const SCORE_BOX_HEIGHT    = 18
+const SCORE_GLYPH_HEIGHT  = 14
+const BADGE_GLYPH_HEIGHT  = 16
+const NAME_GLYPH_HEIGHT   = 16
+const DISPLAY_NAME_WIDTH  = 140
+
+const SCORE_ATLASES = {
+	characters: bowlingRussoOneAlphaNumericAtlas,
+	symbols   : bowlingRussoOneSymbolsAtlas,
+}
+
+const clientStore = ClientStore.getInstance()
+
+
+// MARK: ScoresLayer
+/**
+ * Bottom-center scoreboard. Slides in after roll playback and after a game ends.
+ */
+export class ScoresLayer extends Layer {
+	private lastKnownScores    : Map<string, number[][]> | null = null
+	private lastKnownLeaves    : Map<string, number[]> | null = null
+	private lastKnownFrameCount: number = GameSettings.DEFAULT_FRAME_COUNT
+	private gameHasEnded        = false
+	private displayNames        : Map<string, string> = new Map()
+	private pendingDisplayNames : Set<string>         = new Set()
+
+	constructor() {
+		super({
+			id         : 'bowling-scores',
+			zone       : ZoneType.BottomCenter,
+			canBeHidden: true,
+			startHidden: !DEBUG_FORCE_SHOW,
+			showFrom   : 'bottom',
+			hideTo     : 'bottom',
+			uiTransform: {
+				height: 'auto',
+				margin: { bottom: 16 },
+			},
+		})
+
+		eventBus.on(ClientEvents.ON_MY_ROLL_START,             () => { this.hide(0.8) })
+		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, () => { this.hide(0.8) })
+		eventBus.on(ClientEvents.ON_GROUP_GAME_START,          () => {
+			this.gameHasEnded = false
+			const liveCount = clientStore.getFrameCount()
+			if (liveCount > 0) this.lastKnownFrameCount = liveCount
+		})
+		eventBus.on(ClientEvents.ON_GROUP_GAME_END,            () => {
+			this.gameHasEnded = true
+			this.showFinalScores()
+		})
+		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_END,   () => { this.show(0.8) })
+	}
+
+
+	// MARK: showFinalScores
+	private showFinalScores() {
+		this.show(0.8)
+		timers.setTimeout(() => {
+			this.hide(0.8)
+		}, GameSettings.SHOW_FINAL_SCORES_DURATION)
+	}
+
+
+	// MARK: getFrames
+	private getFrames(sortResults: boolean = false): Map<string, FrameResult[]> {
+		let frames: Map<string, number[][]> | null = null
+		let leaves: Map<string, number[]> | null   = null
+		if (!this.gameHasEnded) {
+			frames = clientStore.getFrames() ?? new Map<string, number[][]>()
+			leaves = clientStore.getLeaves() ?? new Map<string, number[]>()
+			if (DEBUG_FORCE_SHOW) {
+				const dummy = getDummyScoreData()
+				frames = dummy.frames
+				leaves = dummy.leaves
+			}
+			if (frames.size > 0) {
+				this.lastKnownScores     = frames
+				this.lastKnownLeaves     = leaves
+				const liveCount          = clientStore.getFrameCount()
+				this.lastKnownFrameCount = liveCount > 0 ? liveCount : this.lastKnownFrameCount
+			}
+		} else {
+			frames = this.lastKnownScores
+			leaves = this.lastKnownLeaves
+		}
+
+		if (frames === null) {
+			return new Map<string, FrameResult[]>()
+		}
+
+		const frameCount   = this.getActiveFrameCount(frames)
+		const frameResults = new Map<string, FrameResult[]>()
+		for (const [userId, frame] of frames.entries()) {
+			frameResults.set(userId, getFrameResults(frame, frameCount, leaves?.get(userId)))
+		}
+
+		if (!sortResults) return frameResults
+
+		return new Map<string, FrameResult[]>([...frameResults.entries()].sort((a, b) => {
+			return getPlayerTotalScore(b[1]) - getPlayerTotalScore(a[1])
+		}))
+	}
+
+
+
+	// MARK: getActiveFrameCount
+	/**
+	 * Frame length for the scorecard currently on screen.
+	 */
+	private getActiveFrameCount(frames: Map<string, number[][]> | null): number {
+		if (DEBUG_FORCE_SHOW) return 5
+
+		const liveCount = clientStore.getFrameCount()
+		if (liveCount > 0) return liveCount
+		if (this.lastKnownFrameCount > 0) return this.lastKnownFrameCount
+
+		let max = 0
+		if (frames) {
+			for (const frame of frames.values()) {
+				if (frame.length > max) max = frame.length
+			}
+		}
+		return max || GameSettings.DEFAULT_FRAME_COUNT
+	}
+
+
+
+	// MARK: getRowWidth
+	private getRowWidth(
+		showRanks     : boolean,
+		showTotalScore: boolean,
+	): number {
+		let rowWidth = (FRAME_CELL_WIDTH + FRAME_CELL_MARGIN) * this.getActiveFrameCount(this.lastKnownScores)
+		rowWidth += FRAME_CELL_HEIGHT + FRAME_CELL_MARGIN
+		rowWidth += DISPLAY_NAME_WIDTH + FRAME_CELL_MARGIN
+		if (showRanks)      rowWidth += FRAME_CELL_HEIGHT + FRAME_CELL_MARGIN
+		if (showTotalScore) rowWidth += FRAME_CELL_HEIGHT + FRAME_CELL_MARGIN
+		return rowWidth
+	}
+
+
+	// MARK: getFramesUi
+	private getFramesUi(
+		userId      : string,
+		frameResults: FrameResult[],
+	) {
+		const theme = getTheme()
+		const ui    : ReactEcs.JSX.Element[] = []
+
+		for (const [frameIndex, frameResult] of frameResults.entries()) {
+			const frameScores: ReactEcs.JSX.Element[] = []
+			const isLastFrame = frameResult.frameNumber === this.getActiveFrameCount(this.lastKnownScores)
+
+			for (let i = 0; i < frameResult.scores.length; i++) {
+				const score = frameResult.scores[i]
+				let scoreDisplay = score.toString()
+				if (score === 0) scoreDisplay = '-'
+				if (score === 10) scoreDisplay = 'X'
+				if (i === 1 && frameResult.isSpare) scoreDisplay = '/'
+
+
+				const isSplitMark = frameResult.isSplit && i === 0
+
+				frameScores.push(
+					<UiBox
+						key             = {`ui_Scores_row_${userId}_frame_${frameIndex}_score_${i}`}
+						width           = {SCORE_BOX_WIDTH}
+						height          = {SCORE_BOX_HEIGHT}
+						margin          = {{ right: 2 }}
+						borderRadius    = {isSplitMark ? SCORE_BOX_WIDTH / 2 : 3}
+						backgroundColor = {isSplitMark ? theme.colors.success : theme.colors.info}
+						alignItems      = "center"
+						justifyContent  = "center"
+						uiTransform     = {{ flexDirection: 'column' }}
+					>
+						<IconString
+							value     = {scoreDisplay}
+							height    = {SCORE_GLYPH_HEIGHT}
+							iconColor = {theme.colors.light}
+							atlases   = {SCORE_ATLASES}
+						/>
+					</UiBox>,
+				)
+
+				// Pad empty roll slots after the balls already thrown.
+				// Open frames leave a gap for the second ball unless the first was a strike.
+				// The last frame leaves a gap for each fill ball still owed: two after a
+				// lone strike, one after a strike or spare that does not yet have its fill.
+				const isLastRoll = i === frameResult.scores.length - 1
+				const firstScore = frameResult.scores[0] ?? 0
+				const secondScore = frameResult.scores[1]
+				const hasSecond  = secondScore !== undefined
+				const hasThird   = frameResult.scores.length >= 3
+				let padCount     = 0
+				if (isLastRoll && isLastFrame && firstScore === 10 && !hasSecond) {
+					padCount = 2
+				} else if (
+					isLastRoll && isLastFrame && !hasThird
+					&& (firstScore === 10 || (hasSecond && firstScore + secondScore === 10))
+				) {
+					padCount = 1
+				} else if (isLastRoll && score < 10 && frameResult.scores.length < 2) {
+					padCount = 1
+				}
+
+				for (let pad = 0; pad < padCount; pad++) {
+					frameScores.push(
+						<UiBox
+							key             = {`ui_Scores_row_${userId}_frame_${frameIndex}_pad_${pad}`}
+							width           = {16}
+							height          = {18}
+							margin          = {{ right: 2 }}
+							borderRadius    = {3}
+							alignItems      = "center"
+							justifyContent  = "center"
+						/>
+					)
+				}
+			}
+
+			ui.push(
+				<UiBox
+					key             = {`ui_Scores_row_${userId}_frame_${frameIndex}`}
+					width           = {FRAME_CELL_WIDTH}
+					height          = {45}
+					margin          = {{ left: FRAME_CELL_MARGIN / 2, right: FRAME_CELL_MARGIN / 2 }}
+					borderRadius    = {4}
+					backgroundColor = {Color4.fromHexString(frameResult.isStrike ? '#1f354d' : frameResult.isSpare ? '#345981' : '#4c958166')}
+					uiTransform     = {{ flexDirection: 'column' }}
+				>
+					<UiBox
+						key            = {`ui_Scores_row_${userId}_frame_${frameIndex}_scores`}
+						width          = "100%"
+						height         = "50%"
+						alignItems     = "flex-end"
+						justifyContent = "flex-end"
+						borderWidth    = {0}
+						uiTransform    = {{ flexDirection: 'row' }}
+					>
+						{frameScores}
+					</UiBox>
+					<UiBox
+						key            = {`ui_Scores_row_${userId}_frame_${frameIndex}_runningTotal`}
+						width          = "100%"
+						height         = "50%"
+						alignItems     = "center"
+						justifyContent = "center"
+						borderWidth    = {0}
+					>
+						<IconString
+							value     = {frameResult.runningScore?.toString() ?? '-'}
+							height    = {SCORE_GLYPH_HEIGHT}
+							iconColor = {alpha(theme.colors.light, frameResult.isPending ? 0.25 : 1)}
+							atlases   = {SCORE_ATLASES}
+						/>
+					</UiBox>
+				</UiBox>,
+			)
+		}
+
+		return ui
+	}
+
+
+	// MARK: getRowDisplayName
+	/**
+	 * Display name for a scoreboard row. Empty until the profile fetch resolves.
+	 */
+	private getRowDisplayName(userId: string): string {
+		const cached = this.displayNames.get(userId)
+		if (cached !== undefined) return cached
+
+		if (!this.pendingDisplayNames.has(userId)) {
+			this.pendingDisplayNames.add(userId)
+			void userProfileCache.getDisplayName(userId).then((displayName) => {
+				this.pendingDisplayNames.delete(userId)
+				this.displayNames.set(userId, displayName)
+			})
+		}
+
+		return ''
+	}
+
+
+
+	// MARK: getScoreRows
+	private getScoreRows(
+		showRanks     : boolean,
+		showTotalScore: boolean,
+	) {
+		const theme        = getTheme()
+		const frameResults = this.getFrames(showRanks)
+		const ui           : ReactEcs.JSX.Element[] = []
+		const rowWidth     = this.getRowWidth(showRanks, showTotalScore)
+		let rank           = 0
+
+		for (const [userId, frameResult] of frameResults.entries()) {
+			rank++
+			ui.push(
+				<UiBox
+					key           = {`ui_Scores_row_${userId}`}
+					width         = {rowWidth}
+					height        = {FRAME_CELL_HEIGHT}
+					alignItems    = "flex-start"
+					margin        = {{ bottom: 5 }}
+					borderWidth   = {0}
+					uiTransform   = {{ flexDirection: 'row' }}
+				>
+					<UiBox
+						key             = {`ui_Scores_row_${userId}_rank`}
+						width           = {FRAME_CELL_HEIGHT}
+						height          = {FRAME_CELL_HEIGHT}
+						backgroundColor = {theme.colors.info}
+						borderRadius    = {8}
+						margin          = {{ left: FRAME_CELL_MARGIN / 2, right: FRAME_CELL_MARGIN / 2 }}
+						alignItems      = "center"
+						justifyContent  = "center"
+						uiTransform     = {{
+							display      : showRanks ? 'flex' : 'none',
+							flexDirection: 'column',
+						}}
+					>
+						<IconString
+							value     = {rank.toString() + getOrdinalSuffix(rank)}
+							height    = {BADGE_GLYPH_HEIGHT}
+							iconColor = {theme.colors.light}
+							atlases   = {SCORE_ATLASES}
+						/>
+					</UiBox>
+					<IconString
+						key         = {`ui_Scores_row_${userId}_displayName`}
+						value       = {this.getRowDisplayName(userId)}
+						height      = {NAME_GLYPH_HEIGHT}
+						width       = {DISPLAY_NAME_WIDTH}
+						iconColor   = {theme.colors.light}
+						atlases     = {SCORE_ATLASES}
+						margin      = {{ left: FRAME_CELL_MARGIN / 2, right: FRAME_CELL_MARGIN / 2 }}
+						uiTransform = {{
+							justifyContent: 'flex-start',
+							alignSelf     : 'center',
+						}}
+					/>
+					<AvatarIcon
+						key          = {`ui_Scores_row_${userId}_avatar`}
+						userId       = {userId}
+						width        = {FRAME_CELL_HEIGHT}
+						height       = {FRAME_CELL_HEIGHT}
+						borderRadius = {8}
+						margin       = {{ left: FRAME_CELL_MARGIN / 2, right: FRAME_CELL_MARGIN / 2 }}
+					/>
+					<UiBox
+						key           = {`ui_Scores_row_${userId}_scores`}
+						width         = "auto"
+						height        = {45}
+						alignItems    = "flex-start"
+						borderWidth   = {0}
+						uiTransform   = {{ flexDirection: 'row' }}
+					>
+						{this.getFramesUi(userId, frameResult)}
+					</UiBox>
+					<UiBox
+						key    = {`ui_Scores_row_${userId}_spacer`}
+						width  = {0}
+						height = {FRAME_CELL_HEIGHT}
+						uiTransform = {{
+							flexGrow  : 1,
+							flexShrink: 0,
+							display   : showTotalScore ? 'flex' : 'none',
+						}}
+					/>
+					<UiBox
+						key             = {`ui_Scores_row_${userId}_totalScore`}
+						width           = {FRAME_CELL_HEIGHT}
+						height          = {FRAME_CELL_HEIGHT}
+						backgroundColor = {theme.colors.info}
+						borderRadius    = {8}
+						margin          = {{ left: FRAME_CELL_MARGIN / 2, right: FRAME_CELL_MARGIN / 2 }}
+						alignItems      = "center"
+						justifyContent  = "center"
+						uiTransform     = {{
+							display      : showTotalScore ? 'flex' : 'none',
+							alignSelf    : 'flex-end',
+							flexDirection: 'column',
+						}}
+					>
+						<IconString
+							value     = {getPlayerTotalScore(frameResult).toString()}
+							height    = {BADGE_GLYPH_HEIGHT}
+							iconColor = {theme.colors.light}
+							atlases   = {SCORE_ATLASES}
+						/>
+					</UiBox>
+				</UiBox>,
+			)
+		}
+
+		return ui
+	}
+
+
+	// MARK: body
+	protected body() {
+		const theme          = getTheme()
+		const showRanks      = this.gameHasEnded
+		const showTotalScore = true
+		const rowWidth       = this.getRowWidth(showRanks, showTotalScore)
+
+		return [
+			<Background
+				key             = "chrome"
+				backgroundColor = {alpha(theme.colors.secondary, 0.85)}
+				borderColor     = {theme.colors.primary}
+				borderWidth     = {3}
+				borderRadius    = {32}
+			/>,
+			<UiBox
+				key            = "scores-body"
+				width          = {rowWidth + 32}
+				height         = "auto"
+				alignItems     = "center"
+				justifyContent = "center"
+				padding        = {{ top: 16, bottom: 10, left: 0, right: 0 }}
+				borderWidth    = {0}
+				uiTransform    = {{ flexDirection: 'column' }}
+			>
+				{this.getScoreRows(showRanks, showTotalScore)}
+			</UiBox>,
+		]
+	}
+}
+
+export const scoresLayer = new ScoresLayer()

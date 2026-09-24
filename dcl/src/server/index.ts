@@ -1,25 +1,40 @@
-import { onEnterScene, onLeaveScene } from "@dcl/sdk/players"
 import * as utils from "@dcl-sdk/utils"
+import { Transform } from "@dcl/sdk/ecs"
+import { onEnterScene, onLeaveScene } from "@dcl/sdk/players"
 
 import { ComponentManager } from "src/shared/components/componentManager"
+import { ComponentStore } from "src/shared/components/componentStore"
+import { LANES_GROUP_ID } from "src/shared/components/registry"
+import { blockedPlayers } from "src/shared/data/blocklist"
 import { LaneStore } from "src/shared/laneStore"
 import { GameSettings } from "src/shared/settings"
+import { DiscordWebhooks } from "src/shared/utils/discord-webhooks"
+import { eventBus, ServerEvents } from "src/shared/utils/eventBus"
 
 import { gameManager } from "src/server/gameManager"
+import { LeaderboardManager } from "src/server/leaderboardManager"
+import { Metrics } from "src/server/metrics/client"
+import { PlayerProfileManager } from "src/server/playerProfileManager"
 import { serverHandler } from "src/server/serverHandler"
 import { notifyServerTime } from "src/server/serverMessaging"
-import { DiscordWebhooks } from "src/shared/utils/discord-webhooks"
-import { Metrics } from "./metrics/client"
-import { Transform } from "@dcl/sdk/ecs"
-import { blockedPlayers } from "src/client/data/blocklist"
 
 
+// MARK: initServer
+/**
+ * Boots synced components, messaging, and scene enter/leave handlers.
+ */
 export async function initServer(): Promise<void> {
 	console.log("Server: initServer()")
 
 	Metrics.init()
 
 	ComponentManager.init()
+	for (let i = 0; i < GameSettings.MAX_LANES; i++) {
+		ComponentManager.createGroupEntity(LANES_GROUP_ID, String(i))
+	}
+	ComponentStore.init()
+	PlayerProfileManager.init()
+	LeaderboardManager.init()
 
 	serverHandler.init()
 	gameManager.init()
@@ -33,18 +48,23 @@ export async function initServer(): Promise<void> {
 
 	// MARK: Event bindings
 	onEnterScene((player) => {
-		// Placeholder
 		if (player && !blockedPlayers.includes(player.userId)) {
 			Metrics.startSession(player.userId, player.name)
-			
+
 			const playerPosition = Transform.getOrNull(player.entity)?.position
 			DiscordWebhooks.newPlayer(player.name, player.userId, playerPosition)
+			eventBus.emit(ServerEvents.PLAYER_SCENE_ENTER, { player })
 		}
 	})
 	onLeaveScene((userId) => {
+		const wasInGame = LaneStore.findLaneByUserId(userId) !== undefined
 		LaneStore.removePlayerFromAllLanes(userId)
 		if (!blockedPlayers.includes(userId)) {
+			if (wasInGame) {
+				PlayerProfileManager.recordLeaveEarly(userId)
+			}
 			Metrics.endSession(userId)
+			eventBus.emit(ServerEvents.PLAYER_SCENE_LEAVE, { userId })
 		}
 	})
 }

@@ -28,6 +28,7 @@ export type LaneSnapshot = {
 	currentFrameUserId      : string
 	currentRollIndex        : number
 	currentRollStartTime    : number
+	frameCount              : number
 	frames                  : Map<string, number[][]>  // userId -> frames
 	gameStartTime           : number
 	laneIndex               : number
@@ -41,6 +42,8 @@ export type LaneSnapshot = {
 export type LaneScores = {
 	userId: string
 	frames: number[][]
+	/** Roll-0 standing-pin bitmask per frame. Bit `n` means pin `n + 1` was standing. */
+	leaves: number[]
 }
 export type LanePlayers = {
 	userId     : string
@@ -75,6 +78,31 @@ export type NotifyJoinGamePayload = {
 }
 
 
+/** Client → server: join a lane. `laneIndex` is 1-based. `frameCount` is used only by the first joiner. */
+export type RequestJoinGamePayload = {
+	laneIndex : number
+	frameCount?: number
+}
+
+
+/** Ranked scoreboard row published on the synced scene component. */
+export type LeaderboardScoreRow = {
+	userId     : string
+	displayName: string
+	score      : number
+	rank       : number
+}
+
+
+/** Append-only perfect-game wall entry. */
+export type PerfectGameEntry = {
+	displayName: string
+	userId     : string
+	achievedAt : number
+	frameCount : number
+}
+
+
 /** Shared roll/replay body (matches `rollMessageBaseSchema` in room). */
 export type SimObjectKeyframe = {
 	time    : number
@@ -104,6 +132,27 @@ export type RollPayload = {
 	sfxPinHitPinTimestamps : number[]
 	score            : number
 	sentAt           : number
+}
+
+/** Client → server: unlock or equip a catalog item. */
+export type RequestCatalogItemPayload = {
+	itemId: string
+}
+
+/** Client → server: ticket grant. Admins, or any player when the playtest panel is on. */
+export type RequestTicketPayload = {
+	amount: number
+}
+
+/** Client → server: persist player preferences. Unknown fields are ignored. */
+export type RequestSetPreferencesPayload = {
+	bgmMuted?       : boolean
+	bumpersEnabled? : boolean
+}
+
+/** Client → server: raise or lower gutter bumpers on the sender's current lane. */
+export type RequestSetLaneBumpersPayload = {
+	enabled: boolean
 }
 
 /** Client → server: roll snapshot. */

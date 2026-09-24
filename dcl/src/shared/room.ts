@@ -14,6 +14,12 @@ export enum MessageType {
 	REQUEST_JOIN_GAME           = 'requestJoinGame',
 	REQUEST_PLAY_ROLL           = 'requestPlayRoll',
 	REQUEST_LEAVE_GAME          = 'requestLeaveGame',
+	REQUEST_UNLOCK_ITEM         = 'requestUnlockItem',
+	REQUEST_RESET_UNLOCKS       = 'requestResetUnlocks',
+	REQUEST_EQUIP_ITEM          = 'requestEquipItem',
+	REQUEST_TICKET              = 'requestTicket',
+	REQUEST_SET_PREFERENCES     = 'requestSetPreferences',
+	REQUEST_SET_LANE_BUMPERS    = 'requestSetLaneBumpers',
 
 	NOTIFY_SERVER_TIME          = 'notifyServerTime',
 
@@ -87,11 +93,31 @@ const eventEnvelopeSchema = Schemas.Map({
 
 const Messages = {
 	// Sent by client
-	[MessageType.REQUEST_JOIN_GAME]          : Schemas.Optional(Schemas.Number),
+	[MessageType.REQUEST_JOIN_GAME]          : Schemas.Map({
+		laneIndex : Schemas.Int,
+		frameCount: Schemas.Optional(Schemas.Int),
+	}),
 	[MessageType.REQUEST_PLAY_ROLL]          : Schemas.Map({
 		...rollRequestSchema
 	}),
 	[MessageType.REQUEST_LEAVE_GAME]         : Schemas.Map({}),
+	[MessageType.REQUEST_UNLOCK_ITEM]        : Schemas.Map({
+		itemId: Schemas.String,
+	}),
+	[MessageType.REQUEST_RESET_UNLOCKS]      : Schemas.Map({}),
+	[MessageType.REQUEST_EQUIP_ITEM]         : Schemas.Map({
+		itemId: Schemas.String,
+	}),
+	[MessageType.REQUEST_TICKET]             : Schemas.Map({
+		amount: Schemas.Int,
+	}),
+	[MessageType.REQUEST_SET_PREFERENCES]    : Schemas.Map({
+		bgmMuted       : Schemas.Optional(Schemas.Boolean),
+		bumpersEnabled : Schemas.Optional(Schemas.Boolean),
+	}),
+	[MessageType.REQUEST_SET_LANE_BUMPERS]   : Schemas.Map({
+		enabled: Schemas.Boolean,
+	}),
 
 	[MessageType.NOTIFY_SERVER_TIME]         : Schemas.Int64,
 

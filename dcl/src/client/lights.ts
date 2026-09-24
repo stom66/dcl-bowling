@@ -1,5 +1,5 @@
-import { engine, LightSource, MeshRenderer, Transform } from "@dcl/sdk/ecs"
-import { Color3, Vector3 } from "@dcl/sdk/math"
+import { engine, LightSource, Material, MeshRenderer, Transform } from "@dcl/sdk/ecs"
+import { Color3, Quaternion, Vector3 } from "@dcl/sdk/math"
 
 
 export function setupLights() {
@@ -32,4 +32,25 @@ export function setupLights() {
 		intensity: 300000
 	})
 	MeshRenderer.setSphere(light3)
+
+
+	// Add a light at the back of the bowling alley
+/* 	const testLight = engine.addEntity()
+	Transform.create(testLight, { 
+		position: Vector3.create(16, 5, 9), 
+		rotation: Quaternion.fromEulerDegrees(90, 0, 0)
+	 })
+	LightSource.create(testLight, {
+		type: LightSource.Type.Spot({
+			innerAngle: 10,
+			outerAngle: 20,
+		}),
+		color: Color3.White(),
+		intensity: 5000000,
+		// use one of the unlocked spotlight masks
+		shadowMaskTexture: Material.Texture.Common({
+			src: 'assets/images/unlocks/spotlights/spotlight-arrowBurst.png'
+		})
+	})
+	MeshRenderer.setSphere(testLight) */
 }

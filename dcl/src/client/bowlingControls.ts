@@ -2,13 +2,16 @@ import * as utils from "@dcl-sdk/utils"
 import { ColliderLayer, EasingFunction, engine, Entity, GltfContainer, GltfContainerLoadingState, InputAction, LoadingState, Material, MeshCollider, MeshRenderer, pointerEventsSystem, Transform, Tween } from "@dcl/sdk/ecs";
 import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 //import { CannonSim } from "src/shared/utils/cannon-sim";
-import { ClientMessaging } from "./clientMessaging";
-import { eventBus } from "src/shared/utils/eventBus";
-import { ClientEvents } from "./clientEvents";
-import { sfx, SoundManager } from "./soundManager";
+import { ComponentStore } from "src/shared/components/componentStore";
+import { PlayerPreferences } from "src/shared/components/definitions/shared.playerPreferences";
 import { LaneSnapshot } from "src/shared/types/shared-types";
-import { lanePositions } from "./data/lanePositions";
-import { SetIndicator } from "./ui-screen/layers/game.bowlingControls";
+import { ClientEvents, eventBus } from "src/shared/utils/eventBus";
+
+import { ClientMessaging } from "src/client/clientMessaging";
+import { ClientStore } from "src/client/clientStore";
+import { lanePositions } from "src/client/data/lanePositions";
+import { sfx, SoundManager } from "src/client/soundManager";
+import { SetIndicator } from "src/client/ui/themes/bowling/layers/bowlingControls.layer";
 
 
 enum CONTROL_TYPE {
@@ -37,6 +40,84 @@ const BALL_SPAWN_SIM_Y = 0.32
 /** `pin.gltf` root node translates the mesh up; entity pivot sits below the pin center. Match Cannon cylinder center. */
 const PIN_GLTF_MESH_OFFSET_Y = 0.18949292600154877
 const PIN_VISUAL_SCALE = 1.5
+
+let bumpersEnabled         = false
+let bumperPersistPending   = false
+let bumperPreferencesBound = false
+
+
+// MARK: bindBumperPreferences
+/**
+ * Keeps the local bumper preference in sync with the player's stored
+ * {@link PlayerPreferences}. Ignores stale snapshots while a persist is in flight.
+ */
+function bindBumperPreferences(): void {
+	if (bumperPreferencesBound) return
+
+	const userId = ClientStore.getInstance().getUserId()
+	if (!userId) {
+		console.error('bowlingControls: bindBumperPreferences: no userId')
+		return
+	}
+
+	bumperPreferencesBound = true
+	ComponentStore.onChange(PlayerPreferences, (data) => {
+		if (!data) return
+		if (bumperPersistPending) {
+			if (data.bumpersEnabled === bumpersEnabled) {
+				bumperPersistPending = false
+			}
+			return
+		}
+		bumpersEnabled = data.bumpersEnabled
+	}, { key: userId })
+}
+
+
+// MARK: areLaneBumpersEnabled
+/**
+ * Current bumper preference, including an optimistic local toggle.
+ */
+export function areLaneBumpersEnabled(): boolean {
+	bindBumperPreferences()
+	return bumpersEnabled
+}
+
+
+// MARK: toggleLaneBumpers
+/**
+ * Flips the bumper preference, persists it, and asks the server to match the
+ * current lane. Returns the new enabled state.
+ */
+export function toggleLaneBumpers(): boolean {
+	bindBumperPreferences()
+	bumpersEnabled       = !bumpersEnabled
+	bumperPersistPending = true
+	console.log('bowlingControls: toggleLaneBumpers: enabled', bumpersEnabled)
+	ClientMessaging.requestSetPreferences({ bumpersEnabled })
+	ClientMessaging.requestSetLaneBumpers(bumpersEnabled)
+	return bumpersEnabled
+}
+
+
+// MARK: applyPreferredLaneBumpers
+/**
+ * Raises bumpers on the current lane when the stored preference is on.
+ */
+function applyPreferredLaneBumpers(): void {
+	bindBumperPreferences()
+
+	const userId = ClientStore.getInstance().getUserId()
+	if (userId) {
+		const prefs = ComponentStore.getOrNull(PlayerPreferences, { key: userId })
+		if (prefs && !bumperPersistPending) bumpersEnabled = prefs.bumpersEnabled
+	}
+
+	if (!bumpersEnabled) return
+	console.log('bowlingControls: applyPreferredLaneBumpers: requesting bumpers on')
+	ClientMessaging.requestSetLaneBumpers(true)
+}
+
 
 export class BowlingControls {
 
@@ -92,6 +173,8 @@ export class BowlingControls {
 		eventBus.on(ClientEvents.ON_MY_ROLL_CLICK_TO_SET, () => {
 			this.OnClickToSet()
 		})
+
+		applyPreferredLaneBumpers()
 
 		//this.ball = this.CreateBall()
 		//this.SpawnPins()

@@ -581,6 +581,7 @@
             "name": "Fastlane Bowling",
             "description": "A bowling alley!",
             "thumbnail": "images/scene-thumbnail.png",
+            "ageRating": "A",
             "categories": [],
             "author": "stom",
             "email": "",
@@ -772,7 +773,7 @@
             "skyboxConfig": {},
             "creator": "0xCEC7e38e088A87D77F2B60Fcae6840D00E018155",
             "disableNearbyVoiceChat": false,
-            "hideLandscapeTerrain": false
+            "hideLandscapeTerrain": true
           }
         }
       }
