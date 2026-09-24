@@ -1,5 +1,8 @@
+import { Vector3 } from '@dcl/sdk/math'
 import ReactEcs from '@dcl/sdk/react-ecs'
 import { ButtonText, Column, getTheme, Icon, Layer, Row, Text, UiBox, ZoneType } from '@stom66/dcl-ui-component-kit'
+
+import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 
 import { ClientMessaging } from 'src/client/clientMessaging'
 import { gameIconsAtlas } from 'src/client/ui/themes/bowling/atlases'
@@ -7,12 +10,13 @@ import { gameIconsAtlas } from 'src/client/ui/themes/bowling/atlases'
 
 const PANEL_WIDTH      = 180
 const BUTTON_HEIGHT    = 40
+const PANEL_GAP        = 8
 const TICKET_ICON_SIZE = 22
 
 
 // MARK: PlaytestDebugLayer
 /**
- * Right-side playtest controls for granting tickets and relocking items.
+ * Right-side playtest controls. Ticket and unlock actions sit above bowlotron 3000.
  * Registered only while `GameSettings.PLAYTEST_DEBUG_PANEL` is on.
  */
 export class PlaytestDebugLayer extends Layer {
@@ -24,6 +28,26 @@ export class PlaytestDebugLayer extends Layer {
 			uiTransform: {
 				width: PANEL_WIDTH,
 			},
+		})
+	}
+
+
+	// MARK: bowl
+	/**
+	 * Sends a scripted roll, matching the debug Bowl-O-Tron shots.
+	 */
+	private bowl(
+		position : Vector3,
+		direction: Vector3,
+		strength : number,
+		spin     : number,
+	) {
+		ClientMessaging.requestPlayRoll(position, direction, strength, spin)
+		eventBus.emit(ClientEvents.ON_MY_ROLL_REQUEST, {
+			position : position,
+			direction: direction,
+			strength : strength,
+			spin     : spin,
 		})
 	}
 
@@ -116,13 +140,18 @@ export class PlaytestDebugLayer extends Layer {
 	}
 
 
-	// MARK: body
-	protected body() {
+	// MARK: panel
+	/** Shared chrome for the stacked playtest panels. */
+	private panel(
+		key      : string,
+		title    : string,
+		children : ReactEcs.JSX.Element[],
+		marginTop: number = 0,
+	) {
 		const theme = getTheme()
-
-		return [
+		return (
 			<UiBox
-				key             = "playtest-debug-chrome"
+				key             = {key}
 				width           = "100%"
 				height          = "auto"
 				alignItems      = "flex-start"
@@ -132,10 +161,11 @@ export class PlaytestDebugLayer extends Layer {
 				borderWidth     = {3}
 				borderRadius    = {8}
 				padding         = {8}
+				margin          = {marginTop > 0 ? { top: marginTop } : undefined}
 				uiTransform     = {{ flexDirection: 'column' }}
 			>
 				<Text
-					value     = "Playtest Controls"
+					value     = {title}
 					fontSize  = {theme.typography.size.small}
 					fontColor = {theme.colors.light}
 					textAlign = "middle-left"
@@ -148,11 +178,32 @@ export class PlaytestDebugLayer extends Layer {
 					spacing = {6}
 					padding = {{ top: 4 }}
 				>
-					{this.ticketButton(10)}
-					{this.ticketButton(100)}
-					{this.button('playtest_reset_unlocks',   'Reset Unlocks', () => { this.resetUnlocks() })}
+					{children}
 				</Column>
-			</UiBox>,
+			</UiBox>
+		)
+	}
+
+
+	// MARK: body
+	protected body() {
+		return [
+			this.panel('playtest-debug-chrome', 'Playtest Controls', [
+				this.ticketButton(10),
+				this.ticketButton(100),
+				this.button('playtest_reset_unlocks', 'Reset Unlocks', () => { this.resetUnlocks() }),
+			]),
+			this.panel('bowlotron-chrome', 'Bowl-o-tron 3000', [
+				this.button('bowlotron_strike', 'Strike', () => {
+					this.bowl(Vector3.create(-0.07, 0.12, 0.8), Vector3.create(0, 0, 1), 1, 0)
+				}),
+				this.button('bowlotron_spare_1', 'Spare Pt.1', () => {
+					this.bowl(Vector3.create(0.15, 0.12, 0.8), Vector3.create(0, 0, 1), 1, 0)
+				}),
+				this.button('bowlotron_spare_2', 'Spare Pt.2', () => {
+					this.bowl(Vector3.create(-0.2, 0.12, 0.8), Vector3.create(0, 0, 1), 1, 0)
+				}),
+			], PANEL_GAP),
 		]
 	}
 }
