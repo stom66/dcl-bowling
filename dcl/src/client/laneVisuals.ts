@@ -47,6 +47,7 @@ type ReplayState = {
 // MARK: Constants
 
 const BALL_SPAWN_LANE_LOCAL_Y   = 0.32
+/** `pin_default.gltf` root node translates the mesh up; entity pivot sits below the pin center. Match Cannon cylinder center. */
 const PIN_GLTF_MESH_OFFSET_Y    = 0.18949292600154877
 const PIN_VISUAL_SCALE          = 1.5
 const PIN_COUNT                 = PIN_LANE_LOCAL_POSITIONS.length
@@ -242,7 +243,7 @@ export class LaneVisuals {
 
 			// Pin-1 pigeon is a rare override, not a catalog row
 			const src = (i === 0 && this.rollStartTimestamp % CHANCE_OF_PIGEON == 0)
-				? "assets/models/pinPigeon.gltf"
+				? "assets/models/pins/pin_pigeon.gltf"
 				: pinModelSrc
 
 			GltfContainer.create(pinScale, { src })

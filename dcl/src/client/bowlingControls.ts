@@ -37,7 +37,7 @@ const STRENGTH_MIN_SCALE = 0.2
 const BALL_SPAWN_LANE_LOCAL_Y = 0.065
 const BALL_SPAWN_SIM_Y = 0.32
 
-/** `pin.gltf` root node translates the mesh up; entity pivot sits below the pin center. Match Cannon cylinder center. */
+/** `pin_default.gltf` root node translates the mesh up; entity pivot sits below the pin center. Match Cannon cylinder center. */
 const PIN_GLTF_MESH_OFFSET_Y = 0.18949292600154877
 const PIN_VISUAL_SCALE = 1.5
 
@@ -290,7 +290,7 @@ export class BowlingControls {
 		const worldPos = Vector3.add(this.lanePosition, this.position)
 		Transform.create(ball, { position: worldPos, scale: Vector3.create(1, 1, 1) })
 		GltfContainer.create(ball, {
-			src: "assets/models/bowlingBall.gltf"
+			src: "assets/models/balls/ball_default.gltf"
 		})
 
 		return ball

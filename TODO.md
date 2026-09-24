@@ -8,15 +8,12 @@ Central backlog for playtest findings, review notes, and future work.
   `overflow: 'scroll'` bars cannot be colored or resized in the current SDK;
   catalog column `padding-right: 4` currently keeps the bar off the pane edge.
 
-- [ ] Add spotlights that follow the player's ball during a roll. Drive each
+- [x] Add spotlights that follow the player's ball during a roll. Drive each
   spotlight's shadow mask from that player's currently equipped items.
-- [ ] Rename player-facing "customizations" terminology to "items" throughout the
-  scene and UI.
-- [ ] Add custom lane floors as unlockable items. Catalog/spawn/swap is stubbed:
-  default lane models spawn at each lane root and swap to the roller's equipped
-  lane on their turn. Bumpers are a separate `lane_bumpers` model with idle/up/down
-  clips. Still need to strip baked lanes from the environment and add extra
-  designs (colours, rainbow, stars, galaxies).
+- [ ] Finish custom lane floors. Default, blue, digital glitch, nebula, and red lanes are
+  catalogued and swap onto the lane root for the current roller. Bumpers stay
+  a separate `assets/models/lane_bumpers.gltf` model. Still need to strip baked lanes from the
+  environment and add more designs (rainbow, stars, galaxies).
 - [x] Add lane bumper support for each player's turn.
   - Check the existing physics flag and any existing bumper model or animation work.
   - [ ] Finish the bumper model and raising/lowering animations as needed.

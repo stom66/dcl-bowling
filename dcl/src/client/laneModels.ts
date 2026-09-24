@@ -15,7 +15,7 @@ import { lanePositions } from "src/client/data/lanePositions"
 
 export type LaneClipName = 'idle' | 'down' | 'up'
 
-const BUMPER_MODEL_SRC = 'assets/models/lanes/lane_bumpers.gltf'
+const BUMPER_MODEL_SRC = 'assets/models/lane_bumpers.gltf'
 
 
 /**
