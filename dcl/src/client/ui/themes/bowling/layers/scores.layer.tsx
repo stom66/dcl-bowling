@@ -1,12 +1,13 @@
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs from '@dcl/sdk/react-ecs'
-import { alpha, AvatarIcon, Background, getTheme, IconString, Layer, Text, UiBox, ZoneType } from '@stom66/dcl-ui-component-kit'
+import { alpha, AvatarIcon, Background, getTheme, IconString, Layer, UiBox, ZoneType } from '@stom66/dcl-ui-component-kit'
 
 import { GameSettings } from 'src/shared/settings'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 import { FrameResult, getDummyScoreData, getFrameResults, getPlayerTotalScore } from 'src/shared/utils/scoreCalc'
 import { getOrdinalSuffix } from 'src/shared/utils/strings'
 import { timers } from 'src/shared/utils/timers'
+import { userProfileCache } from 'src/shared/utils/userProfileCache'
 
 import { ClientStore } from 'src/client/clientStore'
 import { bowlingRussoOneAlphaNumericAtlas, bowlingRussoOneSymbolsAtlas } from 'src/client/ui/themes/bowling/atlases'
@@ -19,9 +20,17 @@ const FRAME_CELL_WIDTH  = 52
 const FRAME_CELL_HEIGHT = 45
 const FRAME_CELL_MARGIN = 4
 
-const SCORE_BOX_WIDTH    = 16
-const SCORE_BOX_HEIGHT   = 18
-const SCORE_GLYPH_HEIGHT = 14
+const SCORE_BOX_WIDTH     = 16
+const SCORE_BOX_HEIGHT    = 18
+const SCORE_GLYPH_HEIGHT  = 14
+const BADGE_GLYPH_HEIGHT  = 16
+const NAME_GLYPH_HEIGHT   = 16
+const DISPLAY_NAME_WIDTH  = 140
+
+const SCORE_ATLASES = {
+	characters: bowlingRussoOneAlphaNumericAtlas,
+	symbols   : bowlingRussoOneSymbolsAtlas,
+}
 
 const clientStore = ClientStore.getInstance()
 
@@ -34,7 +43,9 @@ export class ScoresLayer extends Layer {
 	private lastKnownScores    : Map<string, number[][]> | null = null
 	private lastKnownLeaves    : Map<string, number[]> | null = null
 	private lastKnownFrameCount: number = GameSettings.DEFAULT_FRAME_COUNT
-	private gameHasEnded = false
+	private gameHasEnded        = false
+	private displayNames        : Map<string, string> = new Map()
+	private pendingDisplayNames : Set<string>         = new Set()
 
 	constructor() {
 		super({
@@ -145,6 +156,7 @@ export class ScoresLayer extends Layer {
 	): number {
 		let rowWidth = (FRAME_CELL_WIDTH + FRAME_CELL_MARGIN) * this.getActiveFrameCount(this.lastKnownScores)
 		rowWidth += FRAME_CELL_HEIGHT + FRAME_CELL_MARGIN
+		rowWidth += DISPLAY_NAME_WIDTH + FRAME_CELL_MARGIN
 		if (showRanks)      rowWidth += FRAME_CELL_HEIGHT + FRAME_CELL_MARGIN
 		if (showTotalScore) rowWidth += FRAME_CELL_HEIGHT + FRAME_CELL_MARGIN
 		return rowWidth
@@ -189,10 +201,7 @@ export class ScoresLayer extends Layer {
 							value     = {scoreDisplay}
 							height    = {SCORE_GLYPH_HEIGHT}
 							iconColor = {theme.colors.light}
-							atlases   = {{
-								characters: bowlingRussoOneAlphaNumericAtlas,
-								symbols   : bowlingRussoOneSymbolsAtlas,
-							}}
+							atlases   = {SCORE_ATLASES}
 						/>
 					</UiBox>,
 				)
@@ -254,21 +263,48 @@ export class ScoresLayer extends Layer {
 					>
 						{frameScores}
 					</UiBox>
-					<Text
-						key       = {`ui_Scores_row_${userId}_frame_${frameIndex}_runningTotal`}
-						value     = {frameResult.runningScore?.toString() ?? '-'}
-						fontSize  = {14}
-						fontColor = {alpha(theme.colors.light, frameResult.isPending ? 0.25 : 1)}
-						textAlign = "middle-center"
-						width     = "100%"
-						height    = "50%"
-					/>
+					<UiBox
+						key            = {`ui_Scores_row_${userId}_frame_${frameIndex}_runningTotal`}
+						width          = "100%"
+						height         = "50%"
+						alignItems     = "center"
+						justifyContent = "center"
+						borderWidth    = {0}
+					>
+						<IconString
+							value     = {frameResult.runningScore?.toString() ?? '-'}
+							height    = {SCORE_GLYPH_HEIGHT}
+							iconColor = {alpha(theme.colors.light, frameResult.isPending ? 0.25 : 1)}
+							atlases   = {SCORE_ATLASES}
+						/>
+					</UiBox>
 				</UiBox>,
 			)
 		}
 
 		return ui
 	}
+
+
+	// MARK: getRowDisplayName
+	/**
+	 * Display name for a scoreboard row. Empty until the profile fetch resolves.
+	 */
+	private getRowDisplayName(userId: string): string {
+		const cached = this.displayNames.get(userId)
+		if (cached !== undefined) return cached
+
+		if (!this.pendingDisplayNames.has(userId)) {
+			this.pendingDisplayNames.add(userId)
+			void userProfileCache.getDisplayName(userId).then((displayName) => {
+				this.pendingDisplayNames.delete(userId)
+				this.displayNames.set(userId, displayName)
+			})
+		}
+
+		return ''
+	}
+
 
 
 	// MARK: getScoreRows
@@ -294,19 +330,38 @@ export class ScoresLayer extends Layer {
 					borderWidth   = {0}
 					uiTransform   = {{ flexDirection: 'row' }}
 				>
-					<Text
+					<UiBox
 						key             = {`ui_Scores_row_${userId}_rank`}
-						value           = {rank.toString() + getOrdinalSuffix(rank)}
-						fontSize        = {16}
-						fontColor       = {theme.colors.light}
-						textAlign       = "middle-center"
 						width           = {FRAME_CELL_HEIGHT}
 						height          = {FRAME_CELL_HEIGHT}
 						backgroundColor = {theme.colors.info}
 						borderRadius    = {8}
 						margin          = {{ left: FRAME_CELL_MARGIN / 2, right: FRAME_CELL_MARGIN / 2 }}
+						alignItems      = "center"
+						justifyContent  = "center"
 						uiTransform     = {{
-							display: showRanks ? 'flex' : 'none',
+							display      : showRanks ? 'flex' : 'none',
+							flexDirection: 'column',
+						}}
+					>
+						<IconString
+							value     = {rank.toString() + getOrdinalSuffix(rank)}
+							height    = {BADGE_GLYPH_HEIGHT}
+							iconColor = {theme.colors.light}
+							atlases   = {SCORE_ATLASES}
+						/>
+					</UiBox>
+					<IconString
+						key         = {`ui_Scores_row_${userId}_displayName`}
+						value       = {this.getRowDisplayName(userId)}
+						height      = {NAME_GLYPH_HEIGHT}
+						width       = {DISPLAY_NAME_WIDTH}
+						iconColor   = {theme.colors.light}
+						atlases     = {SCORE_ATLASES}
+						margin      = {{ left: FRAME_CELL_MARGIN / 2, right: FRAME_CELL_MARGIN / 2 }}
+						uiTransform = {{
+							justifyContent: 'flex-start',
+							alignSelf     : 'center',
 						}}
 					/>
 					<AvatarIcon
@@ -337,22 +392,28 @@ export class ScoresLayer extends Layer {
 							display   : showTotalScore ? 'flex' : 'none',
 						}}
 					/>
-					<Text
+					<UiBox
 						key             = {`ui_Scores_row_${userId}_totalScore`}
-						value           = {getPlayerTotalScore(frameResult).toString() ?? '-'}
-						fontSize        = {14}
-						fontColor       = {theme.colors.light}
-						textAlign       = "middle-center"
 						width           = {FRAME_CELL_HEIGHT}
 						height          = {FRAME_CELL_HEIGHT}
 						backgroundColor = {theme.colors.info}
 						borderRadius    = {8}
 						margin          = {{ left: FRAME_CELL_MARGIN / 2, right: FRAME_CELL_MARGIN / 2 }}
+						alignItems      = "center"
+						justifyContent  = "center"
 						uiTransform     = {{
-							display : showTotalScore ? 'flex' : 'none',
-							alignSelf: 'flex-end',
+							display      : showTotalScore ? 'flex' : 'none',
+							alignSelf    : 'flex-end',
+							flexDirection: 'column',
 						}}
-					/>
+					>
+						<IconString
+							value     = {getPlayerTotalScore(frameResult).toString()}
+							height    = {BADGE_GLYPH_HEIGHT}
+							iconColor = {theme.colors.light}
+							atlases   = {SCORE_ATLASES}
+						/>
+					</UiBox>
 				</UiBox>,
 			)
 		}

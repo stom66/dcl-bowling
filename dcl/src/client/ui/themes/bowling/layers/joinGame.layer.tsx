@@ -9,7 +9,9 @@ import {
 	IconString,
 	Layer,
 	lighten,
+	playOnce,
 	PropsController,
+	Pulse,
 	Row,
 	UiBox,
 	ZoneType,
@@ -41,6 +43,9 @@ const FRAME_LABEL_HEIGHT        = 16
 const FRAME_BUTTON_HEIGHT       = 40
 const FRAME_BUTTON_WIDTH        = 132
 const FRAME_BUTTON_LABEL_HEIGHT = 14
+const FRAME_BUTTON_LABEL_WIDTH  = 120
+const FRAME_PULSE_DURATION      = 0.2
+const FRAME_PULSE_SCALE         = 1.4
 const FRAME_PICKER_HEIGHT       = 56
 
 const frameLabelAtlases = {
@@ -397,12 +402,21 @@ export class JoinGameLayer extends Layer {
 
 
 
+	// MARK: framePulseId
+	/** Playback id for the one-shot pulse on a frame-length button. */
+	private framePulseId(count: GameFrameCount): string {
+		return `join-frames-pulse-${count}`
+	}
+
+
 	// MARK: selectFrameCount
 	/**
 	 * Sets the length used when this player opens an idle lane.
+	 * The chosen button's label pulses once.
 	 */
 	private selectFrameCount(frameCount: GameFrameCount) {
 		this.joinProps.set('frameCount', frameCount)
+		playOnce(this.framePulseId(frameCount))
 	}
 
 
@@ -410,6 +424,7 @@ export class JoinGameLayer extends Layer {
 	// MARK: frameCountButton
 	/**
 	 * One game-length option. Filled orange when it is the length used to open an idle lane.
+	 * The label uses the same one-shot pulse as the top-right toggles.
 	 */
 	private frameCountButton(
 		count   : GameFrameCount,
@@ -441,12 +456,23 @@ export class JoinGameLayer extends Layer {
 				}}
 				onMouseDown     = {() => { this.selectFrameCount(count) }}
 			>
-				<IconString
-					value     = {`${count} FRAMES`}
-					height    = {FRAME_BUTTON_LABEL_HEIGHT}
-					iconColor = {isSelected ? theme.colors.dark : theme.colors.light}
-					atlases   = {frameLabelAtlases}
-				/>
+				<Pulse
+					id         = {this.framePulseId(count)}
+					playing    = {false}
+					looping    = {false}
+					duration   = {FRAME_PULSE_DURATION}
+					burstCount = {1}
+					scaleMin   = {1}
+					scaleMax   = {FRAME_PULSE_SCALE}
+				>
+					<IconString
+						value     = {`${count} FRAMES`}
+						width     = {FRAME_BUTTON_LABEL_WIDTH}
+						height    = {FRAME_BUTTON_LABEL_HEIGHT}
+						iconColor = {isSelected ? theme.colors.dark : theme.colors.light}
+						atlases   = {frameLabelAtlases}
+					/>
+				</Pulse>
 			</UiBox>
 		)
 	}
