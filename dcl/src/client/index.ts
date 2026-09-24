@@ -24,6 +24,7 @@ import { playerMover } from 'src/client/playerMover'
 import { SoundManager } from 'src/client/soundManager'
 import { SetupUI } from 'src/client/ui'
 import { UiWorld } from 'src/client/ui-world'
+import { TouchscreenControls } from './touchscreenControls'
 
 
 function infiniteCount() {
@@ -146,8 +147,9 @@ export async function initClient() {
 	CameraController.init()
 	SoundManager.init()
 	UiWorld.init()
+	TouchscreenControls.init()
+	
 	setupBowlingHostNpc()
 	setupLights()
-
 	onGameLoaded()
 }
