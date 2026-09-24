@@ -42,6 +42,31 @@ const RIGHT_INSET_DEFAULT = 8
 /** Clears the local preview chrome along the right edge. */
 const RIGHT_INSET_LOCAL_DEV = 152
 
+const exclusivePanels: Layer[] = [
+	statsLayer,
+	leaderboardLayer,
+	customizationLayer,
+]
+
+
+// MARK: toggleExclusivePanel
+/**
+ * Opens one center panel and closes the other two.
+ * Clicking the panel that is already open closes it.
+ */
+function toggleExclusivePanel(target: Layer) {
+	const opening = target.visibility.isHidden
+
+	for (const layer of exclusivePanels) {
+		if (layer === target) continue
+		if (layer.visibility.isHidden) continue
+		layer.hide()
+	}
+
+	if (opening) target.show()
+	else         target.hide()
+}
+
 
 // MARK: pulseGlyph
 /**
@@ -209,7 +234,7 @@ export class TopRightTogglesLayer extends Layer {
 				'btn_stats_toggle',
 				'Stats',
 				() => {
-					statsLayer.toggle()
+					toggleExclusivePanel(statsLayer)
 					playOnce(STATS_PULSE_ID)
 				},
 				pulseGlyph(
@@ -228,7 +253,7 @@ export class TopRightTogglesLayer extends Layer {
 				'btn_leaderboard_toggle',
 				'Leaderboard',
 				() => {
-					leaderboardLayer.toggle()
+					toggleExclusivePanel(leaderboardLayer)
 					playOnce(LEADERBOARD_PULSE_ID)
 				},
 				pulseGlyph(
@@ -245,7 +270,7 @@ export class TopRightTogglesLayer extends Layer {
 				'btn_customization_toggle',
 				'Customize',
 				() => {
-					customizationLayer.toggle()
+					toggleExclusivePanel(customizationLayer)
 					playOnce(CUSTOMIZE_PULSE_ID)
 				},
 				pulseGlyph(
