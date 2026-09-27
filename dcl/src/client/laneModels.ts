@@ -10,7 +10,7 @@ import { GameSettings } from "src/shared/settings"
 import { LaneSnapshot, NotifyPlayerRollStartPayload } from "src/shared/types/shared-types"
 import { ClientEvents, eventBus } from "src/shared/utils/eventBus"
 
-import { lanePositions } from "src/client/data/lanePositions"
+import { getLanePosition } from "src/client/data/lanePositions"
 
 
 export type LaneClipName = 'idle' | 'down' | 'up'
@@ -83,7 +83,7 @@ export namespace LaneModels {
 		laneIndex : number,
 		src       : string
 	): Entity | undefined {
-		const position = lanePositions[laneIndex]
+		const position = getLanePosition(laneIndex)
 		if (!position) {
 			console.error('LaneModels: createRootEntity: missing lane position', laneIndex)
 			return undefined

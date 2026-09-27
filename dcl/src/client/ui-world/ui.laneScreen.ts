@@ -6,7 +6,7 @@ import { LanePhase } from "src/shared/enums"
 import { LaneStore } from "src/shared/laneStore"
 import { userProfileCache } from "src/shared/utils/userProfileCache"
 
-import { laneScreenPositions } from "src/client/data/lanePositions"
+import { getLaneScreenPosition } from "src/client/data/lanePositions"
 
 
 const DISPLAY_NAME_MAX_LENGTH = 16
@@ -39,7 +39,7 @@ export class UiLaneScreen {
 		this.laneIndex = laneIndex
 		this.entity    = engine.addEntity()
 		Transform.create(this.entity, {
-			position: laneScreenPositions[this.laneIndex],
+			position: getLaneScreenPosition(this.laneIndex),
 			rotation: Quaternion.fromEulerDegrees(-16, 0, 0),
 		})
 

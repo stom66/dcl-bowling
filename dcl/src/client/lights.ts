@@ -1,37 +1,52 @@
 import { engine, LightSource, Material, MeshRenderer, Transform } from "@dcl/sdk/ecs"
 import { Color3, Quaternion, Vector3 } from "@dcl/sdk/math"
+import { getRootPosition } from "./data/lanePositions"
 
+
+const SHOW_LIGHT_MESH = true
 
 export function setupLights() {
+	const rootEntity = engine.addEntity()
+	Transform.create(rootEntity, { position: getRootPosition() })
+
 // Add a light above the front desk
 	const light1 = engine.addEntity()
-	Transform.create(light1, { position: Vector3.create(16, 7, 12) })
+	Transform.create(light1, { 
+		parent  : rootEntity,
+		position: Vector3.create(0, 26, 0) 
+	})
 	LightSource.create(light1, {
 		type: LightSource.Type.Point({}),
 		color: Color3.White(),
-		intensity: 300000
+		intensity: 500000
 	})
-	MeshRenderer.setSphere(light1)
+	if (SHOW_LIGHT_MESH) MeshRenderer.setSphere(light1)
 
 	// Add a light at the back of the bowling alley
 	const light2 = engine.addEntity()
-	Transform.create(light2, { position: Vector3.create(8, 5, 32) })
+	Transform.create(light2, { 	
+		parent  : rootEntity,
+		position: Vector3.create(-12, 42, 46) 
+	})
 	LightSource.create(light2, {
 		type: LightSource.Type.Point({}),
 		color: Color3.White(),
-		intensity: 300000
+		intensity: 2500000
 	})
-	MeshRenderer.setSphere(light2)
+	if (SHOW_LIGHT_MESH) MeshRenderer.setSphere(light2)
 
 	// Add a light at the back of the bowling alley
 	const light3 = engine.addEntity()
-	Transform.create(light3, { position: Vector3.create(24, 5, 32) })
+	Transform.create(light3, { 
+		parent  : rootEntity,
+		position: Vector3.create(12, 42, 46)
+	})
 	LightSource.create(light3, {
 		type: LightSource.Type.Point({}),
 		color: Color3.White(),
-		intensity: 300000
+		intensity: 2500000
 	})
-	MeshRenderer.setSphere(light3)
+	if (SHOW_LIGHT_MESH) MeshRenderer.setSphere(light3)
 
 
 	// Add a light at the back of the bowling alley

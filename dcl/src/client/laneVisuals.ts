@@ -12,7 +12,7 @@ import { ClientEvents, eventBus } from "src/shared/utils/eventBus"
 
 import { ClientStore } from "src/client/clientStore"
 import { applyBallTrail, applyFollowSpotlight, stopBallTrail } from "src/client/cosmetics"
-import { lanePositions } from "src/client/data/lanePositions"
+import { getLanePosition } from "src/client/data/lanePositions"
 import { sfx, SoundManager } from "src/client/soundManager"
 
 
@@ -107,7 +107,7 @@ export class LaneVisuals {
 		rollOwnerUserId    : string
 	) {
 		this.laneIndex          = laneIndex
-		this.lanePosition       = lanePositions[laneIndex]
+		this.lanePosition       = getLanePosition(laneIndex)
 		this.rollStartTimestamp = rollStartTimestamp
 		this.rollOwnerUserId    = rollOwnerUserId
 		this.setupBall()

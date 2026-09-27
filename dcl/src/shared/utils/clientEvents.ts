@@ -40,6 +40,9 @@ export enum ClientEvents {
 
 	REQUEST_LEAVE_GAME                  = "requestLeaveGame",               // When the local player requests to leave the game
 
+	SHOW_UI_CUSTOMIZE                   = "showUiCustomize",                // When the customize window opens
+	HIDE_UI_CUSTOMIZE                   = "hideUiCustomize",                // When the customize window closes
+
 
 	//ON_GROUP_TURN_START    =  "onGroupTurnStart", // When someone else in the group starts their turn
 	//ON_GROUP_TURN_END      =  "onGroupTurnEnd",   // When someone else in the group ends their turn

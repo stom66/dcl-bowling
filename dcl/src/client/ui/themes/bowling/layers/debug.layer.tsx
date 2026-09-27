@@ -27,6 +27,8 @@ import { userProfileCache } from 'src/shared/utils/userProfileCache'
 
 import { ClientMessaging } from 'src/client/clientMessaging'
 import { ClientStore } from 'src/client/clientStore'
+import { getRootPosition } from 'src/client/data/lanePositions'
+import { playerMover } from 'src/client/playerMover'
 
 
 const clientStore = ClientStore.getInstance()
@@ -239,12 +241,10 @@ export class DebugLayer extends Layer {
 					textLabel = "GoTo Lobby"
 					width     = "100%"
 					height    = {18}
+					minHeight = {18}
 					fontSize  = {DEBUG_FONT_SIZE}
 					callback  = {() => {
-						movePlayerTo({
-							newRelativePosition: Vector3.create(16, 0, 11),
-							cameraTarget       : Vector3.create(16, 1, 15),
-						})
+						playerMover.movePlayerToSpawnPoint()
 					}}
 					uiTransform = {{
 						positionType: 'relative',

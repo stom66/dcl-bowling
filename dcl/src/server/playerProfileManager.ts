@@ -387,7 +387,8 @@ export namespace PlayerProfileManager {
 
 	// MARK: requestAddTickets
 	/**
-	 * Adds tickets to the player's balance.
+	 * Applies `amount` to the player's balance. Negative amounts subtract.
+	 * The balance cannot fall below zero.
 	 * Admins can always do this. Other players can when the playtest panel is on.
 	 */
 	export function requestAddTickets(
@@ -406,17 +407,17 @@ export namespace PlayerProfileManager {
 		}
 
 		const delta = Math.floor(amount)
-		if (delta <= 0) {
+		if (delta === 0) {
 			console.log('PlayerProfileManager: requestAddTickets: invalid amount', amount)
 			return
 		}
 
 		session.tickets.update((state) => ({
 			...state,
-			balance: state.balance + delta,
+			balance: Math.max(0, state.balance + delta),
 		}))
 		void session.tickets.persist()
-		console.log('PlayerProfileManager: requestAddTickets: added', delta, 'for', userId)
+		console.log('PlayerProfileManager: requestAddTickets: applied', delta, 'for', userId)
 	}
 
 

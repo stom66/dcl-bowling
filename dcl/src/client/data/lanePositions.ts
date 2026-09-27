@@ -1,19 +1,39 @@
 import { Vector3 } from "@dcl/sdk/math";
 
-export const lanePositions = [
-    Vector3.create(4.125, 0.481, 26.0),
-    Vector3.create(8.875, 0.481, 26.0),
-    Vector3.create(13.625, 0.481, 26.0),
-    Vector3.create(18.375, 0.481, 26.0),
-    Vector3.create(23.125, 0.481, 26.0),
-    Vector3.create(27.875, 0.481, 26.0),
+
+const rootPosition = Vector3.create(0, 128, 0) // pivot point for the main platform
+
+// Offset from rootPosition for each of the bowling lanes
+const lanePositions = [
+    Vector3.create(-12.5, 0, 43),
+    Vector3.create(-7.5,  0, 43),
+    Vector3.create(-2.5,  0, 43),
+    Vector3.create(2.5,   0, 43),
+    Vector3.create(7.5,   0, 43),
+    Vector3.create(12.5,  0, 43),
+	
 ]
 
-export const laneScreenPositions = [
-	Vector3.create(5.377, 4.189, 24.177),
-	Vector3.create(9.625, 4.189, 24.177),
-	Vector3.create(13.875, 4.189, 24.177),
-	Vector3.create(18.125, 4.189, 24.177),
-	Vector3.create(22.375, 4.189, 24.177),
-	Vector3.create(26.625, 4.189, 24.177),
+// Offset from rootPosition for each of the lane screens
+const laneScreenPositions = [
+	Vector3.create(-12.5, 3.315, 41.819),
+	Vector3.create(-7.5,  3.315, 41.819),
+	Vector3.create(-2.5,  3.315, 41.819),
+	Vector3.create(2.5,   3.315, 41.819),
+	Vector3.create(7.5,   3.315, 41.819),
+	Vector3.create(12.5,  3.315, 41.819),
 ]
+
+export function getRootPosition() {
+	return rootPosition
+}
+
+export function getLanePosition(laneIndex: number) {
+	laneIndex = laneIndex % lanePositions.length
+	return Vector3.add(rootPosition, lanePositions[laneIndex])
+}
+
+export function getLaneScreenPosition(laneIndex: number) {
+	laneIndex = laneIndex % lanePositions.length
+	return Vector3.add(rootPosition, laneScreenPositions[laneIndex])
+}

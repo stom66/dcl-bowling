@@ -6,7 +6,7 @@ import { PlayerSettings } from "src/shared/settings";
 import { ClientEvents, eventBus } from "src/shared/utils/eventBus";
 
 import { ClientStore } from "src/client/clientStore";
-import { lanePositions } from "src/client/data/lanePositions";
+import { getLanePosition } from "src/client/data/lanePositions";
 
 
 export namespace CameraController {
@@ -130,8 +130,8 @@ export namespace CameraController {
 	function triggerRollStartCamera() {
 		console.log("CameraController: triggerRollStartCamera")
 		const laneIndex      = clientStore.getLaneIndex() ?? 0
-		const startPosition  = Vector3.add(lanePositions[laneIndex], cameraHeight)
-		const targetPosition = Vector3.add(lanePositions[laneIndex], cameraTargetOffset)
+		const startPosition  = Vector3.add(getLanePosition(laneIndex), cameraHeight)
+		const targetPosition = Vector3.add(getLanePosition(laneIndex), cameraTargetOffset)
 		setCameraView(startPosition, targetPosition)
 	}
 
@@ -141,8 +141,8 @@ export namespace CameraController {
 
 		console.log("CameraController: triggerPlaybackCamera")
 		const laneIndex      = clientStore.getLaneIndex() ?? 0
-		const startPosition  = Vector3.add(lanePositions[laneIndex], cameraHeight)
-		const targetPosition = Vector3.add(lanePositions[laneIndex], cameraTargetOffset)
+		const startPosition  = Vector3.add(getLanePosition(laneIndex), cameraHeight)
+		const targetPosition = Vector3.add(getLanePosition(laneIndex), cameraTargetOffset)
 		const endPosition    = Vector3.add(startPosition, cameraEndOffset)
 		cameraEndPosition    = endPosition
 

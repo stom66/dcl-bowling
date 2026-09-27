@@ -93,7 +93,8 @@ export namespace ClientMessaging {
 
 	// MARK: requestTicket
 	/**
-	 * Asks the server to add tickets to this player.
+	 * Asks the server to add or remove tickets for this player.
+	 * A negative `amount` subtracts, and the balance cannot fall below zero.
 	 * Granted for admins, and for any player while the playtest panel is enabled.
 	 */
 	export function requestTicket(amount: number): void {

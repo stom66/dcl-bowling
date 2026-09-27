@@ -1,6 +1,5 @@
 import * as utils from "@dcl-sdk/utils"
 import { Vector3 } from "@dcl/sdk/math"
-import { movePlayerTo } from "~system/RestrictedActions"
 
 import { LanePhase, PlayerStatus } from "src/shared/enums"
 import { LaneSnapshot, NotifyPlayerRollPayload, NotifyPlayerRollStartPayload } from "src/shared/types/shared-types"

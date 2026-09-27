@@ -9,7 +9,7 @@ import { ClientEvents, eventBus } from "src/shared/utils/eventBus";
 
 import { ClientMessaging } from "src/client/clientMessaging";
 import { ClientStore } from "src/client/clientStore";
-import { lanePositions } from "src/client/data/lanePositions";
+import { getLanePosition } from "src/client/data/lanePositions";
 import { sfx, SoundManager } from "src/client/soundManager";
 import { SetIndicator } from "src/client/ui/themes/bowling/layers/bowlingControls.layer";
 
@@ -146,7 +146,7 @@ export class BowlingControls {
 	) {
 		console.log("bowlingControls: BowlingControls: laneIndex", laneIndex)
 		this.laneIndex    = laneIndex
-		this.lanePosition = lanePositions[laneIndex]
+		this.lanePosition = getLanePosition(laneIndex)
 		this.ball         = ball
 
 		// Create the arrow entity

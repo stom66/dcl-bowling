@@ -21,6 +21,7 @@ import { setupLights } from 'src/client/lights'
 import { setLoadingStage } from 'src/client/loadingState'
 import { setupBowlingHostNpc } from 'src/client/npcGameHost'
 import { playerMover } from 'src/client/playerMover'
+import { SkyboxObjects } from 'src/client/skyboxObjects'
 import { SoundManager } from 'src/client/soundManager'
 import { SetupUI } from 'src/client/ui'
 import { UiWorld } from 'src/client/ui-world'
@@ -148,8 +149,9 @@ export async function initClient() {
 	SoundManager.init()
 	UiWorld.init()
 	TouchscreenControls.init()
-	
+
 	setupBowlingHostNpc()
 	setupLights()
+	SkyboxObjects.init()
 	onGameLoaded()
 }

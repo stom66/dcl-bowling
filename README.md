@@ -26,6 +26,7 @@ See also: [Bowling Visualiser](#bowling-physics-sandbox)
 - [Getting Started](#getting-started)
   - [Pre-requisites](#pre-requisites)
   - [Preview the DCL scene](#preview-the-dcl-scene)
+- [Credits and licenses](#credits-and-licenses)
 - [License](#license)
 
 ---
@@ -186,6 +187,14 @@ One small extra step runs before every deploy: the action writes [`dcl/src/clien
 2. Open the scene from the home screen
 3. Choose **Preview**
 4. A local test server starts and the Decentraland Client opens
+
+---
+
+## Credits and licenses
+
+Third-party assets used in this project:
+
+- Some 3D models come from [The Base Mesh](https://thebasemesh.com/) and are released under the [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/) public domain dedication.
 
 ---
 

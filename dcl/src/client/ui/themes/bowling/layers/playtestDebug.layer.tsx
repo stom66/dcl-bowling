@@ -2,31 +2,45 @@ import { Vector3 } from '@dcl/sdk/math'
 import ReactEcs from '@dcl/sdk/react-ecs'
 import { ButtonText, Column, getTheme, Icon, Layer, Row, Text, UiBox, ZoneType } from '@stom66/dcl-ui-component-kit'
 
+import { ComponentStore } from 'src/shared/components/componentStore'
+import { PlayerTickets } from 'src/shared/components/definitions/shared.playerTickets'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 
 import { ClientMessaging } from 'src/client/clientMessaging'
+import { ClientStore } from 'src/client/clientStore'
 import { gameIconsAtlas } from 'src/client/ui/themes/bowling/atlases'
+import { TOGGLE_BUTTONS_SIZE, TOGGLE_GAP } from 'src/client/ui/themes/bowling/layers/topRightToggles.layer'
 
 
-const PANEL_WIDTH      = 180
-const BUTTON_HEIGHT    = 40
-const PANEL_GAP        = 8
-const TICKET_ICON_SIZE = 22
+const clientStore = ClientStore.getInstance()
+
+
+const PANEL_WIDTH        = 180
+const BUTTON_HEIGHT      = 40
+const PANEL_GAP          = 8
+const TICKET_ICON_SIZE   = 22
+/** Matches the ticket-balance chip height so this stack clears it. */
+const TICKET_CHIP_HEIGHT = 40
+/** Same top inset as the ticket balance, plus the chip and a gap. */
+const PANEL_TOP          = TOGGLE_BUTTONS_SIZE + TOGGLE_GAP + TICKET_CHIP_HEIGHT + PANEL_GAP
 
 
 // MARK: PlaytestDebugLayer
 /**
- * Right-side playtest controls. Ticket and unlock actions sit above bowlotron 3000.
+ * Right-top playtest controls, stacked under the ticket balance.
+ * Ticket and unlock actions sit above bowlotron 3000.
  * Registered only while `GameSettings.PLAYTEST_DEBUG_PANEL` is on.
  */
 export class PlaytestDebugLayer extends Layer {
 	constructor() {
 		super({
 			id         : 'bowling-playtest-debug',
-			zone       : ZoneType.Right,
+			zone       : ZoneType.RightTop,
 			canBeHidden: false,
 			uiTransform: {
-				width: PANEL_WIDTH,
+				width : PANEL_WIDTH,
+				height: 'auto',
+				margin: { top: PANEL_TOP },
 			},
 		})
 	}
@@ -67,6 +81,20 @@ export class PlaytestDebugLayer extends Layer {
 	 */
 	private resetUnlocks() {
 		ClientMessaging.requestResetUnlocks()
+	}
+
+
+	// MARK: resetTickets
+	/**
+	 * Asks the server to subtract the local balance, which sets tickets to zero.
+	 */
+	private resetTickets() {
+		const userId  = clientStore.getUserId()
+		const balance = userId
+			? ComponentStore.getOrNull(PlayerTickets, { key: userId })?.balance ?? 0
+			: 0
+		if (balance <= 0) return
+		ClientMessaging.requestTicket(-balance)
 	}
 
 
@@ -192,6 +220,7 @@ export class PlaytestDebugLayer extends Layer {
 				this.ticketButton(10),
 				this.ticketButton(100),
 				this.button('playtest_reset_unlocks', 'Reset Unlocks', () => { this.resetUnlocks() }),
+				this.button('playtest_reset_tickets', 'Reset Tickets', () => { this.resetTickets() }),
 			]),
 			this.panel('bowlotron-chrome', 'Bowl-o-tron 3000', [
 				this.button('bowlotron_strike', 'Strike', () => {

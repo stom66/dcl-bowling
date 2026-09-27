@@ -35,8 +35,9 @@ const IS_DEV = process.env.NODE_ENV === 'development'
  * bumper toggle, lives in bowling controls. Customization sits above gameplay
  * HUD; records and stats sit with it. The top-right toggles paint after
  * those windows. Ticket balance sits in the top of the right zone.
- * The playtest panel sits on the right while
- * `GameSettings.PLAYTEST_DEBUG_PANEL` is on. Loading is near the end so
+ * The playtest panel sits in that same zone, below the ticket balance, while
+ * `GameSettings.PLAYTEST_DEBUG_PANEL` is on, with Bolotron 3000 stacked under it.
+ * Loading is near the end so
  * it covers gameplay until dismissed.
  * Version is last with the highest z-index.
  */

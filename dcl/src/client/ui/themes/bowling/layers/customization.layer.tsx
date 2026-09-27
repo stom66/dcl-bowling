@@ -8,6 +8,7 @@ import { PlayerTickets } from 'src/shared/components/definitions/shared.playerTi
 import { PlayerUnlocks } from 'src/shared/components/definitions/shared.playerUnlocks'
 import { getAllCatalogEntries, isItemOwned } from 'src/shared/data/unlocks'
 import { resolvePlayerLoadout } from 'src/shared/data/unlocks/resolveLoadout'
+import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 
 import { ClientMessaging } from 'src/client/clientMessaging'
 import { ClientStore } from 'src/client/clientStore'
@@ -384,6 +385,34 @@ export class CustomizationLayer extends Layer {
 	 */
 	selectItem(itemId: string) {
 		this.customizationProps.set('selectedId', itemId)
+	}
+
+
+	// MARK: show
+	/**
+	 * Opens the locker window and emits `ClientEvents.SHOW_UI_CUSTOMIZE`.
+	 */
+	show(duration = 0.2) {
+		const wasHidden = this.visibility.isHidden
+
+		super.show(duration)
+		if (!wasHidden) return
+
+		eventBus.emit(ClientEvents.SHOW_UI_CUSTOMIZE, {})
+	}
+
+
+	// MARK: hide
+	/**
+	 * Closes the locker window and emits `ClientEvents.HIDE_UI_CUSTOMIZE`.
+	 */
+	hide(duration = 0.2) {
+		const wasHidden = this.visibility.isHidden
+
+		super.hide(duration)
+		if (wasHidden) return
+
+		eventBus.emit(ClientEvents.HIDE_UI_CUSTOMIZE, {})
 	}
 
 
