@@ -15,6 +15,7 @@ import { CameraController } from 'src/client/cameraController'
 import { ClientHandler } from 'src/client/clientHandler'
 import { ClientStore } from 'src/client/clientStore'
 import { gameStateHandler } from 'src/client/gameStateHandler'
+import { GltfSpawner } from 'src/client/gltfSpawner'
 import { LaneModels } from 'src/client/laneModels'
 import { LaneWatcher } from 'src/client/laneWatcher'
 import { setupLights } from 'src/client/lights'
@@ -26,6 +27,7 @@ import { SoundManager } from 'src/client/soundManager'
 import { SetupUI } from 'src/client/ui'
 import { UiWorld } from 'src/client/ui-world'
 import { TouchscreenControls } from './touchscreenControls'
+import { RespawnTrigger } from './respawnTirgger'
 
 
 function infiniteCount() {
@@ -104,6 +106,28 @@ export async function initClient() {
 	}
 
 
+	// MARK: waitForGltfModel
+	/**
+	 * Resolves once the scene GLTF spawned by {@link GltfSpawner} has finished loading.
+	 */
+	function waitForGltfModel(): Promise<void> {
+		return new Promise((resolve) => {
+			function sys_waitForGltfModel() {
+				setLoadingStage('GltfSpawner.isLoaded')
+				if (!GltfSpawner.isLoaded) {
+					console.log('waitForLoad: GltfSpawner.isLoaded')
+					return
+				}
+
+				engine.removeSystem(sys_waitForGltfModel)
+				resolve()
+			}
+
+			engine.addSystem(sys_waitForGltfModel)
+		})
+	}
+
+
 	// MARK: onGameLoaded
 	/**
 	 * Emits `LOAD_COMPLETE` after the loading-screen delay and unfreezes once.
@@ -125,8 +149,11 @@ export async function initClient() {
 		}, GameSettings.LOADING_SCREEN_DELAY)
 	}
 
+	GltfSpawner.init()
+
 	await Promise.all([
 		waitForSceneReady(),
+		waitForGltfModel(),
 		(async () => {
 			setLoadingStage('ComponentManager.onClientReady()')
 			await ComponentManager.onClientReady()
@@ -149,6 +176,7 @@ export async function initClient() {
 	SoundManager.init()
 	UiWorld.init()
 	TouchscreenControls.init()
+	RespawnTrigger.init()
 
 	setupBowlingHostNpc()
 	setupLights()
