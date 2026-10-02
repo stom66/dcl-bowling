@@ -78,27 +78,6 @@
             },
             "parent": 0
           }
-        },
-        "131585": {
-          "json": {
-            "position": {
-              "x": 0,
-              "y": 0,
-              "z": 0
-            },
-            "rotation": {
-              "x": 0,
-              "y": 1,
-              "z": 0,
-              "w": 0
-            },
-            "scale": {
-              "x": 1,
-              "y": 1,
-              "z": 1
-            },
-            "parent": 0
-          }
         }
       }
     },
@@ -118,7 +97,7 @@
                 "clip": "SphereAction",
                 "playing": true,
                 "weight": 1,
-                "speed": 1,
+                "speed": 0.05999999865889549,
                 "loop": true,
                 "shouldReset": false
               }
@@ -142,13 +121,6 @@
             "visibleMeshesCollisionMask": 0,
             "invisibleMeshesCollisionMask": 3
           }
-        },
-        "131585": {
-          "json": {
-            "src": "assets/models/scene-new.gltf",
-            "visibleMeshesCollisionMask": 2,
-            "invisibleMeshesCollisionMask": 3
-          }
         }
       }
     },
@@ -168,11 +140,6 @@
         "512": {
           "json": {
             "value": "skybox.gltf"
-          }
-        },
-        "131585": {
-          "json": {
-            "value": "scene-new.gltf"
           }
         }
       }
@@ -252,8 +219,7 @@
                 "entity": 0,
                 "open": true,
                 "children": [
-                  512,
-                  131585
+                  512
                 ]
               },
               {
@@ -266,10 +232,6 @@
               },
               {
                 "entity": 512,
-                "children": []
-              },
-              {
-                "entity": 131585,
                 "children": []
               }
             ]
@@ -295,9 +257,6 @@
       },
       "data": {
         "512": {
-          "json": {}
-        },
-        "131585": {
           "json": {}
         }
       }
@@ -5026,29 +4985,29 @@
                   "x": {
                     "$case": "range",
                     "value": [
-                      -1.5,
-                      1.5
+                      -5,
+                      5
                     ]
                   },
                   "y": {
                     "$case": "range",
                     "value": [
-                      20,
-                      20
+                      128,
+                      128
                     ]
                   },
                   "z": {
                     "$case": "range",
                     "value": [
-                      -1.5,
-                      1.5
+                      -3,
+                      3
                     ]
                   }
                 },
                 "cameraTarget": {
-                  "x": 8,
-                  "y": 1,
-                  "z": 8
+                  "x": 0,
+                  "y": 132,
+                  "z": -9.5
                 }
               }
             ],
