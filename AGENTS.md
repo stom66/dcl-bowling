@@ -41,7 +41,7 @@ Do not expose server-only APIs or secrets to client code.
 - Treat the game state machine, server-authoritative physics, lane state, player
   profiles, unlocks, equipped items, leaderboards, scoreboards, and metrics as core
   game systems.
-- Name room messages `REQUEST_*` / `NOTIFY_*`, broad-to-narrow, grouped by domain.
+- Name net messages `REQUEST_*` / `NOTIFY_*`, broad-to-narrow, grouped by domain.
 - PostHog uses a hardcoded EU host. The only PostHog env var is `POSTHOG_API_KEY`.
 
 ## Task tracking

@@ -151,5 +151,5 @@ export function getMessagePayloadSizeBytes(eventType: keyof typeof Messages, dat
 	return buffer.toBinary().byteLength + CUSTOM_EVENT_WRAPPER_BYTES
 }
 
-// Export room
-export const room = registerMessages(Messages)
+// Export net
+export const net = registerMessages(Messages)

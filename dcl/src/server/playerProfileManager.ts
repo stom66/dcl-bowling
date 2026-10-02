@@ -66,7 +66,7 @@ const MATCH_HISTORY_CAP = 20
 
 // MARK: sessionKey
 /**
- * Case-folds player ids so room `context.from` matches `onEnterScene` wallets.
+ * Case-folds player ids so net `context.from` matches `onEnterScene` wallets.
  */
 function sessionKey(userId: string): string {
 	return normalizeEntityKey(userId)
@@ -84,7 +84,7 @@ export namespace PlayerProfileManager {
 
 	// MARK: getSession
 	/**
-	 * Finds a live session. Keys are case-folded so room `context.from`
+	 * Finds a live session. Keys are case-folded so net `context.from`
 	 * matches `onEnterScene` wallet casing.
 	 */
 	function getSession(userId: string): PlayerSession | undefined {

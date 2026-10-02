@@ -1,5 +1,5 @@
 import { LaneStore } from "src/shared/laneStore"
-import { getMessagePayloadSizeBytes, MessageType, room } from "src/shared/room"
+import { getMessagePayloadSizeBytes, MessageType, net } from "src/shared/net"
 import { GameSettings } from "src/shared/settings"
 import { NotifyPlayerRollPayload } from "src/shared/types/shared-types"
 
@@ -15,14 +15,14 @@ export function notifyJoinGame(
 	userId    : string,
 	laneIndex : number
 ): void {
-	room.send(MessageType.NOTIFY_JOIN_GAME, { laneIndex, sentAt: Date.now() }, { to : [userId] })
+	net.send(MessageType.NOTIFY_JOIN_GAME, { laneIndex, sentAt: Date.now() }, { to : [userId] })
 }
 
 
 // MARK: notifyPlayerRollStart
 /**
  * Roll-start carries `pinStanding` and `rollStartTimestamp`, neither of which is
- * on a synced component, so this stays as a directed room message.
+ * on a synced component, so this stays as a directed net message.
  *
  * When {@link GameSettings.SHOW_NON_GROUP_ROLL_VISUALS} is on, broadcasts to every
  * client so lane meshes can be spawned for games you're not enrolled in (same scope
@@ -42,12 +42,12 @@ export function notifyPlayerRollStart(
 	}
 
 	if (GameSettings.SHOW_NON_GROUP_ROLL_VISUALS) {
-		room.send(MessageType.NOTIFY_PLAYER_ROLL_START, payload, { to: undefined })
+		net.send(MessageType.NOTIFY_PLAYER_ROLL_START, payload, { to: undefined })
 		return
 	}
 
 	const to = LaneStore.getLaneUserIds(laneIndex)
-	room.send(MessageType.NOTIFY_PLAYER_ROLL_START, payload, { to: to })
+	net.send(MessageType.NOTIFY_PLAYER_ROLL_START, payload, { to: to })
 }
 
 
@@ -59,13 +59,13 @@ export function notifyPlayerRollRequestReceived(
 	userId    : string,
 	sentAt    : number
 ): void {
-	room.send(MessageType.NOTIFY_PLAYER_ROLL_REQUEST_RECEIVED, { userId, sentAt }, { to : undefined })
+	net.send(MessageType.NOTIFY_PLAYER_ROLL_REQUEST_RECEIVED, { userId, sentAt }, { to : undefined })
 }
 
 // MARK: notifyPlayerRollPlayback
 /**
  * Roll-playback carries the keyframe arrays, which are far too large to put on a
- * synced component, so this stays as a directed room message.
+ * synced component, so this stays as a directed net message.
  */
 export function notifyPlayerRollPlayback(
 	laneIndex : number,
@@ -78,12 +78,12 @@ export function notifyPlayerRollPlayback(
 		`serverMessaging: notifyPlayerRollPlayback: lane ${laneIndex}, recipients ${to?.length ?? 0 > 0 ? to?.length ?? 0 : 'all'}, payload ${payloadSizeBytes} bytes (${(payloadSizeBytes / 1024).toFixed(2)} KB), total ${totalBytes} bytes (${(totalBytes / 1024).toFixed(2)} KB)`
 	)
 	
-	room.send(MessageType.NOTIFY_PLAYER_ROLL_PLAYBACK, payload, { to: to ? to : undefined })
+	net.send(MessageType.NOTIFY_PLAYER_ROLL_PLAYBACK, payload, { to: to ? to : undefined })
 }
 
 
 // MARK: notifyServerTime
 /** Broadcasts current server time to every connected client for `clockSync`. */
 export function notifyServerTime(): void {
-	room.send(MessageType.NOTIFY_SERVER_TIME, Date.now())
+	net.send(MessageType.NOTIFY_SERVER_TIME, Date.now())
 }

@@ -61,7 +61,7 @@ Notable modules (non-exhaustive):
 
 - **`shared/components/`** — ECS component definitions (`lane.ts`) and `ComponentManager` (entity lifecycle and sync)
 - **`shared/laneStore.ts`** — read/write API over lane component data
-- **`shared/room.ts`** — typed MessageBus messages for actions that do not fit on synced components (e.g. roll playback payloads)
+- **`shared/net.ts`** — typed client↔server messages for actions that do not fit on synced components (e.g. roll playback payloads)
 - **`shared/utils/eventBus.ts`** — in-scene pub/sub (see below)
 - **`server/gameManager.ts`** — authoritative game state machine per lane
 - **`server/physics/`** — Cannon simulation, keyframe recording, and compression (see [Server-authoritative physics](#server-authoritative-physics))
@@ -88,7 +88,7 @@ On the client, `LaneWatcher` attaches `onChange` listeners to each lane’s sync
 
 That bus is an in-process pub/sub layer (similar to Roblox *BindableEvents*). It is **not** Decentraland’s built-in MessageBus used for peer-to-peer messages. Use `eventBus` to decouple scripts: UI, camera, controls, and visuals subscribe to `ClientEvents` (e.g. `NOTIFY_LANE_STATE`, `ON_MY_ROLL_START`) instead of calling each other directly.
 
-Peer actions and bulky payloads still use **`room`** / MessageBus (`shared/room.ts`) — for example join-game requests, roll input, and compressed physics playback — where CRDT components are the wrong fit or size limits apply.
+Peer actions and bulky payloads still use **`net`** (`shared/net.ts`, via `registerMessages`) — for example join-game requests, roll input, and compressed physics playback — where CRDT components are the wrong fit or size limits apply.
 
 **Rough data flow**
 
@@ -121,7 +121,7 @@ flowchart LR
 
   CM --> COMP
   COMP --> CM2
-  PHY -->|playback via MessageBus| VIS
+  PHY -->|playback via net| VIS
 ```
 
 ### Server-authoritative physics

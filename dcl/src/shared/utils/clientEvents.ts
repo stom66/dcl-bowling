@@ -31,7 +31,7 @@ export enum ClientEvents {
 	ON_NON_GROUP_FRAME_START            = "onNonGroupFrameStart",            // When a non-group member starts their frame
 	ON_NON_GROUP_ROLL_START             = "onNonGroupRollStart",            // When a non-group member starts their roll
 	ON_NON_GROUP_ROLL_REQUEST           = "onNonGroupRollRequest",          // When a non-group member requests a roll
-	ON_NON_GROUP_ROLL_PLAYBACK_RECEIVED = "onNonGroupRollPlaybackReceived", // Server sent roll playback payload (room message)
+	ON_NON_GROUP_ROLL_PLAYBACK_RECEIVED = "onNonGroupRollPlaybackReceived", // Server sent roll playback payload (net message)
 	ON_NON_GROUP_ROLL_PLAYBACK_START    = "onNonGroupRollPlaybackStart",    // Lane visuals began for a non-group member (another lane)
 	ON_NON_GROUP_ROLL_PLAYBACK_END      = "onNonGroupRollPlaybackEnd",      // Lane visuals finished for a non-group member (another lane)
 	ON_NON_GROUP_ROLL_END               = "onNonGroupRollEnd",               // When a non-group member ends their roll

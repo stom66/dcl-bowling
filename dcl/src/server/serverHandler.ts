@@ -1,6 +1,6 @@
 import * as utils from "@dcl-sdk/utils"
 
-import { MessageType, room } from 'src/shared/room'
+import { MessageType, net } from 'src/shared/net'
 import { canUsePlaytestDebug, GameSettings } from 'src/shared/settings'
 import { RequestCatalogItemPayload, RequestJoinGamePayload, RequestPlayRollPayload, RequestSetLaneBumpersPayload, RequestSetPreferencesPayload, RequestTicketPayload } from 'src/shared/types/shared-types'
 
@@ -19,15 +19,15 @@ export namespace serverHandler {
 
 	// MARK: Init
 	export function init() {
-		room.onMessage(MessageType.REQUEST_JOIN_GAME, (data, context) => handleRequestJoinGame(data, context))
-		room.onMessage(MessageType.REQUEST_PLAY_ROLL, (data, context) => handleRequestPlayRoll(data, context))
-		room.onMessage(MessageType.REQUEST_LEAVE_GAME, (data, context) => handleRequestLeaveGame(data, context))
-		room.onMessage(MessageType.REQUEST_UNLOCK_ITEM, (data, context) => handleRequestUnlockItem(data, context))
-		room.onMessage(MessageType.REQUEST_RESET_UNLOCKS, (_data, context) => handleRequestResetUnlocks(context))
-		room.onMessage(MessageType.REQUEST_EQUIP_ITEM, (data, context) => handleRequestEquipItem(data, context))
-		room.onMessage(MessageType.REQUEST_TICKET, (data, context) => handleRequestTicket(data, context))
-		room.onMessage(MessageType.REQUEST_SET_PREFERENCES, (data, context) => handleRequestSetPreferences(data, context))
-		room.onMessage(MessageType.REQUEST_SET_LANE_BUMPERS, (data, context) => handleRequestSetLaneBumpers(data, context))
+		net.onMessage(MessageType.REQUEST_JOIN_GAME, (data, context) => handleRequestJoinGame(data, context))
+		net.onMessage(MessageType.REQUEST_PLAY_ROLL, (data, context) => handleRequestPlayRoll(data, context))
+		net.onMessage(MessageType.REQUEST_LEAVE_GAME, (data, context) => handleRequestLeaveGame(data, context))
+		net.onMessage(MessageType.REQUEST_UNLOCK_ITEM, (data, context) => handleRequestUnlockItem(data, context))
+		net.onMessage(MessageType.REQUEST_RESET_UNLOCKS, (_data, context) => handleRequestResetUnlocks(context))
+		net.onMessage(MessageType.REQUEST_EQUIP_ITEM, (data, context) => handleRequestEquipItem(data, context))
+		net.onMessage(MessageType.REQUEST_TICKET, (data, context) => handleRequestTicket(data, context))
+		net.onMessage(MessageType.REQUEST_SET_PREFERENCES, (data, context) => handleRequestSetPreferences(data, context))
+		net.onMessage(MessageType.REQUEST_SET_LANE_BUMPERS, (data, context) => handleRequestSetLaneBumpers(data, context))
 	}
 
 	

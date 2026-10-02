@@ -271,7 +271,7 @@ class GameManager {
 		this.schedulePhase(laneIndex, LanePhase.ROLL_AWAITING, GameSettings.ROLL_MAX_DURATION)
 
 		// Roll-start carries transient pinStanding + timestamp that aren't on a
-		// synced component, so this stays as a directed room message.
+		// synced component, so this stays as a directed net message.
 		ServerMessaging.notifyPlayerRollStart(laneIndex, userId, pinStanding, rollStartTimestamp)
 	}
 
@@ -383,7 +383,7 @@ class GameManager {
 		this.schedulePhase(laneIndex, LanePhase.ROLL_PLAYBACK, GameSettings.ROLL_REPLAY_DURATION)
 
 		// Roll-playback carries the keyframe payload that's far too big for a
-		// synced component, so this stays as a directed room message.
+		// synced component, so this stays as a directed net message.
 		ServerMessaging.notifyPlayerRollPlayback(laneIndex, payload)
 		
 	}
