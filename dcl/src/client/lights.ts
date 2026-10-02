@@ -13,7 +13,7 @@ export function setupLights() {
 	const light1 = engine.addEntity()
 	Transform.create(light1, { 
 		parent  : rootEntity,
-		position: Vector3.create(0, 26, 0) 
+		position: Vector3.create(0, 12, 0) 
 	})
 	LightSource.create(light1, {
 		type: LightSource.Type.Point({}),
@@ -26,7 +26,7 @@ export function setupLights() {
 	const light2 = engine.addEntity()
 	Transform.create(light2, { 	
 		parent  : rootEntity,
-		position: Vector3.create(-12, 42, 46) 
+		position: Vector3.create(-12, 20, 46) 
 	})
 	LightSource.create(light2, {
 		type: LightSource.Type.Point({}),
@@ -39,7 +39,7 @@ export function setupLights() {
 	const light3 = engine.addEntity()
 	Transform.create(light3, { 
 		parent  : rootEntity,
-		position: Vector3.create(12, 42, 46)
+		position: Vector3.create(12, 20, 46)
 	})
 	LightSource.create(light3, {
 		type: LightSource.Type.Point({}),
