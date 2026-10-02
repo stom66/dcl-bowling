@@ -1,6 +1,6 @@
 import { Vector3 } from '@dcl/sdk/math'
 
-import { MessageType, room } from 'src/shared/room'
+import { MessageType, net } from 'src/shared/net'
 import { GameSettings } from 'src/shared/settings'
 import { RequestSetPreferencesPayload } from 'src/shared/types/shared-types'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
@@ -20,7 +20,7 @@ export namespace ClientMessaging {
 		frameCount: number = GameSettings.DEFAULT_FRAME_COUNT,
 	): void {
 		console.log('ClientMessaging: requestJoinLane: laneIndex', laneIndex, 'frameCount', frameCount)
-		room.send(MessageType.REQUEST_JOIN_GAME, {
+		net.send(MessageType.REQUEST_JOIN_GAME, {
 			laneIndex : laneIndex,
 			frameCount: frameCount,
 		})
@@ -38,7 +38,7 @@ export namespace ClientMessaging {
 		spin     : number
 	): void {
 		console.log('ClientMessaging: requestPlayRoll: position', position, 'direction', direction, 'power', power)
-		room.send(MessageType.REQUEST_PLAY_ROLL, { 
+		net.send(MessageType.REQUEST_PLAY_ROLL, { 
 			position  : position, 
 			direction : direction, 
 			power     : power, 
@@ -56,7 +56,7 @@ export namespace ClientMessaging {
 	 */
 	export function requestLeaveGame(): void {
 		console.log('ClientMessaging: requestLeaveGame')
-		room.send(MessageType.REQUEST_LEAVE_GAME, {})
+		net.send(MessageType.REQUEST_LEAVE_GAME, {})
 		eventBus.emit(ClientEvents.REQUEST_LEAVE_GAME, {})
 	}
 
@@ -67,7 +67,7 @@ export namespace ClientMessaging {
 	 */
 	export function requestUnlockItem(itemId: string): void {
 		console.log('ClientMessaging: requestUnlockItem: itemId', itemId)
-		room.send(MessageType.REQUEST_UNLOCK_ITEM, { itemId })
+		net.send(MessageType.REQUEST_UNLOCK_ITEM, { itemId })
 	}
 
 
@@ -77,7 +77,7 @@ export namespace ClientMessaging {
 	 */
 	export function requestEquipItem(itemId: string): void {
 		console.log('ClientMessaging: requestEquipItem: itemId', itemId)
-		room.send(MessageType.REQUEST_EQUIP_ITEM, { itemId })
+		net.send(MessageType.REQUEST_EQUIP_ITEM, { itemId })
 	}
 
 
@@ -87,7 +87,7 @@ export namespace ClientMessaging {
 	 */
 	export function requestResetUnlocks(): void {
 		console.log('ClientMessaging: requestResetUnlocks')
-		room.send(MessageType.REQUEST_RESET_UNLOCKS, {})
+		net.send(MessageType.REQUEST_RESET_UNLOCKS, {})
 	}
 
 
@@ -99,7 +99,7 @@ export namespace ClientMessaging {
 	 */
 	export function requestTicket(amount: number): void {
 		console.log('ClientMessaging: requestTicket: amount', amount)
-		room.send(MessageType.REQUEST_TICKET, { amount })
+		net.send(MessageType.REQUEST_TICKET, { amount })
 	}
 
 
@@ -109,7 +109,7 @@ export namespace ClientMessaging {
 	 */
 	export function requestSetPreferences(preferences: RequestSetPreferencesPayload): void {
 		console.log('ClientMessaging: requestSetPreferences: bgmMuted', preferences.bgmMuted, 'bumpersEnabled', preferences.bumpersEnabled)
-		room.send(MessageType.REQUEST_SET_PREFERENCES, preferences)
+		net.send(MessageType.REQUEST_SET_PREFERENCES, preferences)
 	}
 
 
@@ -119,6 +119,6 @@ export namespace ClientMessaging {
 	 */
 	export function requestSetLaneBumpers(enabled: boolean): void {
 		console.log('ClientMessaging: requestSetLaneBumpers: enabled', enabled)
-		room.send(MessageType.REQUEST_SET_LANE_BUMPERS, { enabled })
+		net.send(MessageType.REQUEST_SET_LANE_BUMPERS, { enabled })
 	}
 }

@@ -1,4 +1,4 @@
-import { MessageType, room } from 'src/shared/room'
+import { MessageType, net } from 'src/shared/net'
 import { NotifyJoinGamePayload, NotifyPlayerRollPayload, NotifyPlayerRollStartPayload } from 'src/shared/types/shared-types'
 import { clockSync } from 'src/shared/utils/clockSync'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
@@ -14,11 +14,11 @@ export namespace ClientHandler {
 
 	// MARK: init
 	export function init() {
-		room.onMessage(MessageType.NOTIFY_JOIN_GAME,            (data)         => { handleNotifyJoinGame(data) })
-		room.onMessage(MessageType.NOTIFY_PLAYER_ROLL_START,    (data)         => { handleNotifyPlayerRollStart(data) })
-		room.onMessage(MessageType.NOTIFY_PLAYER_ROLL_PLAYBACK, (data)         => { handleNotifyPlayerRollPlayback(data) })
-		room.onMessage(MessageType.NOTIFY_PLAYER_ROLL_REQUEST_RECEIVED, (data) => { handleNotifyPlayerRollRequestReceived(data) })
-		room.onMessage(MessageType.NOTIFY_SERVER_TIME,          (data)         => { handleNotifyServerTime(data) })
+		net.onMessage(MessageType.NOTIFY_JOIN_GAME,            (data)         => { handleNotifyJoinGame(data) })
+		net.onMessage(MessageType.NOTIFY_PLAYER_ROLL_START,    (data)         => { handleNotifyPlayerRollStart(data) })
+		net.onMessage(MessageType.NOTIFY_PLAYER_ROLL_PLAYBACK, (data)         => { handleNotifyPlayerRollPlayback(data) })
+		net.onMessage(MessageType.NOTIFY_PLAYER_ROLL_REQUEST_RECEIVED, (data) => { handleNotifyPlayerRollRequestReceived(data) })
+		net.onMessage(MessageType.NOTIFY_SERVER_TIME,          (data)         => { handleNotifyServerTime(data) })
 	}
 
 
