@@ -25,7 +25,7 @@ export namespace playerMover {
 	}
 
 	export function movePlayerToSpawnPoint() {
-		const spawnPoint = getRootPosition()
+		const spawnPoint = Vector3.add(getRootPosition(), Vector3.create(0, 2, 0))
 		const lookTarget = Vector3.add(spawnPoint, Vector3.create(0, 1.5, -12))
 		if (!spawnPoint) return
 		movePlayerTo({ 
