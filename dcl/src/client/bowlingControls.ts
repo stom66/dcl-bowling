@@ -41,6 +41,8 @@ const BALL_SPAWN_SIM_Y = 0.32
 const PIN_GLTF_MESH_OFFSET_Y = 0.18949292600154877
 const PIN_VISUAL_SCALE = 1.5
 
+const CONTROL_GLTF = "assets/models/control.direction.gltf"
+
 let bumpersEnabled         = false
 let bumperPersistPending   = false
 let bumperPreferencesBound = false
@@ -156,7 +158,7 @@ export class BowlingControls {
 			scale: Vector3.create(ARROW_SCALE, ARROW_SCALE, ARROW_SCALE)
 		})
 		GltfContainer.create(this.arrow, {
-			src: "assets/models/control.direction.gltf",
+			src: CONTROL_GLTF,
 			visibleMeshesCollisionMask: ColliderLayer.CL_POINTER,
 		})
 
