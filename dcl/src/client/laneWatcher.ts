@@ -181,13 +181,26 @@ export namespace LaneWatcher {
 			eventBus.emit(isMyTurn ? ClientEvents.ON_MY_FRAME_END : isMyLane ? ClientEvents.ON_GROUP_FRAME_END : ClientEvents.ON_NON_GROUP_FRAME_END, { userId: snapshot.currentFrameUserId })
 		}
 
-		if (next === LanePhase.NONE && prev !== LanePhase.NONE) {
+		// Lobby / countdown collapse back to idle is not a finished match.
+		const wasActiveMatch = (
+			prev !== LanePhase.NONE
+			&& prev !== LanePhase.LOBBY
+			&& prev !== LanePhase.GAME_STARTING
+		)
+		if (next === LanePhase.NONE && wasActiveMatch) {
 			const isMyGameEnd = wasMyLane(snapshot.laneIndex, myUserId)
 			eventBus.emit(isMyGameEnd ? ClientEvents.ON_GROUP_GAME_END : ClientEvents.ON_NON_GROUP_GAME_END, snapshot)
 			if (isMyGameEnd) {
 				lastKnownPlayersByLane[snapshot.laneIndex] = []
 				ClientStore.getInstance().setLaneIndex(undefined)
 			}
+		}
+
+		if (
+			next === LanePhase.NONE
+			&& (prev === LanePhase.LOBBY || prev === LanePhase.GAME_STARTING)
+		) {
+			lastKnownPlayersByLane[snapshot.laneIndex] = []
 		}
 	}
 }

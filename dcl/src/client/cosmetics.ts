@@ -1,7 +1,9 @@
-import { engine, Entity, LightSource, Material, ParticleSystem, PBParticleSystem_PlaybackState, Transform } from "@dcl/sdk/ecs"
+import { engine, Entity, LightSource, Material, ParticleSystem, PBParticleSystem, PBParticleSystem_PlaybackState, Transform } from "@dcl/sdk/ecs"
 import { Color3, Quaternion, Vector3 } from "@dcl/sdk/math"
 
 import { DEFAULT_SPOTLIGHT_COLOR_ID, DEFAULT_SPOTLIGHT_ID, DEFAULT_TRAIL_ID, spotlightColors, spotlightPatterns, trails } from "src/shared/data/unlocks"
+
+import { ParticleSpawner } from "src/client/particleSpawner"
 
 
 const MAX_TRAIL_PARTICLES = 80
@@ -31,6 +33,7 @@ function trailEmitRotation(
 // MARK: applyBallTrail
 /**
  * Spawns an unparented trail emitter at the ball. Caps `maxParticles`.
+ * Emission goes through {@link ParticleSpawner.spawn}.
  * Call only when roll playback starts — not during aiming or countdown.
  */
 export function applyBallTrail(
@@ -49,18 +52,15 @@ export function applyBallTrail(
 	const gravity       = typeof emitter.gravity === 'number' ? emitter.gravity : 0
 	const ballTransform = Transform.getOrNull(ball)
 
-	const trail = engine.addEntity()
-	Transform.create(trail, {
-		position: ballTransform?.position ?? Vector3.Zero(),
-		rotation: trailEmitRotation(gravity < 0),
-	})
-	ParticleSystem.create(trail, {
+	return ParticleSpawner.spawn({
 		...emitter,
 		maxParticles,
 		active        : true,
 		playbackState : PBParticleSystem_PlaybackState.PS_PLAYING,
-	} as Parameters<typeof ParticleSystem.create>[1])
-	return trail
+	} as PBParticleSystem, {
+		position : ballTransform?.position ?? Vector3.Zero(),
+		rotation : trailEmitRotation(gravity < 0),
+	})
 }
 
 
@@ -72,10 +72,7 @@ export function applyBallTrail(
 export function stopBallTrail(
 	emitter : Entity | undefined
 ): void {
-	if (emitter === undefined) return
-	const ps = ParticleSystem.getMutableOrNull(emitter)
-	if (!ps) return
-	ps.active = false
+	ParticleSpawner.stop(emitter)
 }
 
 

@@ -7,7 +7,7 @@ import { FreezePlayer, UnFreezePlayer } from "src/shared/utils/inputModifiers"
 import { GetRandomPointInCircle } from "src/shared/utils/math"
 
 import { ClientStore } from "src/client/clientStore"
-import { getLanePosition, getRootPosition } from "src/client/data/lanePositions"
+import { getLaneLobbyPosition, getLanePosition, getRootPosition } from "src/client/data/lanePositions"
 
 export namespace playerMover {
 
@@ -60,7 +60,11 @@ export namespace playerMover {
 
 
 	function movePlayerToLobby() {
-		const randomPoint = GetRandomPointInCircle(Vector3.create(16, 0, 4), 1.5)
+		const laneIndex   = clientStore.getLaneIndex()
+		const lobbyCenter = laneIndex !== undefined
+			? getLaneLobbyPosition(laneIndex)
+			: Vector3.add(getRootPosition(), Vector3.create(0, 0, 0))
+		const randomPoint = GetRandomPointInCircle(lobbyCenter, 1.5)
 		movePlayerTo({ newRelativePosition: randomPoint })
 		UnFreezePlayer()
 	}

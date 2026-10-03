@@ -106,7 +106,7 @@ export class UiLaneScreen {
 
 	// MARK: applyTextShape
 	private applyTextShape(): void {
-		const isIdle      = this.lanePhase === LanePhase.NONE
+		const isIdle      = this.lanePhase === LanePhase.NONE || this.lanePhase === LanePhase.LOBBY
 		const laneShape   = TextShape.getMutable(this.laneEntity)
 		const statusShape = TextShape.getMutable(this.statusEntity)
 		const frameShape  = TextShape.getMutable(this.frameEntity)
@@ -180,6 +180,7 @@ export class UiLaneScreen {
 	 */
 	private getStatusText(): string {
 		if (this.lanePhase === LanePhase.NONE)          return "Open"
+		if (this.lanePhase === LanePhase.LOBBY)         return "Lobby"
 		if (this.lanePhase === LanePhase.GAME_STARTING) return "Starting"
 		return "Game in Progress"
 	}
@@ -191,7 +192,17 @@ export class UiLaneScreen {
 	 * Middle line: `Frame 1 of 6`. Empty while the lane is idle.
 	 */
 	private getFrameText(): string {
-		if (this.lanePhase === LanePhase.NONE) return ''
+		if (
+			this.lanePhase === LanePhase.NONE
+			|| this.lanePhase === LanePhase.LOBBY
+			|| this.lanePhase === LanePhase.GAME_STARTING
+		) {
+			const frameCount = LaneStore.getFrameCount(this.laneIndex)
+			if (this.lanePhase === LanePhase.LOBBY && frameCount > 0) {
+				return `${frameCount} Frames`
+			}
+			return ''
+		}
 
 		const frameCount = LaneStore.getFrameCount(this.laneIndex)
 		if (frameCount <= 0) return ''
@@ -208,6 +219,7 @@ export class UiLaneScreen {
 	 */
 	private getNameText(): string {
 		if (this.lanePhase === LanePhase.NONE)          return ''
+		if (this.lanePhase === LanePhase.LOBBY)         return ''
 		if (this.lanePhase === LanePhase.GAME_STARTING) return ''
 		return this.turnDisplayName
 	}
@@ -216,6 +228,12 @@ export class UiLaneScreen {
 
 	// MARK: getStatusColor
 	private getStatusColor(): Color4 {
-		return this.lanePhase === LanePhase.NONE ? Color4.Green() : Color4.Red()
+		if (this.lanePhase === LanePhase.NONE || this.lanePhase === LanePhase.LOBBY) {
+			return Color4.Green()
+		}
+		if (this.lanePhase === LanePhase.GAME_STARTING) {
+			return Color4.Yellow()
+		}
+		return Color4.Red()
 	}
 }

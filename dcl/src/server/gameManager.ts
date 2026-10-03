@@ -34,6 +34,9 @@ class GameManager {
 
 	private readonly runtime = new Map<number, LaneRuntime>()
 
+	/** Per-lane countdown timeout ids so start can be cancelled. */
+	private readonly countdownTimers = new Map<number, number>()
+
 	private frameWatcherSystemActive: boolean = false
 
 	constructor() { }
@@ -42,6 +45,11 @@ class GameManager {
 	// MARK: Init
 	init() { }
 
+
+	// MARK: onPlayerRequestLeaveGame
+	/**
+	 * Removes a player from their lane lobby or in-progress game.
+	 */
 	async onPlayerRequestLeaveGame(userId: string) {
 		console.log('gameManager: onPlayerRequestLeaveGame: userId', userId)
 
@@ -51,84 +59,165 @@ class GameManager {
 			return
 		}
 
+		const phase           = LaneStore.getPhase(laneIndex)
+		const wasInActiveGame = phase !== LanePhase.NONE
+			&& phase !== LanePhase.LOBBY
+			&& phase !== LanePhase.GAME_STARTING
+
 		LaneStore.removePlayer(laneIndex, userId)
 
-		// Check to see if we need to cancel that game
 		if (LaneStore.getLaneUserIds(laneIndex).length === 0) {
-			this.abortGame(laneIndex)
+			this.clearCountdownTimer(laneIndex)
+			if (wasInActiveGame) {
+				this.abortGame(laneIndex)
+			}
+			else {
+				this.resetLane(laneIndex)
+			}
 		}
 
-		Metrics.incrementPlayerStat(userId, PlayerStats.GAMES_LEFT_EARLY)
-		PlayerProfileManager.recordLeaveEarly(userId)
+		if (wasInActiveGame) {
+			Metrics.incrementPlayerStat(userId, PlayerStats.GAMES_LEFT_EARLY)
+			PlayerProfileManager.recordLeaveEarly(userId)
+		}
 	}
 
 
 	// =========================================================================
-	// MARK: Phase 1 — On Player Request Join
+	// MARK: Phase 1 — Lobby
 	// =========================================================================
 	/**
-	 * Entry point for a player joining a lane. Decides whether to add them to
-	 * an existing game or to kick off a fresh Start Game Countdown.
+	 * Adds a player to a lane lobby. Does not start the countdown; any lobby
+	 * member must explicitly request start.
 	 */
-	async onPlayerRequestJoin(
-		userId    : string,
-		laneIndex : number | undefined,
-		frameCount: number | undefined,
+	async onPlayerJoinLobby(
+		userId   : string,
+		laneIndex: number | undefined,
 	) {
-		console.log('gameManager: onPlayerRequestJoin: userId', userId, 'laneIndex', laneIndex, 'frameCount', frameCount)
+		console.log('gameManager: onPlayerJoinLobby: userId', userId, 'laneIndex', laneIndex)
 
 		if (laneIndex === undefined) {
-			// TODO: find a random IDLE/STARTING lane for the player
-			console.log('gameManager: onPlayerRequestJoin: no lane index provided, returning (not yet implemented)')
+			console.log('gameManager: onPlayerJoinLobby: no lane index provided, returning')
 			return
 		}
 
-		// Did they request an invalid lane?
 		if (!isValidLaneIndex(laneIndex)) {
-			console.log('gameManager: onPlayerRequestJoin: laneIndex out of range', laneIndex)
+			console.log('gameManager: onPlayerJoinLobby: laneIndex out of range', laneIndex)
 			return
 		}
 
-		// Are they already in a game?
 		if (LaneStore.findLaneByUserId(userId) !== undefined) {
-			console.log('gameManager: onPlayerRequestJoin: player already in game, ignoring')
+			console.log('gameManager: onPlayerJoinLobby: player already in a lane, ignoring')
 			return
 		}
 
-		// Is the game they're joining already started?
 		const phase = LaneStore.getPhase(laneIndex)
-		if (phase !== LanePhase.NONE && phase !== LanePhase.GAME_STARTING) {
-			console.log('gameManager: onPlayerRequestJoin: game already started, ignoring')
+		if (
+			phase !== LanePhase.NONE
+			&& phase !== LanePhase.LOBBY
+			&& phase !== LanePhase.GAME_STARTING
+		) {
+			console.log('gameManager: onPlayerJoinLobby: lane occupied, ignoring')
 			return
 		}
 
-		// Is there space in the lane?
-		let lanePlayerCount = LaneStore.getLaneUserIds(laneIndex).length
+		const lanePlayerCount = LaneStore.getLaneUserIds(laneIndex).length
 		if (lanePlayerCount >= GameSettings.MAX_PLAYERS_PER_GAME) {
-			console.log('gameManager: onPlayerRequestJoin: lane is full, ignoring')
+			console.log('gameManager: onPlayerJoinLobby: lane is full, ignoring')
 			return
 		}
-		LaneStore.addPlayer(laneIndex, userId)
 
-		// Let the player know they have joined the game
-		ServerMessaging.notifyJoinGame(userId, laneIndex)
-		
-		// Starting the countdown is what transitions a brand-new lane into the
-		// game lifecycle. Only the first joiner triggers it.
 		const isFirstPlayer = lanePlayerCount === 0
-		
-		if (isFirstPlayer && LaneStore.getPhase(laneIndex) === LanePhase.NONE) {
-			LaneStore.setFrameCount(laneIndex, normalizeFrameCount(frameCount))
-			const gameStartTime = Date.now() + GameSettings.GAME_START_COUNTDOWN_DURATION
-			this.startGameCountdown(laneIndex, gameStartTime)
-
-			Metrics.trackGameCreated(userId, gameStartTime, laneIndex)
+		if (isFirstPlayer && phase === LanePhase.NONE) {
+			LaneStore.setPhase(laneIndex, LanePhase.LOBBY)
+			LaneStore.setFrameCount(laneIndex, GameSettings.DEFAULT_FRAME_COUNT)
+			Metrics.trackGameCreated(userId, Date.now(), laneIndex)
 			PlayerProfileManager.recordGameCreated(userId)
 		}
-		else {
-			const gameStartTime = LaneStore.getGameStartTime(laneIndex)
-			Metrics.trackGameJoined(userId, gameStartTime, laneIndex)
+
+		LaneStore.addPlayer(laneIndex, userId)
+		ServerMessaging.notifyJoinGame(userId, laneIndex)
+
+		const gameStartTime = LaneStore.getGameStartTime(laneIndex)
+		Metrics.trackGameJoined(userId, gameStartTime, laneIndex)
+	}
+
+
+	// MARK: onPlayerSetFrameCount
+	/**
+	 * Sets the lobby-chosen frame count for the sender's lane while waiting or counting down.
+	 */
+	async onPlayerSetFrameCount(
+		userId    : string,
+		frameCount: number,
+	) {
+		console.log('gameManager: onPlayerSetFrameCount: userId', userId, 'frameCount', frameCount)
+
+		const laneIndex = LaneStore.findLaneByUserId(userId)
+		if (laneIndex === undefined) {
+			console.log('gameManager: onPlayerSetFrameCount: user not in any lane')
+			return
 		}
+
+		const phase = LaneStore.getPhase(laneIndex)
+		if (phase !== LanePhase.LOBBY && phase !== LanePhase.GAME_STARTING) {
+			console.log('gameManager: onPlayerSetFrameCount: lane not in lobby/countdown', phase)
+			return
+		}
+
+		LaneStore.setFrameCount(laneIndex, normalizeFrameCount(frameCount))
+	}
+
+
+	// MARK: onPlayerStartCountdown
+	/**
+	 * Starts the pre-game countdown for the sender's lobby lane.
+	 */
+	async onPlayerStartCountdown(userId: string) {
+		console.log('gameManager: onPlayerStartCountdown: userId', userId)
+
+		const laneIndex = LaneStore.findLaneByUserId(userId)
+		if (laneIndex === undefined) {
+			console.log('gameManager: onPlayerStartCountdown: user not in any lane')
+			return
+		}
+
+		if (LaneStore.getPhase(laneIndex) !== LanePhase.LOBBY) {
+			console.log('gameManager: onPlayerStartCountdown: lane not in lobby')
+			return
+		}
+
+		if (LaneStore.getLaneUserIds(laneIndex).length === 0) {
+			console.log('gameManager: onPlayerStartCountdown: no players in lobby')
+			return
+		}
+
+		const gameStartTime = Date.now() + GameSettings.GAME_START_COUNTDOWN_DURATION
+		this.startGameCountdown(laneIndex, gameStartTime)
+	}
+
+
+	// MARK: onPlayerCancelCountdown
+	/**
+	 * Cancels the pre-game countdown and returns the lane to the lobby phase.
+	 */
+	async onPlayerCancelCountdown(userId: string) {
+		console.log('gameManager: onPlayerCancelCountdown: userId', userId)
+
+		const laneIndex = LaneStore.findLaneByUserId(userId)
+		if (laneIndex === undefined) {
+			console.log('gameManager: onPlayerCancelCountdown: user not in any lane')
+			return
+		}
+
+		if (LaneStore.getPhase(laneIndex) !== LanePhase.GAME_STARTING) {
+			console.log('gameManager: onPlayerCancelCountdown: lane not counting down')
+			return
+		}
+
+		this.clearCountdownTimer(laneIndex)
+		LaneStore.setPhase(laneIndex, LanePhase.LOBBY)
+		LaneStore.setGameStartTime(laneIndex, 0)
 	}
 
 
@@ -142,13 +231,27 @@ class GameManager {
 	) {
 		console.log('gameManager: startGameCountdown: laneIndex', laneIndex)
 
-		LaneStore.setPhase(laneIndex, LanePhase.GAME_STARTING)
+		this.clearCountdownTimer(laneIndex)
 
+		LaneStore.setPhase(laneIndex, LanePhase.GAME_STARTING)
 		LaneStore.setGameStartTime(laneIndex, gameStartTime)
 
-		utils.timers.setTimeout(() => {
+		const timerId = utils.timers.setTimeout(() => {
+			this.countdownTimers.delete(laneIndex)
 			this.startGame(laneIndex)
 		}, GameSettings.GAME_START_COUNTDOWN_DURATION)
+
+		this.countdownTimers.set(laneIndex, timerId)
+	}
+
+
+	// MARK: clearCountdownTimer
+	/** Clears any pending start-game countdown for `laneIndex`. */
+	private clearCountdownTimer(laneIndex: number) {
+		const timerId = this.countdownTimers.get(laneIndex)
+		if (timerId === undefined) return
+		utils.timers.clearTimeout(timerId)
+		this.countdownTimers.delete(laneIndex)
 	}
 
 
@@ -164,6 +267,13 @@ class GameManager {
 	 */
 	private startGame(laneIndex: number) {
 		console.log('gameManager: startGame: laneIndex', laneIndex)
+
+		this.clearCountdownTimer(laneIndex)
+
+		if (LaneStore.getPhase(laneIndex) !== LanePhase.GAME_STARTING) {
+			console.log('gameManager: startGame: lane no longer counting down, ignoring')
+			return
+		}
 
 		const playerIds = LaneStore.getLaneUserIds(laneIndex)
 
@@ -646,6 +756,7 @@ class GameManager {
 
 
 	private resetLane(laneIndex: number) {
+		this.clearCountdownTimer(laneIndex)
 		this.runtime.delete(laneIndex)
 		LaneStore.resetLane(laneIndex)
 	}
@@ -655,6 +766,8 @@ class GameManager {
 
 	private abortGame(laneIndex: number) {
 		console.log(`gameManager: abortGame: lane ${laneIndex}`)
+
+		this.clearCountdownTimer(laneIndex)
 
 		const gameStartTime = LaneStore.getGameStartTime(laneIndex)
 
@@ -685,7 +798,8 @@ class GameManager {
 		const now = Date.now()
 
 		for (let laneIndex = 0; laneIndex < GameSettings.MAX_LANES; laneIndex++) {
-			if (LaneStore.getPhase(laneIndex) === LanePhase.NONE) continue
+			const phase = LaneStore.getPhase(laneIndex)
+			if (phase === LanePhase.NONE || phase === LanePhase.LOBBY) continue
 
 			activeGameCount++
 

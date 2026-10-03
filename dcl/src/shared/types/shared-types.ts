@@ -78,10 +78,15 @@ export type NotifyJoinGamePayload = {
 }
 
 
-/** Client → server: join a lane. `laneIndex` is 1-based. `frameCount` is used only by the first joiner. */
-export type RequestJoinGamePayload = {
-	laneIndex : number
-	frameCount?: number
+/** Client → server: join a lane lobby. `laneIndex` is 1-based. */
+export type RequestJoinLobbyPayload = {
+	laneIndex: number
+}
+
+
+/** Client → server: set the lobby-chosen frame count for the sender's lane. */
+export type RequestSetLaneFrameCountPayload = {
+	frameCount: number
 }
 
 

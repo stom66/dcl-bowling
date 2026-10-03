@@ -6,7 +6,7 @@ import { bowlingControlsLayer } from 'src/client/ui/themes/bowling/layers/bowlin
 import { customizationLayer } from 'src/client/ui/themes/bowling/layers/customization.layer'
 import { debugLayer } from 'src/client/ui/themes/bowling/layers/debug.layer'
 import { gameStatusLayer } from 'src/client/ui/themes/bowling/layers/gameStatus.layer'
-import { joinGameLayer } from 'src/client/ui/themes/bowling/layers/joinGame.layer'
+import { laneLobbyLayer } from 'src/client/ui/themes/bowling/layers/laneLobby.layer'
 import { leaderboardLayer } from 'src/client/ui/themes/bowling/layers/leaderboard.layer'
 import { leaveGameLayer } from 'src/client/ui/themes/bowling/layers/leaveGame.layer'
 import { letterboxLayer } from 'src/client/ui/themes/bowling/layers/letterbox.layer'
@@ -46,7 +46,7 @@ export const layers: Layer[] = [
 	gameStatusLayer,
 	scoresLayer,
 	bowlingControlsLayer,
-	joinGameLayer,
+	laneLobbyLayer,
 	letterboxLayer,
 	customizationLayer,
 	leaderboardLayer,

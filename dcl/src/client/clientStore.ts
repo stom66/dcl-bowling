@@ -95,7 +95,13 @@ export class ClientStore {
 		const phase  = LaneStore.getPhase(this.laneIndex)
 		const turnId = LaneStore.getCurrentFrameUserId(this.laneIndex)
 
-		if (phase === LanePhase.NONE || phase === LanePhase.GAME_STARTING) return PlayerStatus.WAITING_FOR_GAME_START
+		if (
+			phase === LanePhase.NONE
+			|| phase === LanePhase.LOBBY
+			|| phase === LanePhase.GAME_STARTING
+		) {
+			return PlayerStatus.WAITING_FOR_GAME_START
+		}
 
 		const turnPhases = (
 			phase === LanePhase.FRAME_START ||

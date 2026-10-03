@@ -11,7 +11,10 @@ import { ReadWriteByteBuffer } from '@dcl/ecs/dist/serialization/ByteBuffer'
  * transitions on those components.
  */
 export enum MessageType {
-	REQUEST_JOIN_GAME           = 'requestJoinGame',
+	REQUEST_JOIN_LOBBY          = 'requestJoinLobby',
+	REQUEST_SET_LANE_FRAME_COUNT = 'requestSetLaneFrameCount',
+	REQUEST_START_COUNTDOWN     = 'requestStartCountdown',
+	REQUEST_CANCEL_COUNTDOWN    = 'requestCancelCountdown',
 	REQUEST_PLAY_ROLL           = 'requestPlayRoll',
 	REQUEST_LEAVE_GAME          = 'requestLeaveGame',
 	REQUEST_UNLOCK_ITEM         = 'requestUnlockItem',
@@ -93,10 +96,14 @@ const eventEnvelopeSchema = Schemas.Map({
 
 const Messages = {
 	// Sent by client
-	[MessageType.REQUEST_JOIN_GAME]          : Schemas.Map({
-		laneIndex : Schemas.Int,
-		frameCount: Schemas.Optional(Schemas.Int),
+	[MessageType.REQUEST_JOIN_LOBBY]         : Schemas.Map({
+		laneIndex: Schemas.Int,
 	}),
+	[MessageType.REQUEST_SET_LANE_FRAME_COUNT]: Schemas.Map({
+		frameCount: Schemas.Int,
+	}),
+	[MessageType.REQUEST_START_COUNTDOWN]    : Schemas.Map({}),
+	[MessageType.REQUEST_CANCEL_COUNTDOWN]   : Schemas.Map({}),
 	[MessageType.REQUEST_PLAY_ROLL]          : Schemas.Map({
 		...rollRequestSchema
 	}),

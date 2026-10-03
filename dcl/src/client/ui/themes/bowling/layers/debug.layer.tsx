@@ -274,7 +274,7 @@ export class DebugLayer extends Layer {
 							width     = {28}
 							height    = {18}
 							fontSize  = {DEBUG_FONT_SIZE}
-							callback  = {() => { ClientMessaging.requestJoinLane(lane) }}
+							callback  = {() => { ClientMessaging.requestJoinLobby(lane) }}
 							uiTransform = {{
 								positionType: 'relative',
 								position    : { top: 0, left: 0 },

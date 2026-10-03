@@ -20,7 +20,8 @@ import { LaneModels } from 'src/client/laneModels'
 import { LaneWatcher } from 'src/client/laneWatcher'
 import { setupLights } from 'src/client/lights'
 import { setLoadingStage } from 'src/client/loadingState'
-import { setupBowlingHostNpc } from 'src/client/npcGameHost'
+import { setupLaneLobbies } from 'src/client/laneLobbies'
+import { ParticleSpawner } from 'src/client/particleSpawner'
 import { playerMover } from 'src/client/playerMover'
 import { SkyboxObjects } from 'src/client/skyboxObjects'
 import { SoundManager } from 'src/client/soundManager'
@@ -174,11 +175,12 @@ export async function initClient() {
 	playerMover.init()
 	CameraController.init()
 	SoundManager.init()
+	ParticleSpawner.init()
 	UiWorld.init()
 	TouchscreenControls.init()
 	RespawnTrigger.init()
 
-	setupBowlingHostNpc()
+	setupLaneLobbies()
 	setupLights()
 	SkyboxObjects.init()
 	onGameLoaded()

@@ -2,7 +2,7 @@ import * as utils from "@dcl-sdk/utils"
 
 import { MessageType, net } from 'src/shared/net'
 import { canUsePlaytestDebug, GameSettings } from 'src/shared/settings'
-import { RequestCatalogItemPayload, RequestJoinGamePayload, RequestPlayRollPayload, RequestSetLaneBumpersPayload, RequestSetPreferencesPayload, RequestTicketPayload } from 'src/shared/types/shared-types'
+import { RequestCatalogItemPayload, RequestJoinLobbyPayload, RequestPlayRollPayload, RequestSetLaneBumpersPayload, RequestSetLaneFrameCountPayload, RequestSetPreferencesPayload, RequestTicketPayload } from 'src/shared/types/shared-types'
 
 import { gameManager } from 'src/server/gameManager'
 import { PlayerProfileManager } from 'src/server/playerProfileManager'
@@ -19,7 +19,10 @@ export namespace serverHandler {
 
 	// MARK: Init
 	export function init() {
-		net.onMessage(MessageType.REQUEST_JOIN_GAME, (data, context) => handleRequestJoinGame(data, context))
+		net.onMessage(MessageType.REQUEST_JOIN_LOBBY, (data, context) => handleRequestJoinLobby(data, context))
+		net.onMessage(MessageType.REQUEST_SET_LANE_FRAME_COUNT, (data, context) => handleRequestSetLaneFrameCount(data, context))
+		net.onMessage(MessageType.REQUEST_START_COUNTDOWN, (_data, context) => handleRequestStartCountdown(context))
+		net.onMessage(MessageType.REQUEST_CANCEL_COUNTDOWN, (_data, context) => handleRequestCancelCountdown(context))
 		net.onMessage(MessageType.REQUEST_PLAY_ROLL, (data, context) => handleRequestPlayRoll(data, context))
 		net.onMessage(MessageType.REQUEST_LEAVE_GAME, (data, context) => handleRequestLeaveGame(data, context))
 		net.onMessage(MessageType.REQUEST_UNLOCK_ITEM, (data, context) => handleRequestUnlockItem(data, context))
@@ -30,25 +33,64 @@ export namespace serverHandler {
 		net.onMessage(MessageType.REQUEST_SET_LANE_BUMPERS, (data, context) => handleRequestSetLaneBumpers(data, context))
 	}
 
-	
-	
-	// MARK: JoinGame
-	export async function handleRequestJoinGame(data: RequestJoinGamePayload | undefined, context: any) {
+
+	// MARK: JoinLobby
+	/**
+	 * Handles a client request to join a 1-based lane lobby.
+	 */
+	export async function handleRequestJoinLobby(data: RequestJoinLobbyPayload | undefined, context: any) {
 		const userId = getUserId(context)
-		console.log('serverHandler: handleRequestJoinGame: userId', userId, 'data', data)
+		console.log('serverHandler: handleRequestJoinLobby: userId', userId, 'data', data)
 
 		if (data === undefined) {
-			await gameManager.onPlayerRequestJoin(userId, undefined, undefined)
+			console.log('serverHandler: handleRequestJoinLobby: missing payload')
 			return
 		}
 
 		const laneIndex = data.laneIndex
 		if (!Number.isInteger(laneIndex) || laneIndex < 1 || laneIndex > GameSettings.MAX_LANES) {
-			console.log('serverHandler: handleRequestJoinGame: invalid lane (expected 1..' + GameSettings.MAX_LANES + ')', laneIndex)
+			console.log('serverHandler: handleRequestJoinLobby: invalid lane (expected 1..' + GameSettings.MAX_LANES + ')', laneIndex)
 			return
 		}
 
-		await gameManager.onPlayerRequestJoin(userId, laneIndex - 1, data.frameCount)
+		await gameManager.onPlayerJoinLobby(userId, laneIndex - 1)
+	}
+
+
+	// MARK: SetLaneFrameCount
+	/**
+	 * Handles a lobby member changing the lane's frame count.
+	 */
+	export async function handleRequestSetLaneFrameCount(
+		data   : RequestSetLaneFrameCountPayload | undefined,
+		context: any,
+	) {
+		const userId = getUserId(context)
+		console.log('serverHandler: handleRequestSetLaneFrameCount: userId', userId, 'data', data)
+		if (data === undefined || typeof data.frameCount !== 'number') return
+		await gameManager.onPlayerSetFrameCount(userId, data.frameCount)
+	}
+
+
+	// MARK: StartCountdown
+	/**
+	 * Handles a lobby member starting the pre-game countdown.
+	 */
+	export async function handleRequestStartCountdown(context: any) {
+		const userId = getUserId(context)
+		console.log('serverHandler: handleRequestStartCountdown: userId', userId)
+		await gameManager.onPlayerStartCountdown(userId)
+	}
+
+
+	// MARK: CancelCountdown
+	/**
+	 * Handles a lobby member cancelling the pre-game countdown.
+	 */
+	export async function handleRequestCancelCountdown(context: any) {
+		const userId = getUserId(context)
+		console.log('serverHandler: handleRequestCancelCountdown: userId', userId)
+		await gameManager.onPlayerCancelCountdown(userId)
 	}
 	
 

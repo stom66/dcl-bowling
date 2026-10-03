@@ -118,6 +118,7 @@ export class GameStatusLayer extends Layer {
 	private getStatusText(): string {
 		const lanePhase = clientStore.getLanePhase()
 
+		if (lanePhase === LanePhase.LOBBY)            return 'Waiting in lobby'
 		if (lanePhase === LanePhase.GAME_STARTING)    return 'Game is starting'
 		if (lanePhase === LanePhase.WAITING)          return 'Waiting for the next frame'
 		if (lanePhase === LanePhase.FRAME_START)      return 'Turn is starting'
@@ -135,7 +136,8 @@ export class GameStatusLayer extends Layer {
 	// MARK: isInGame
 	/** True once this client is on a lane that has a match underway. */
 	private isInGame(): boolean {
-		return clientStore.getLanePhase() !== LanePhase.NONE
+		const phase = clientStore.getLanePhase()
+		return phase !== LanePhase.NONE && phase !== LanePhase.LOBBY
 	}
 
 
@@ -145,6 +147,7 @@ export class GameStatusLayer extends Layer {
 	private hasCurrentTurn(): boolean {
 		if (!this.isInGame()) return false
 		if (clientStore.getLanePhase() === LanePhase.GAME_STARTING) return false
+		if (clientStore.getLanePhase() === LanePhase.LOBBY) return false
 
 		const playerName = this.statusProps.get('playerName')
 		return playerName.length > 0

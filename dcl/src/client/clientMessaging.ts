@@ -1,7 +1,6 @@
 import { Vector3 } from '@dcl/sdk/math'
 
 import { MessageType, net } from 'src/shared/net'
-import { GameSettings } from 'src/shared/settings'
 import { RequestSetPreferencesPayload } from 'src/shared/types/shared-types'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 
@@ -11,19 +10,47 @@ export namespace ClientMessaging {
 	const clientStore = ClientStore.getInstance()
 
 
-	// MARK: requestJoinLane
+	// MARK: requestJoinLobby
 	/**
-	 * Asks the server to join a 1-based lane. `frameCount` is used only when opening an idle lane.
+	 * Asks the server to join a 1-based lane lobby.
 	 */
-	export function requestJoinLane(
-		laneIndex : number,
-		frameCount: number = GameSettings.DEFAULT_FRAME_COUNT,
-	): void {
-		console.log('ClientMessaging: requestJoinLane: laneIndex', laneIndex, 'frameCount', frameCount)
-		net.send(MessageType.REQUEST_JOIN_GAME, {
-			laneIndex : laneIndex,
+	export function requestJoinLobby(laneIndex: number): void {
+		console.log('ClientMessaging: requestJoinLobby: laneIndex', laneIndex)
+		net.send(MessageType.REQUEST_JOIN_LOBBY, {
+			laneIndex: laneIndex,
+		})
+	}
+
+
+	// MARK: requestSetLaneFrameCount
+	/**
+	 * Asks the server to set the lobby-chosen frame count for the local player's lane.
+	 */
+	export function requestSetLaneFrameCount(frameCount: number): void {
+		console.log('ClientMessaging: requestSetLaneFrameCount: frameCount', frameCount)
+		net.send(MessageType.REQUEST_SET_LANE_FRAME_COUNT, {
 			frameCount: frameCount,
 		})
+	}
+
+
+	// MARK: requestStartCountdown
+	/**
+	 * Asks the server to start the pre-game countdown for the local player's lobby.
+	 */
+	export function requestStartCountdown(): void {
+		console.log('ClientMessaging: requestStartCountdown')
+		net.send(MessageType.REQUEST_START_COUNTDOWN, {})
+	}
+
+
+	// MARK: requestCancelCountdown
+	/**
+	 * Asks the server to cancel the pre-game countdown for the local player's lobby.
+	 */
+	export function requestCancelCountdown(): void {
+		console.log('ClientMessaging: requestCancelCountdown')
+		net.send(MessageType.REQUEST_CANCEL_COUNTDOWN, {})
 	}
 
 
@@ -52,12 +79,24 @@ export namespace ClientMessaging {
 
 	// MARK: requestLeaveGame
 	/**
-	 * Asks the server to remove this player from their current lane.
+	 * Asks the server to remove this player from their current lane and relocates them.
 	 */
 	export function requestLeaveGame(): void {
 		console.log('ClientMessaging: requestLeaveGame')
 		net.send(MessageType.REQUEST_LEAVE_GAME, {})
 		eventBus.emit(ClientEvents.REQUEST_LEAVE_GAME, {})
+		clientStore.setLaneIndex(undefined)
+	}
+
+
+	// MARK: requestLeaveLobby
+	/**
+	 * Leaves the current lobby without relocating the player (used on zone exit).
+	 */
+	export function requestLeaveLobby(): void {
+		console.log('ClientMessaging: requestLeaveLobby')
+		net.send(MessageType.REQUEST_LEAVE_GAME, {})
+		clientStore.setLaneIndex(undefined)
 	}
 
 

@@ -15,6 +15,7 @@ export enum PlayerStatus {
 
 export enum LanePhase {
 	NONE            = "NONE",            // Not running / idle
+	LOBBY           = "LOBBY",           // Players waiting in the lane lobby
 	GAME_STARTING   = "GAME_STARTING",   // Game is starting (countdown to first frame)
 	WAITING         = "WAITING",         // Game running, waiting between players' frames
 	FRAME_START     = "FRAME_START",     // Waiting between frame start and roll start

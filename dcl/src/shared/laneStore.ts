@@ -265,7 +265,7 @@ export namespace LaneStore {
 
 	// MARK: FrameCount
 	/**
-	 * Host-chosen length for this lane's current game. `0` while the lane is idle.
+	 * Lobby-chosen length for this lane's current game. `0` while the lane is idle.
 	 */
 	export function getFrameCount(laneIndex: number): number {
 		const c = LaneComponent.LaneGameData.get(getLaneEntity(laneIndex))
