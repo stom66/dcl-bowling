@@ -1,6 +1,6 @@
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs from '@dcl/sdk/react-ecs'
-import { Column, getTheme, Icon, IconNumber, IconString, Layer, lighten, PropsController, ProgressBarRadial, Row, UiBox, ZoneType } from '@stom66/dcl-ui-component-kit'
+import { Column, getTheme, Icon, IconNumber, IconString, Layer, lighten, PropsController, ProgressBarRadial, Row, UiBox, ZoneType, alpha } from '@stom66/dcl-ui-component-kit'
 
 import { LanePhase } from 'src/shared/enums'
 import { GameSettings } from 'src/shared/settings'
@@ -37,7 +37,7 @@ const STATUS_LINE_SIZE    = 20
 const SECONDS_LABEL_SIZE  = 10
 const BALL_BORDER_WIDTH   = 2
 const INNER_BORDER_WIDTH  = 1
-const COLOR_PANEL_FILL    = Color4.fromHexString('#1d0231ff')
+const COLOR_PANEL_FILL    = alpha(Color4.fromHexString('#1d0231ff'), 0.9)
 const COLOR_INNER_BORDER  = Color4.fromHexString('#681fd0ff')
 const COLOR_OUTER_BORDER  = Color4.fromHexString('#f66a02ff')
 const COLOR_TIMER_BORDER  = Color4.fromHexString('#6b4698ff')

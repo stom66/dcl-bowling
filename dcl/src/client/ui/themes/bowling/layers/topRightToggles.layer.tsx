@@ -1,7 +1,7 @@
 import { Color4 } from '@dcl/sdk/math'
 import { isDesktop, isMobile } from '@dcl/sdk/platform'
 import ReactEcs, { Label } from '@dcl/sdk/react-ecs'
-import { atlasIconsFontAwesome, ButtonText, getTheme, Icon, IconString, Layer, playOnce, Pulse, Spinner, ZoneType } from '@stom66/dcl-ui-component-kit'
+import { alpha, atlasIconsFontAwesome, ButtonText, getTheme, Icon, IconString, Layer, playOnce, Pulse, Spinner, ZoneType } from '@stom66/dcl-ui-component-kit'
 
 import { SoundManager } from 'src/client/soundManager'
 import { bowlingRussoOneAlphaNumericAtlas, bowlingRussoOneSymbolsAtlas } from 'src/client/ui/themes/bowling/atlases'
@@ -144,7 +144,7 @@ function toggleButton(
 			width           = {TOGGLE_BUTTONS_SIZE}
 			height          = {TOGGLE_BUTTONS_SIZE}
 			aspectRatio     = {1}
-			backgroundColor = {theme.colors.secondary}
+			backgroundColor = {alpha(theme.colors.secondary, 0.9)}
 			borderColor     = {theme.colors.primary}
 			borderWidth     = {2}
 			borderRadius    = {16}

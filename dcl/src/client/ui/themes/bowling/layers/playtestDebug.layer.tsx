@@ -1,6 +1,6 @@
 import { Vector3 } from '@dcl/sdk/math'
 import ReactEcs from '@dcl/sdk/react-ecs'
-import { ButtonText, Column, getTheme, Icon, Layer, Row, Text, UiBox, ZoneType } from '@stom66/dcl-ui-component-kit'
+import { alpha, ButtonText, Column, darken, getTheme, Icon, Layer, Row, Text, UiBox, ZoneType } from '@stom66/dcl-ui-component-kit'
 
 import { ComponentStore } from 'src/shared/components/componentStore'
 import { PlayerTickets } from 'src/shared/components/definitions/shared.playerTickets'
@@ -184,8 +184,8 @@ export class PlaytestDebugLayer extends Layer {
 				height          = "auto"
 				alignItems      = "flex-start"
 				justifyContent  = "flex-start"
-				backgroundColor = {theme.colors.secondary}
-				borderColor     = {theme.colors.primary}
+				backgroundColor = {alpha(darken(theme.colors.info, 0.9), 0.9)}
+				borderColor     = {theme.colors.info}
 				borderWidth     = {3}
 				borderRadius    = {8}
 				padding         = {8}
@@ -221,7 +221,7 @@ export class PlaytestDebugLayer extends Layer {
 				this.ticketButton(100),
 				this.button('playtest_reset_unlocks', 'Reset Unlocks', () => { this.resetUnlocks() }),
 				this.button('playtest_reset_tickets', 'Reset Tickets', () => { this.resetTickets() }),
-			]),
+			], PANEL_GAP),
 			this.panel('bowlotron-chrome', 'Bowl-o-tron 3000', [
 				this.button('bowlotron_strike', 'Strike', () => {
 					this.bowl(Vector3.create(-0.07, 0.12, 0.8), Vector3.create(0, 0, 1), 1, 0)

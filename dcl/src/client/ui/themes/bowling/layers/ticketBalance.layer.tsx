@@ -1,7 +1,7 @@
 import { engine } from '@dcl/sdk/ecs'
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs from '@dcl/sdk/react-ecs'
-import { getTheme, Icon, Layer, playOnce, Pulse, Row, Text, ZoneType } from '@stom66/dcl-ui-component-kit'
+import { getTheme, Icon, IconString, Layer, playOnce, Pulse, Row, Text, ZoneType } from '@stom66/dcl-ui-component-kit'
 
 import { ComponentStore } from 'src/shared/components/componentStore'
 import { PlayerTickets } from 'src/shared/components/definitions/shared.playerTickets'
@@ -11,9 +11,9 @@ import { gameIconsAtlas } from 'src/client/ui/themes/bowling/atlases'
 import { TOGGLE_BUTTONS_SIZE, TOGGLE_GAP } from './topRightToggles.layer'
 
 
-const CHIP_WIDTH       = 200
+const CHIP_WIDTH       = 188
 const CHIP_HEIGHT      = 64
-const TICKET_ICON_SIZE = 32
+const TICKET_ICON_SIZE = 48
 
 /** Share of the remaining ticket gap closed each second. */
 const BALANCE_CATCHUP_PER_SECOND = 0.985
@@ -235,11 +235,11 @@ export class TicketBalanceLayer extends Layer {
 				width           = "100%"
 				height          = "100%"
 				spacing         = {0}
-				padding         = {{ left: 14, right: 16 }}
+				padding         = {{ left: 10, right: 12 }}
 				backgroundColor = {theme.colors.secondary}
-				borderColor     = {theme.colors.tertiary}
+				borderColor     = {theme.colors.primary}
 				borderWidth     = {2}
-				borderRadius    = {theme.border.radiusSmall}
+				borderRadius    = {theme.border.radiusDefault}
 				alignItems      = "center"
 				justifyContent  = "space-between"
 			>
@@ -257,11 +257,16 @@ export class TicketBalanceLayer extends Layer {
 				{pulseContent(
 					PULSE_COUNT_ID,
 					this.pulseDuration,
-					<BalanceCount
+					<IconString
 						value     = {formatTicketCount(Math.round(this.displayedBalance))}
-						fontSize  = {theme.typography.size.h4}
-						fontColor = {theme.colors.light}
-					/>,
+						width     = {COUNT_WIDTH}
+						height    = {COUNT_HEIGHT}
+					/>
+					//<BalanceCount
+					//	value     = {formatTicketCount(Math.round(this.displayedBalance))}
+					//	fontSize  = {theme.typography.size.h2}
+					//	fontColor = {theme.colors.light}
+					///>,
 				)}
 			</Row>,
 		]
