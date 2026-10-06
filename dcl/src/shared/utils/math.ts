@@ -9,6 +9,6 @@ export function GetRandomPointInCircle(
 	const angle = Math.random() * 2 * Math.PI
 	const x     = randomRadius * Math.cos(angle)
 	const z     = randomRadius * Math.sin(angle)
-	const point = Vector3.create(x, center.y, z)
+	const point = Vector3.create(x, 0, z)
 	return Vector3.add(center, point)
 }
