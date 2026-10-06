@@ -37,7 +37,7 @@ export function setupLights() {
 	LightSource.create(light2, {
 		active            : true,
 		color             : Color3.White(),
-		intensity         : 2500000,
+		intensity         : 1250000,
 		range             : 128,
 		shadowMaskTexture : Material.Texture.Common({ src: LANE_SHADOW_MASK }),
 		type              : LightSource.Type.Point({}),
@@ -53,7 +53,7 @@ export function setupLights() {
 	LightSource.create(light3, {
 		active            : true,
 		color             : Color3.White(),
-		intensity         : 2500000,
+		intensity         : 1250000,
 		range             : 128,
 		shadowMaskTexture : Material.Texture.Common({ src: LANE_SHADOW_MASK }),
 		type              : LightSource.Type.Point({}),
