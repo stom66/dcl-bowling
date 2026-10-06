@@ -9,6 +9,7 @@ import { ComponentStore } from 'src/shared/components/componentStore'
 import { PlayerUnlocks } from 'src/shared/components/definitions/shared.playerUnlocks'
 import { PLAYERS_GROUP_ID } from 'src/shared/components/registry'
 import { trails } from 'src/shared/data/unlocks'
+import { userProfileCache } from 'src/shared/utils/userProfileCache'
 
 
 export const ParticleEffect = {
@@ -292,8 +293,7 @@ export namespace ParticleSpawner {
 			return
 		}
 
-		const local = getPlayer()
-		if (local?.userId === userId) {
+		if (userProfileCache.isLocalUser(userId)) {
 			triggerUnlock()
 			return
 		}

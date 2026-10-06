@@ -243,7 +243,7 @@ export type LambdasProfileAvatarRecord = {
 
 
 // MARK: DecentralandProfile
-/** JSON body from GET https://peer.decentraland.org/lambdas/profiles/{address} */
+/** JSON body from GET https://peer.decentraland.org/lambdas/profile/{address} */
 export type DecentralandProfile = {
 	/** Present on current catalyst responses; omit if using a minimal client. */
 	timestamp?: number

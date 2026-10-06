@@ -9,10 +9,12 @@ import { PIN_LANE_LOCAL_POSITIONS } from "src/shared/physics/physics.pin-layout"
 import { DEFAULT_STORED_ROTATION, storedRotationToQuaternion } from "src/shared/physics/physics.utils"
 import { NotifyPlayerRollPayload, SimObjectKeyframe, SimObjectKeyframes } from "src/shared/types/shared-types"
 import { ClientEvents, eventBus } from "src/shared/utils/eventBus"
+import { userProfileCache } from "src/shared/utils/userProfileCache"
 
 import { ClientStore } from "src/client/clientStore"
 import { applyBallTrail, applyFollowSpotlight, stopBallTrail } from "src/client/cosmetics"
 import { getLanePosition } from "src/client/data/lanePositions"
+import { PlayRollResultEmote } from "src/client/emotes"
 import { sfx, SoundManager } from "src/client/soundManager"
 
 
@@ -159,7 +161,7 @@ export class LaneVisuals {
 	private bindRollRequestCountdownHandlers(): void {
 		this.rollRequestUnsubs.push(
 			eventBus.on(ClientEvents.ON_MY_ROLL_REQUEST, () => {
-				if (ClientStore.getInstance().getUserId() !== this.rollOwnerUserId) return
+				if (!userProfileCache.isLocalUser(this.rollOwnerUserId)) return
 				this.beginRollRequestCountdownPipeline()
 			})
 		)
@@ -167,7 +169,7 @@ export class LaneVisuals {
 		this.rollRequestUnsubs.push(
 			eventBus.on(ClientEvents.ON_GROUP_ROLL_REQUEST, (data: { userId: string }) => {
 				if (data.userId !== this.rollOwnerUserId) return
-				if (data.userId === ClientStore.getInstance().getUserId()) return
+				if (userProfileCache.isLocalUser(data.userId)) return
 				this.beginRollRequestCountdownPipeline()
 			})
 		)
@@ -539,6 +541,14 @@ export class LaneVisuals {
 
 
 		utils.timers.setTimeout(() => {
+			if (userProfileCache.isLocalUser(this.rollOwnerUserId) && this.rollPayload) {
+				PlayRollResultEmote(
+					this.rollPayload.gutterBall,
+					this.rollPayload.isStrike,
+					this.rollPayload.isSpare,
+				)
+			}
+
 			this.replayDriver = undefined
 			this.emitPlaybackEndByMembership()
 

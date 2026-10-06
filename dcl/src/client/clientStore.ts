@@ -1,5 +1,5 @@
-import { LaneStore } from 'src/shared/laneStore'
 import { LanePhase, PlayerStatus } from 'src/shared/enums'
+import { LaneStore } from 'src/shared/laneStore'
 import { userProfileCache } from 'src/shared/utils/userProfileCache'
 
 import { LaneWatcher } from 'src/client/laneWatcher'
@@ -26,20 +26,24 @@ export class ClientStore {
 
 
 	// MARK: Init
+	/**
+	 * Records the local player from {@link userProfileCache}. The cache reads
+	 * `getPlayer` for anyone in the scene, so a missing catalyst profile still
+	 * leaves a user id and name.
+	 */
 	async init(): Promise<void> {
 		console.log('ClientStore: init')
-		const data = await userProfileCache.getUserProfile()
-		if (!data) {
-			console.error('ClientStore: init: no profile data')
+		await userProfileCache.init()
+
+		const userId = userProfileCache.getLocalUserId()
+		if (!userId) {
+			console.error('ClientStore: init: no local player')
 			return
 		}
-		const record = data.avatars?.[0]
-		if (!record || !record.name || !record.userId) {
-			console.error('ClientStore: init: no record/name/userId')
-			return
-		}
-		this.setUserId(record.userId)
-		this.setDisplayName(record.name)
+
+		this.setUserId(userId)
+		const displayName = await userProfileCache.getDisplayName(userId)
+		if (displayName) this.setDisplayName(displayName)
 
 		console.log('ClientStore: init: success. userId:', this.getUserId(), 'displayName:', this.getDisplayName())
 	}
@@ -109,7 +113,7 @@ export class ClientStore {
 			phase === LanePhase.ROLL_PROCESSING ||
 			phase === LanePhase.ROLL_PLAYBACK
 		)
-		if (turnPhases && turnId === this.userId) return PlayerStatus.IN_GAME_PLAYING
+		if (turnPhases && userProfileCache.isLocalUser(turnId)) return PlayerStatus.IN_GAME_PLAYING
 
 		return PlayerStatus.IN_GAME_WAITING
 	}

@@ -6,6 +6,7 @@ import { LaneStore } from "src/shared/laneStore"
 import { GameSettings } from "src/shared/settings"
 import { LaneSnapshot } from "src/shared/types/shared-types"
 import { ClientEvents, eventBus } from "src/shared/utils/eventBus"
+import { userProfileCache } from "src/shared/utils/userProfileCache"
 
 import { ClientStore } from "src/client/clientStore"
 
@@ -120,7 +121,8 @@ export namespace LaneWatcher {
 		myUserId : string
 	): boolean {
 		if (laneIndex === ClientStore.getInstance().getLaneIndex()) return true
-		return lastKnownPlayersByLane[laneIndex].includes(myUserId)
+		if (!userProfileCache.isLocalUser(myUserId)) return false
+		return lastKnownPlayersByLane[laneIndex].some((id) => userProfileCache.isLocalUser(id))
 	}
 
 
@@ -162,7 +164,7 @@ export namespace LaneWatcher {
 		if (prev === next) return
 
 		const myUserId  = ClientStore.getInstance().getUserId()
-		const isMyTurn  = snapshot.currentFrameUserId === myUserId
+		const isMyTurn  = userProfileCache.isLocalUser(snapshot.currentFrameUserId)
 		const isMyLane  = snapshot.laneIndex === ClientStore.getInstance().getLaneIndex()
 
 		if (prev === LanePhase.GAME_STARTING && next === LanePhase.WAITING) {

@@ -2,6 +2,7 @@ import { MessageType, net } from 'src/shared/net'
 import { NotifyJoinGamePayload, NotifyPlayerRollPayload, NotifyPlayerRollStartPayload } from 'src/shared/types/shared-types'
 import { clockSync } from 'src/shared/utils/clockSync'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
+import { userProfileCache } from 'src/shared/utils/userProfileCache'
 
 import { ClientStore } from 'src/client/clientStore'
 import { LaneStore } from 'src/shared/laneStore'
@@ -42,7 +43,7 @@ export namespace ClientHandler {
 	/** Roll start carries `pinStanding` + `rollStartTimestamp`, neither on a synced component. */
 	function handleNotifyPlayerRollStart(data: NotifyPlayerRollStartPayload) {
 		clockSync.updateOffset(data.sentAt)
-		if (data.userId === clientStore.getUserId()) {
+		if (userProfileCache.isLocalUser(data.userId)) {
 			eventBus.emit(ClientEvents.ON_MY_ROLL_START, data)
 		} else {
 			const laneIndex = LaneStore.findLaneByUserId(data.userId)
