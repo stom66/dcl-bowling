@@ -1,4 +1,4 @@
-import { engine, Entity, MainCamera, Transform, Tween, VirtualCamera } from "@dcl/sdk/ecs";
+import { EasingFunction, engine, Entity, MainCamera, Transform, Tween, VirtualCamera } from "@dcl/sdk/ecs";
 import { Vector3 } from "@dcl/sdk/math";
 import * as utils from "@dcl-sdk/utils"
 
@@ -21,13 +21,17 @@ export namespace CameraController {
 	var playbackReleaseTimer            : number | undefined
 
 	var cameraHeight                    = Vector3.create(0, 0.65, -1.2)
-	var cameraTargetOffset              = Vector3.create(0, 0.2, 19)
+	// Pin rack sits around z 18-19. This look point must stay ahead of the
+	// playback dolly (cameraHeight.z + cameraEndOffset.z) or the view spins around.
+	var playbackTargetOffset            = Vector3.create(0, 0.2, 19)
 
 	var cameraEndOffset                 = Vector3.create(0, 0, 16)
 
+	const aimPitchDegrees               = 13.5
 	const cameraTransitionDuration      = 1
 	const cameraDestroyDelayMs          = 1000 * cameraTransitionDuration
 	const cameraPlaybackDuration        = 1000 * 2
+	const cameraLookRaiseDuration       = 1000
 	const cameraPlaybackEndHoldDuration = 1000 * 3
 
 
@@ -80,6 +84,9 @@ export namespace CameraController {
 		if (Tween.has(cameraEntity)) {
 			Tween.deleteFrom(cameraEntity)
 		}
+		if (Tween.has(targetEntity)) {
+			Tween.deleteFrom(targetEntity)
+		}
 
 		utils.timers.setTimeout(() => {
 			engine.removeEntity(cameraEntity)
@@ -127,11 +134,26 @@ export namespace CameraController {
 		return true
 	}
 
+
+	// MARK: getAimTargetOffset
+	/**
+	 * Lane-local aim target, pitched `aimPitchDegrees` below horizontal.
+	 * Shares the pin look point's down-lane position so the replay can raise
+	 * it onto the pins without the moving camera passing the target.
+	 */
+	function getAimTargetOffset(): Vector3 {
+		const laneDistance = playbackTargetOffset.z - cameraHeight.z
+		const drop         = laneDistance * Math.tan(aimPitchDegrees * Math.PI / 180)
+		return Vector3.create(playbackTargetOffset.x, cameraHeight.y - drop, playbackTargetOffset.z)
+	}
+
+
+	// MARK: triggerRollStartCamera
 	function triggerRollStartCamera() {
 		console.log("CameraController: triggerRollStartCamera")
 		const laneIndex      = clientStore.getLaneIndex() ?? 0
 		const startPosition  = Vector3.add(getLanePosition(laneIndex), cameraHeight)
-		const targetPosition = Vector3.add(getLanePosition(laneIndex), cameraTargetOffset)
+		const targetPosition = Vector3.add(getLanePosition(laneIndex), getAimTargetOffset())
 		setCameraView(startPosition, targetPosition)
 	}
 
@@ -140,20 +162,41 @@ export namespace CameraController {
 	function triggerPlaybackCamera() {
 
 		console.log("CameraController: triggerPlaybackCamera")
-		const laneIndex      = clientStore.getLaneIndex() ?? 0
-		const startPosition  = Vector3.add(getLanePosition(laneIndex), cameraHeight)
-		const targetPosition = Vector3.add(getLanePosition(laneIndex), cameraTargetOffset)
-		const endPosition    = Vector3.add(startPosition, cameraEndOffset)
-		cameraEndPosition    = endPosition
+		const laneIndex     = clientStore.getLaneIndex() ?? 0
+		const laneOrigin    = getLanePosition(laneIndex)
+		const startPosition = Vector3.add(laneOrigin, cameraHeight)
+		const pinPosition   = Vector3.add(laneOrigin, playbackTargetOffset)
+		const endPosition   = Vector3.add(startPosition, cameraEndOffset)
+		cameraEndPosition   = endPosition
 
-		if (!setCameraView(startPosition, targetPosition)) {
-			return
+		const aimCamera       = camera
+		const aimTarget       = cameraTarget
+		const continueAimView = isMyTurn && aimCamera !== undefined && aimTarget !== undefined
+
+		if (!continueAimView) {
+			if (!setCameraView(startPosition, pinPosition)) {
+				return
+			}
 		}
 
 		const activeCamera = camera
-		if (!activeCamera) {
+		const activeTarget = cameraTarget
+		if (!activeCamera || !activeTarget) {
 			console.log("CameraController: triggerPlaybackCamera: camera not found after camera activation")
 			return
+		}
+
+		if (continueAimView) {
+			const current     = Transform.get(activeTarget).position
+			const targetStart = Vector3.create(current.x, current.y, current.z)
+			Tween.setMove(
+				activeTarget,
+				targetStart,
+				pinPosition,
+				cameraLookRaiseDuration,
+				EasingFunction.EF_EASEOUTCUBIC,
+			)
+			cameraTargetPosition = pinPosition
 		}
 
 		Tween.setMove(activeCamera, startPosition, endPosition, cameraPlaybackDuration)
