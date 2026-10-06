@@ -2,6 +2,7 @@ import { Color4 } from '@dcl/sdk/math'
 import { isMobile } from '@dcl/sdk/platform'
 import ReactEcs from '@dcl/sdk/react-ecs'
 import {
+	alpha,
 	atlasIconsFontAwesome,
 	ButtonText,
 	easingFunctions,
@@ -27,9 +28,6 @@ import { areLaneBumpersEnabled, toggleLaneBumpers } from 'src/client/bowlingCont
 import { bowlingIconAtlas, bowlingRussoOneAlphaNumericAtlas, bowlingRussoOneSymbolsAtlas } from 'src/client/ui/themes/bowling/atlases'
 
 
-// Temporary preview: roll HUD visible on load. Turn off before shipping.
-const DEBUG_FORCE_SHOW = true
-
 type IndicatorName = 'POSITION' | 'DIRECTION' | 'STRENGTH'
 
 const INDICATOR_OFFSET = {
@@ -41,19 +39,23 @@ const INDICATOR_OFFSET = {
 const FLASH_ID             = 'bowling-click-to-set-flash'
 const CLICK_PULSE_ID       = 'bowling-click-to-set-pulse'
 const CLICK_ONCE_ID        = 'bowling-click-to-set-pulse-once'
-const CLICK_PULSE_DURATION = 0.2
+const CLICK_PULSE_DURATION = 0.45
+const CLICK_PULSE_DURATION_ONCE = 0.15
 const CLICK_PULSE_BURST    = 2
 const CLICK_PULSE_EVERY    = 3
 const CLICK_PULSE_GAP      = CLICK_PULSE_EVERY - CLICK_PULSE_BURST * CLICK_PULSE_DURATION
 const CLICK_PULSE_SCALE    = 1.4
 const CLICK_SPIN_ID        = 'bowling-click-to-set-spin'
 const CLICK_SPIN_DURATION  = 6
-const SPINNER_BEAMS_SRC    = 'assets/images/ui-component-kit/spinner-beams-even.png'
+const SPINNER_BEAMS_SRC    = 'assets/images/ui-component-kit/spinner-beams-varied.png'
 
-const CONTROLS_WIDTH       = 960
-const CLICK_WIDTH          = 544
+const CONTROLS_WIDTH          = 960
+const INDICATOR_WIDTH         = 900
+const INDICATOR_HEIGHT        = 78
+const INDICATOR_MARGIN_BOTTOM = 32
 const CLICK_HEIGHT         = 107
 const CLICK_SIZE           = 228
+const CLICK_CORNER_INSET   = 8
 const CLICK_SPIN_SIZE      = CLICK_SIZE * 2
 const CLICK_PULSE_BOX      = CLICK_SIZE * CLICK_PULSE_SCALE
 const CLICK_PULSE_MIN      = 1 / CLICK_PULSE_SCALE
@@ -66,8 +68,8 @@ const CLICK_RADIUS         = 12
 const BUMPER_SIZE          = CLICK_HEIGHT
 const BUMPER_ICON          = 48
 const BUMPER_LABEL_HEIGHT  = 16
-const BUMPER_GAP           = 24
-const BUMPER_LEFT          = (CONTROLS_WIDTH + CLICK_WIDTH) / 2 + BUMPER_GAP
+const BUMPER_GAP           = 8
+const BUMPER_LEFT          = CONTROLS_WIDTH / 2 + INDICATOR_WIDTH / 2 + BUMPER_GAP
 const BUMPER_TOP           = (CLICK_HEIGHT - BUMPER_SIZE) / 2
 const BUMPER_SPIN_ID       = 'bowling-bumper-spin'
 const BUMPER_SPIN_DEGREES  = 720
@@ -125,12 +127,13 @@ export class BowlingControlsLayer extends Layer {
 			id         : 'bowling-controls',
 			zone       : ZoneType.BottomCenter,
 			canBeHidden: true,
-			startHidden: !DEBUG_FORCE_SHOW,
+			startHidden: true,
 			showFrom   : 'bottom',
 			hideTo     : 'bottom',
 			uiTransform: {
-				width : CONTROLS_WIDTH,
-				height: 320,
+				width   : CONTROLS_WIDTH,
+				height  : 320,
+				overflow: 'visible',
 			},
 		})
 
@@ -146,9 +149,9 @@ export class BowlingControlsLayer extends Layer {
 			this.setIndicator('POSITION', true)
 			this.show(0.8)
 		})
-		eventBus.on(ClientEvents.ON_MY_ROLL_REQUEST, () => { if (!DEBUG_FORCE_SHOW) this.hide(0.8) })
-		eventBus.on(ClientEvents.ON_MY_ROLL_END,     () => { if (!DEBUG_FORCE_SHOW) this.hide(0.8) })
-		eventBus.on(ClientEvents.ON_GROUP_GAME_END,  () => { if (!DEBUG_FORCE_SHOW) this.hide(0.8) })
+		eventBus.on(ClientEvents.ON_MY_ROLL_REQUEST, () => { this.hide(0.8) })
+		eventBus.on(ClientEvents.ON_MY_ROLL_END,     () => { this.hide(0.8) })
+		eventBus.on(ClientEvents.ON_GROUP_GAME_END,  () => { this.hide(0.8) })
 	}
 
 
@@ -191,7 +194,7 @@ export class BowlingControlsLayer extends Layer {
 
 	// MARK: bumperButton
 	/**
-	 * Square toggle in the center HUD. Raises and lowers gutter bumpers.
+	 * Square toggle just to the right of the position/direction/strength bar.
 	 * The icon spins two full turns on each click.
 	 */
 	private bumperButton() {
@@ -277,6 +280,7 @@ export class BowlingControlsLayer extends Layer {
 				alignItems     = "center"
 				justifyContent = "flex-end"
 				borderWidth    = {0}
+				overflow       = "visible"
 				uiTransform    = {{ flexDirection: 'column' }}
 			>
 				<UiBox
@@ -284,9 +288,10 @@ export class BowlingControlsLayer extends Layer {
 					width       = {CONTROLS_WIDTH}
 					height      = {CLICK_HEIGHT}
 					borderWidth = {0}
+					overflow    = "visible"
 					uiTransform = {{
 						positionType: 'absolute',
-						position    : { right: 8, bottom: 0 },
+						position    : { left: 0, bottom: INDICATOR_MARGIN_BOTTOM },
 					}}
 				>
 					{this.bumperButton()}
@@ -294,15 +299,15 @@ export class BowlingControlsLayer extends Layer {
 
 				<UiBox
 					key             = "indicator_box"
-					width           = {900}
-					height          = {78}
+					width           = {INDICATOR_WIDTH}
+					height          = {INDICATOR_HEIGHT}
 					borderColor     = {theme.colors.primary}
 					borderWidth     = {4}
 					borderRadius    = {12}
 					backgroundColor = {theme.colors.secondary}
 					justifyContent  = "center"
 					alignItems      = "center"
-					margin          = {{ top: 24, bottom: 32 }}
+					margin          = {{ top: 24, bottom: INDICATOR_MARGIN_BOTTOM }}
 				>
 					<UiBox
 						key             = "indicator_tab"
@@ -317,8 +322,8 @@ export class BowlingControlsLayer extends Layer {
 					/>
 					<UiBox
 						key            = "indicator_labels"
-						width          = {900}
-						height         = {78}
+						width          = {INDICATOR_WIDTH}
+						height         = {INDICATOR_HEIGHT}
 						justifyContent = "space-between"
 						alignItems     = "center"
 						padding        = {{ left: 24, right: 24 }}
@@ -371,7 +376,7 @@ export class ClickToSetLayer extends Layer {
 			id         : 'bowling-click-to-set',
 			zone       : ZoneType.BottomRight,
 			canBeHidden: true,
-			startHidden: !DEBUG_FORCE_SHOW,
+			startHidden: true,
 			showFrom   : 'bottom',
 			hideTo     : 'bottom',
 			uiTransform: {
@@ -379,6 +384,8 @@ export class ClickToSetLayer extends Layer {
 				height  : CLICK_SIZE,
 				overflow: 'visible',
 				margin  : { bottom: 64, right: 64 },
+				// Pixel corner. Mobile BottomRight's percentage `right` is placed from the left edge.
+				position: { right: CLICK_CORNER_INSET, bottom: CLICK_CORNER_INSET },
 			},
 		})
 
@@ -393,9 +400,9 @@ export class ClickToSetLayer extends Layer {
 				this.flashClickToSet()
 			}, 1500)
 		})
-		eventBus.on(ClientEvents.ON_MY_ROLL_REQUEST, () => { if (!DEBUG_FORCE_SHOW) this.hide(0.8) })
-		eventBus.on(ClientEvents.ON_MY_ROLL_END,     () => { if (!DEBUG_FORCE_SHOW) this.hide(0.8) })
-		eventBus.on(ClientEvents.ON_GROUP_GAME_END,  () => { if (!DEBUG_FORCE_SHOW) this.hide(0.8) })
+		eventBus.on(ClientEvents.ON_MY_ROLL_REQUEST, () => { this.hide(0.8) })
+		eventBus.on(ClientEvents.ON_MY_ROLL_END,     () => { this.hide(0.8) })
+		eventBus.on(ClientEvents.ON_GROUP_GAME_END,  () => { this.hide(0.8) })
 	}
 
 
@@ -464,6 +471,30 @@ export class ClickToSetLayer extends Layer {
 					iconColor = {theme.colors.primary}
 				/>
 			</Spinner>,
+			<Spinner
+				key            = "click-to-set-beams-2"
+				id             = {CLICK_SPIN_ID}
+				playing        = {!this.visibility.isHidden}
+				looping        = {true}
+				duration       = {CLICK_SPIN_DURATION}
+				degrees        = {-90}
+				burstInterval  = {0}
+				width          = {CLICK_SPIN_SIZE}
+				height         = {CLICK_SPIN_SIZE}
+				pointerFilter  = "none"
+				positionType   = "absolute"
+				position       = {{
+					left: (CLICK_SIZE - CLICK_SPIN_SIZE) / 2,
+					top : (CLICK_SIZE - CLICK_SPIN_SIZE) / 2,
+				}}
+			>
+				<Icon
+					src       = {SPINNER_BEAMS_SRC}
+					width     = {CLICK_SPIN_SIZE}
+					height    = {CLICK_SPIN_SIZE}
+					iconColor = {alpha(theme.colors.danger, 0.35)}
+				/>
+			</Spinner>,
 			<Pulse
 				id            = {CLICK_PULSE_ID}
 				playing       = {!this.visibility.isHidden && !this.periodicPulsePaused}
@@ -491,7 +522,7 @@ export class ClickToSetLayer extends Layer {
 						id          = {CLICK_ONCE_ID}
 						playing     = {false}
 						looping     = {false}
-						duration    = {CLICK_PULSE_DURATION}
+						duration    = {CLICK_PULSE_DURATION_ONCE}
 						burstCount  = {1}
 						scaleMin    = {1}
 						scaleMax    = {CLICK_PULSE_SCALE}
@@ -527,8 +558,8 @@ export class ClickToSetLayer extends Layer {
 								burstInterval  = {0.3}
 								flashColor     = {theme.colors.primary}
 								easingFunction = {easingFunctions.easeBounce}
-								width          = "90%"
-								height         = "90%"
+								width          = "100%"
+								height         = "100%"
 							>
 								<Icon
 									src       = {bowlingIconAtlas.source}
