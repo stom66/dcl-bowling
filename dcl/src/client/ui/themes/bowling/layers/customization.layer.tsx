@@ -457,6 +457,7 @@ export class CustomizationLayer extends Layer {
 	// MARK: requestItemAction
 	/**
 	 * Equips an owned item, or asks the server to spend tickets unlocking it.
+	 * A successful unlock equips the item on the server.
 	 */
 	private requestItemAction(entry: CatalogEntryRow) {
 		this.selectItem(entry.id)
