@@ -25,6 +25,9 @@ import { getLaneLobbyPosition } from 'src/client/data/lanePositions'
 import { HideLaneLobbyUI, ShowLaneLobbyUI } from 'src/client/ui/themes/bowling/layers/laneLobbyUi'
 
 
+/** Draw each lobby trigger volume as a translucent sphere. */
+const SHOW_LOBBY_TRIGGER_DEBUG = false
+
 const LOBBY_ZONE_MODEL_SRC      = 'assets/models/lobby-zone.gltf'
 const HOLOGRAM_NODE_PATH        = 'lobby-zone.armature/root/spin/lobby-zone.hologram'
 const HOLOGRAM_ALBEDO_TEXTURE   = 'assets/models/tex/texture-lobbyHologram-baseColor-texture-lobbyHologram-alpha.png'
@@ -48,8 +51,6 @@ type LobbyEntities = {
 const lobbies: LobbyEntities[] = []
 const lastHologramPhase: (LanePhase | undefined)[] = []
 const clientStore = ClientStore.getInstance()
-
-let showTriggerDebug = false
 
 
 // MARK: isLaneJoinable
@@ -131,38 +132,6 @@ function applyHologramStatus(
 }
 
 
-// MARK: applyTriggerDebugVisibility
-/** Shows or hides the trigger-shape debug mesh on every lobby. */
-function applyTriggerDebugVisibility(): void {
-	for (const lobby of lobbies) {
-		const visibility = VisibilityComponent.getMutableOrNull(lobby.debugMesh)
-		if (visibility) {
-			visibility.visible = showTriggerDebug
-		}
-		else {
-			VisibilityComponent.create(lobby.debugMesh, { visible: showTriggerDebug })
-		}
-	}
-}
-
-
-// MARK: getShowLobbyTriggerDebug
-/** True when lobby trigger volumes are drawn as translucent debug meshes. */
-export function getShowLobbyTriggerDebug(): boolean {
-	return showTriggerDebug
-}
-
-
-// MARK: setShowLobbyTriggerDebug
-/** Enables or disables the lobby trigger-volume debug mesh. */
-export function setShowLobbyTriggerDebug(enabled: boolean): void {
-	if (showTriggerDebug === enabled) return
-	showTriggerDebug = enabled
-	applyTriggerDebugVisibility()
-	console.log('LaneLobbies: setShowLobbyTriggerDebug:', enabled)
-}
-
-
 // MARK: onLobbyEnter
 /** Shows lobby UI and joins the lane when it is free / starting. */
 function onLobbyEnter(laneIndex: number): void {
@@ -227,7 +196,7 @@ export function setupLaneLobbies(): void {
 			roughness        : 1,
 			castShadows      : false,
 		})
-		VisibilityComponent.create(debugMesh, { visible: showTriggerDebug })
+		VisibilityComponent.create(debugMesh, { visible: SHOW_LOBBY_TRIGGER_DEBUG })
 
 		const model = engine.addEntity()
 		Transform.create(model, {
