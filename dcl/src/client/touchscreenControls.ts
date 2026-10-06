@@ -1,4 +1,4 @@
-import { engine, TouchScreenControls } from '@dcl/sdk/ecs'
+import { TouchScreenControls } from '@dcl/sdk/ecs'
 
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 
@@ -7,7 +7,8 @@ export namespace TouchscreenControls {
 
 	// MARK: init
 	/**
-	 * Hides touchscreen movement controls while the local player's roll is in progress.
+	 * Hides the native mobile HUD while the local player's roll controls are on screen,
+	 * and brings it back when the roll, the match, or the lane ends.
 	 */
 	export function init() {
 		eventBus.on(ClientEvents.ON_MY_ROLL_START, () => {
@@ -16,31 +17,35 @@ export namespace TouchscreenControls {
 		eventBus.on(ClientEvents.ON_MY_ROLL_END, () => {
 			enableInputs()
 		})
+		eventBus.on(ClientEvents.ON_GROUP_GAME_END, () => {
+			enableInputs()
+		})
+		eventBus.on(ClientEvents.REQUEST_LEAVE_GAME, () => {
+			enableInputs()
+		})
 	}
 
 
 	// MARK: disableInputs
 	/**
-	 * Hides the on-screen joystick and crosshair, and clears custom touch buttons.
+	 * Hides the joystick, the crosshair, and every on-screen gamepad button
+	 * (jump, interact, E, F, and 1-4).
+	 * Unlisted buttons stay visible, so this hides each gamepad action explicitly.
 	 */
 	export function disableInputs() {
-		TouchScreenControls.createOrReplace(engine.RootEntity, {
-			hideJoystick : true,
-			hideCrosshair: true,
-			touchInputs  : [],
-		})
+		TouchScreenControls.hideJoystick()
+		TouchScreenControls.hideCrosshair()
+		TouchScreenControls.hideAll()
 	}
 
 
 	// MARK: enableInputs
 	/**
-	 * Restores the default on-screen joystick and crosshair, with no custom touch buttons.
+	 * Restores the default joystick, crosshair, and gamepad buttons.
 	 */
 	export function enableInputs() {
-		TouchScreenControls.createOrReplace(engine.RootEntity, {
-			hideJoystick : false,
-			hideCrosshair: false,
-			touchInputs  : [],
-		})
+		TouchScreenControls.showJoystick()
+		TouchScreenControls.showCrosshair()
+		TouchScreenControls.showAll()
 	}
 }
