@@ -38,6 +38,8 @@ const IS_DEV = process.env.NODE_ENV === 'development'
  * those windows. Ticket balance sits in the top of the right zone.
  * The playtest panel sits in that same zone, below the ticket balance, while
  * `GameSettings.PLAYTEST_DEBUG_PANEL` is on, with Bolotron 3000 stacked under it.
+ * Letterbox hides that top HUD (status, leave, toolbar, tickets, playtest,
+ * and Bowl-o-tron) for the duration of a group roll replay.
  * Loading is near the end so
  * it covers gameplay until dismissed.
  * Version is last with the highest z-index.

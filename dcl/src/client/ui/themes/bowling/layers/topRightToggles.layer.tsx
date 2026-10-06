@@ -184,7 +184,7 @@ export class TopRightTogglesLayer extends Layer {
 		super({
 			id         : 'bowling-top-right-toggles',
 			zone       : ZoneType.TopRight,
-			canBeHidden: false,
+			canBeHidden: true,
 			zIndex     : 600,
 			uiTransform: {
 				width   : 'auto',

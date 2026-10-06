@@ -135,7 +135,7 @@ export class TicketBalanceLayer extends Layer {
 		super({
 			id         : 'bowling-ticket-balance',
 			zone       : ZoneType.RightTop,
-			canBeHidden: false,
+			canBeHidden: true,
 			uiTransform: {
 				width : CHIP_WIDTH,
 				height: CHIP_HEIGHT,

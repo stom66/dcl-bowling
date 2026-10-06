@@ -74,7 +74,7 @@ export class GameStatusLayer extends Layer {
 		super({
 			id         : 'bowling-game-status',
 			zone       : ZoneType.TopCenter,
-			canBeHidden: false,
+			canBeHidden: true,
 			uiTransform: {
 				height: 'auto',
 			},

@@ -36,7 +36,7 @@ export class PlaytestDebugLayer extends Layer {
 		super({
 			id         : 'bowling-playtest-debug',
 			zone       : ZoneType.RightTop,
-			canBeHidden: false,
+			canBeHidden: true,
 			uiTransform: {
 				width : PANEL_WIDTH,
 				height: 'auto',

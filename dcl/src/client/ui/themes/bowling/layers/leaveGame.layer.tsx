@@ -15,6 +15,7 @@ import { ClientMessaging } from 'src/client/clientMessaging'
 import { ClientStore } from 'src/client/clientStore'
 import { bowlingIconAtlas, primaryButtonAtlas } from 'src/client/ui/themes/bowling/atlases'
 import { GAME_STATUS_PANEL_HEIGHT } from 'src/client/ui/themes/bowling/layers/gameStatus.layer'
+import { LETTERBOX_HUD_DURATION, onLetterboxHidden, onLetterboxShown } from 'src/client/ui/themes/bowling/layers/letterbox.layer'
 
 
 const clientStore = ClientStore.getInstance()
@@ -38,7 +39,8 @@ function requestLeaveGame() {
  * Offset by the status-panel height plus a gap so it sits below that HUD.
  */
 export class LeaveGameLayer extends Layer {
-	private wasInGame = false
+	private wasInGame             = false
+	private suppressedByLetterbox = false
 
 	constructor() {
 		super({
@@ -52,8 +54,15 @@ export class LeaveGameLayer extends Layer {
 			},
 		})
 
+		onLetterboxShown(() => { this.suppressForLetterbox() })
+		onLetterboxHidden(() => { this.restoreAfterLetterbox() })
+
 		engine.addSystem(() => {
 			const isInGame = clientStore.getPlayerStatus() !== PlayerStatus.IDLE
+			if (this.suppressedByLetterbox) {
+				this.wasInGame = isInGame
+				return
+			}
 			if (isInGame === this.wasInGame) return
 			this.wasInGame = isInGame
 			if (isInGame) {
@@ -62,6 +71,28 @@ export class LeaveGameLayer extends Layer {
 				this.hide(0)
 			}
 		})
+	}
+
+
+	// MARK: suppressForLetterbox
+	/** Hides the leave button while cinematic bars are on screen. */
+	private suppressForLetterbox() {
+		this.suppressedByLetterbox = true
+		if (this.visibility.isHidden) return
+		this.hide(LETTERBOX_HUD_DURATION)
+	}
+
+
+	// MARK: restoreAfterLetterbox
+	/**
+	 * Brings the leave button back only when the local player is still in a game.
+	 */
+	private restoreAfterLetterbox() {
+		const isInGame = clientStore.getPlayerStatus() !== PlayerStatus.IDLE
+		this.suppressedByLetterbox = false
+		this.wasInGame            = isInGame
+		if (isInGame) this.show(LETTERBOX_HUD_DURATION)
+		else if (!this.visibility.isHidden) this.hide(0)
 	}
 
 
