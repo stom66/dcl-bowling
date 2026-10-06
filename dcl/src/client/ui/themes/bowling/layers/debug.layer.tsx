@@ -1,4 +1,4 @@
-import { Color4, Vector3 } from '@dcl/sdk/math'
+import { Color4 } from '@dcl/sdk/math'
 import ReactEcs from '@dcl/sdk/react-ecs'
 import {
 	ButtonText,
@@ -12,7 +12,6 @@ import {
 	UiBox,
 	ZoneType,
 } from '@stom66/dcl-ui-component-kit'
-import { movePlayerTo } from '~system/RestrictedActions'
 
 import { ComponentStore } from 'src/shared/components/componentStore'
 import { PlayerActivity } from 'src/shared/components/definitions/shared.playerActivity'
@@ -22,13 +21,10 @@ import { PlayerStats } from 'src/shared/components/definitions/shared.playerStat
 import { PlayerTickets } from 'src/shared/components/definitions/shared.playerTickets'
 import { LaneStore } from 'src/shared/laneStore'
 import { GameSettings } from 'src/shared/settings'
-import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 import { userProfileCache } from 'src/shared/utils/userProfileCache'
 
 import { ClientMessaging } from 'src/client/clientMessaging'
 import { ClientStore } from 'src/client/clientStore'
-import { getRootPosition } from 'src/client/data/lanePositions'
-import { getShowLobbyTriggerDebug, setShowLobbyTriggerDebug } from 'src/client/laneLobbies'
 import { playerMover } from 'src/client/playerMover'
 
 
@@ -55,23 +51,6 @@ export class DebugLayer extends Layer {
 				padding : 6,
 				overflow: 'hidden',
 			},
-		})
-	}
-
-
-	// MARK: bowl
-	private bowl(
-		position : Vector3,
-		direction: Vector3,
-		strength : number,
-		spin     : number,
-	) {
-		ClientMessaging.requestPlayRoll(position, direction, strength, spin)
-		eventBus.emit(ClientEvents.ON_MY_ROLL_REQUEST, {
-			position : position,
-			direction: direction,
-			strength : strength,
-			spin     : spin,
 		})
 	}
 
@@ -252,21 +231,6 @@ export class DebugLayer extends Layer {
 						position    : { top: 0, left: 0 },
 					}}
 				/>
-				<ButtonText
-					id        = "debug_lobby_triggers"
-					textLabel = {getShowLobbyTriggerDebug() ? 'Hide lobby triggers' : 'Show lobby triggers'}
-					width     = "100%"
-					height    = {18}
-					minHeight = {18}
-					fontSize  = {DEBUG_FONT_SIZE}
-					callback  = {() => {
-						setShowLobbyTriggerDebug(!getShowLobbyTriggerDebug())
-					}}
-					uiTransform = {{
-						positionType: 'relative',
-						position    : { top: 0, left: 0 },
-					}}
-				/>
 
 				<Text
 					value     = "Start Game on Lane"
@@ -299,65 +263,6 @@ export class DebugLayer extends Layer {
 					))}
 				</Row>
 
-				<Text
-					value     = "Bowl-O-Tron"
-					fontSize  = {DEBUG_FONT_SIZE}
-					fontColor = {theme.colors.light}
-					textAlign = "middle-left"
-					width     = "100%"
-					height    = {12}
-				/>
-				<Row
-					width          = "100%"
-					height         = {20}
-					spacing        = {2}
-					padding        = {{ top: 1, bottom: 2 }}
-					justifyContent = "space-between"
-				>
-					<ButtonText
-						id        = "debug_bowl_strike"
-						textLabel = "Strike"
-						width     = {70}
-						height    = {18}
-						fontSize  = {DEBUG_FONT_SIZE}
-						callback  = {() => {
-							this.bowl(Vector3.create(-0.07, 0.12, 0.8), Vector3.create(0, 0, 1), 1, 0)
-						}}
-						uiTransform = {{
-							positionType: 'relative',
-							position    : { top: 0, left: 0 },
-						}}
-					/>
-					<ButtonText
-						id        = "debug_bowl_spare_1"
-						textLabel = "Spare 1"
-						width     = {70}
-						height    = {18}
-						fontSize  = {DEBUG_FONT_SIZE}
-						callback  = {() => {
-							this.bowl(Vector3.create(0.15, 0.12, 0.8), Vector3.create(0, 0, 1), 1, 0)
-						}}
-						uiTransform = {{
-							positionType: 'relative',
-							position    : { top: 0, left: 0 },
-						}}
-					/>
-					<ButtonText
-						id        = "debug_bowl_spare_2"
-						textLabel = "Spare 2"
-						width     = {70}
-						height    = {18}
-						fontSize  = {DEBUG_FONT_SIZE}
-						callback  = {() => {
-							this.bowl(Vector3.create(-0.2, 0.12, 0.8), Vector3.create(0, 0, 1), 1, 0)
-						}}
-						uiTransform = {{
-							positionType: 'relative',
-							position    : { top: 0, left: 0 },
-						}}
-					/>
-				</Row>
-
 				<Divider margin={{ top: 2, bottom: 2 }} thickness={1} />
 
 				{this.sectionTitle('debug-client', 'ClientState')}
@@ -381,84 +286,6 @@ export class DebugLayer extends Layer {
 				<Divider margin={{ top: 2, bottom: 2 }} thickness={1} />
 				{this.sectionTitle('debug-profile', 'Player profile')}
 				{this.getProfileRows()}
-				<Text
-					value     = "Add tickets"
-					fontSize  = {DEBUG_FONT_SIZE}
-					fontColor = {theme.colors.light}
-					textAlign = "middle-left"
-					width     = "100%"
-					height    = {12}
-				/>
-				<Row
-					width          = "100%"
-					height         = {20}
-					spacing        = {2}
-					padding        = {{ top: 1, bottom: 2 }}
-					justifyContent = "space-between"
-				>
-					{[1, 10, 100].map((amount) => (
-						<ButtonText
-							id        = {`debug_add_tickets_${amount}`}
-							textLabel = {`+${amount}`}
-							width     = {70}
-							height    = {18}
-							fontSize  = {DEBUG_FONT_SIZE}
-							callback  = {() => { ClientMessaging.requestTicket(amount) }}
-							uiTransform = {{
-								positionType: 'relative',
-								position    : { top: 0, left: 0 },
-							}}
-						/>
-					))}
-				</Row>
-				<Row
-					width          = "100%"
-					height         = {20}
-					spacing        = {20}
-					padding        = {{ top: 1, bottom: 2 }}
-					justifyContent = "space-between"
-				>
-					<ButtonText
-						id        = "debug_unlock_ember"
-						textLabel = "Unlock ember"
-						width     = {90}
-						height    = {18}
-						fontSize  = {DEBUG_FONT_SIZE}
-						callback  = {() => { ClientMessaging.requestUnlockItem('trail-ember') }}
-						uiTransform = {{
-							positionType: 'relative',
-							position    : { top: 0, left: 0 },
-						}}
-					/>
-					<ButtonText
-						id        = "debug_equip_ember"
-						textLabel = "Equip ember"
-						width     = {90}
-						height    = {18}
-						fontSize  = {DEBUG_FONT_SIZE}
-						callback  = {() => { ClientMessaging.requestEquipItem('trail-ember') }}
-						uiTransform = {{
-							positionType: 'relative',
-							position    : { top: 0, left: 0 },
-						}}
-					/>
-					<ButtonText
-						id        = "debug_equip_classic"
-						textLabel = "Classic"
-						width     = {70}
-						height    = {18}
-						fontSize  = {DEBUG_FONT_SIZE}
-						callback  = {() => {
-							ClientMessaging.requestEquipItem('ball-default')
-							ClientMessaging.requestEquipItem('trail-none')
-							ClientMessaging.requestEquipItem('spotlight-none')
-						}}
-						uiTransform = {{
-							positionType: 'relative',
-							position    : { top: 0, left: 0 },
-						}}
-					/>
-				</Row>
 
 				<Divider margin={{ top: 2, bottom: 2 }} thickness={1} />
 				{this.sectionTitle('debug-all-lanes', 'All Lanes (components)')}
