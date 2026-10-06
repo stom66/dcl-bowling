@@ -23,6 +23,9 @@ export class VersionLayer extends Layer {
 			zone       : ZoneType.FullScreen,
 			canBeHidden: false,
 			zIndex     : 9999,
+			uiTransform: {
+				pointerFilter: 'none',
+			},
 		})
 	}
 

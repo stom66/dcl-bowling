@@ -4,6 +4,9 @@ Central backlog for playtest findings, review notes, and future work.
 
 ## Backlog
 
+- [x] Swap per-lane lobby status hologram stub meshes for final free / starting /
+  occupied GLTF models (see `laneLobbies.ts` stub entities).
+
 - [ ] Style the customization catalog scrollbar when the SDK exposes it. Native
   `overflow: 'scroll'` bars cannot be colored or resized in the current SDK;
   catalog column `padding-right: 4` currently keeps the bar off the pane edge.
@@ -28,3 +31,4 @@ Central backlog for playtest findings, review notes, and future work.
   and reset unlocks while `GameSettings.PLAYTEST_DEBUG_PANEL` is on.
 - Add animations for SPLIT, TURKEY, BADGER, DOUBLE STRIKE, etc
 - Add scoreboard highlight for SPLIT 8
+- [ ]  a balloon stand, where you can spend a ticket to buy a balloon.

@@ -1,4 +1,5 @@
 import { Color4 } from '@dcl/sdk/math'
+import { isDesktop, isMobile } from '@dcl/sdk/platform'
 import ReactEcs, { Label } from '@dcl/sdk/react-ecs'
 import { atlasIconsFontAwesome, ButtonText, getTheme, Icon, IconString, Layer, playOnce, Pulse, Spinner, ZoneType } from '@stom66/dcl-ui-component-kit'
 
@@ -190,7 +191,7 @@ export class TopRightTogglesLayer extends Layer {
 				height  : 'auto',
 				position: {
 					top  : 8,
-					right: IS_DEV ? RIGHT_INSET_LOCAL_DEV : RIGHT_INSET_DEFAULT,
+					right: (IS_DEV && isDesktop()) ? RIGHT_INSET_LOCAL_DEV : RIGHT_INSET_DEFAULT,
 				},
 			},
 		})

@@ -28,6 +28,7 @@ import { userProfileCache } from 'src/shared/utils/userProfileCache'
 import { ClientMessaging } from 'src/client/clientMessaging'
 import { ClientStore } from 'src/client/clientStore'
 import { getRootPosition } from 'src/client/data/lanePositions'
+import { getShowLobbyTriggerDebug, setShowLobbyTriggerDebug } from 'src/client/laneLobbies'
 import { playerMover } from 'src/client/playerMover'
 
 
@@ -245,6 +246,21 @@ export class DebugLayer extends Layer {
 					fontSize  = {DEBUG_FONT_SIZE}
 					callback  = {() => {
 						playerMover.movePlayerToSpawnPoint()
+					}}
+					uiTransform = {{
+						positionType: 'relative',
+						position    : { top: 0, left: 0 },
+					}}
+				/>
+				<ButtonText
+					id        = "debug_lobby_triggers"
+					textLabel = {getShowLobbyTriggerDebug() ? 'Hide lobby triggers' : 'Show lobby triggers'}
+					width     = "100%"
+					height    = {18}
+					minHeight = {18}
+					fontSize  = {DEBUG_FONT_SIZE}
+					callback  = {() => {
+						setShowLobbyTriggerDebug(!getShowLobbyTriggerDebug())
 					}}
 					uiTransform = {{
 						positionType: 'relative',

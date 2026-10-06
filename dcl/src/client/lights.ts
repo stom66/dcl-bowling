@@ -5,8 +5,8 @@ import { getRootPosition } from "./data/lanePositions"
 
 const SHOW_LIGHT_MESH = true
 
-const LOBBY_SHADOW_MASK = 'assets/images/spotlights/ColorGrid.png'
-const LANE_SHADOW_MASK  = 'assets/images/spotlights/ColorGrid.png'
+const LOBBY_SHADOW_MASK = 'assets/images/spotlights/shadowmask-lobby.png'
+const LANE_SHADOW_MASK  = 'assets/images/spotlights/shadowmask-lobby.png'
 
 export function setupLights() {
 	const rootEntity = engine.addEntity()
@@ -19,10 +19,12 @@ export function setupLights() {
 		position: Vector3.create(0, 12, 0) 
 	})
 	LightSource.create(light1, {
-		type              : LightSource.Type.Point({}),
+		active            : true,
 		color             : Color3.White(),
 		intensity         : 500000,
+		range             : 128,
 		shadowMaskTexture : Material.Texture.Common({ src: LOBBY_SHADOW_MASK }),
+		type              : LightSource.Type.Point({}),
 	})
 	if (SHOW_LIGHT_MESH) MeshRenderer.setSphere(light1)
 
@@ -33,10 +35,12 @@ export function setupLights() {
 		position: Vector3.create(-12, 20, 46) 
 	})
 	LightSource.create(light2, {
-		type              : LightSource.Type.Point({}),
+		active            : true,
 		color             : Color3.White(),
 		intensity         : 2500000,
+		range             : 128,
 		shadowMaskTexture : Material.Texture.Common({ src: LANE_SHADOW_MASK }),
+		type              : LightSource.Type.Point({}),
 	})
 	if (SHOW_LIGHT_MESH) MeshRenderer.setSphere(light2)
 
@@ -47,10 +51,12 @@ export function setupLights() {
 		position: Vector3.create(12, 20, 46)
 	})
 	LightSource.create(light3, {
-		type              : LightSource.Type.Point({}),
+		active            : true,
 		color             : Color3.White(),
 		intensity         : 2500000,
+		range             : 128,
 		shadowMaskTexture : Material.Texture.Common({ src: LANE_SHADOW_MASK }),
+		type              : LightSource.Type.Point({}),
 	})
 	if (SHOW_LIGHT_MESH) MeshRenderer.setSphere(light3)
 

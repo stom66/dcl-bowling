@@ -17,7 +17,7 @@ const clientStore = ClientStore.getInstance()
 
 const PANEL_WIDTH        = 180
 const BUTTON_HEIGHT      = 40
-const PANEL_GAP          = 8
+const PANEL_GAP          = 24
 const TICKET_ICON_SIZE   = 22
 /** Matches the ticket-balance chip height so this stack clears it. */
 const TICKET_CHIP_HEIGHT = 40

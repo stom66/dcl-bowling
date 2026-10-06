@@ -1,7 +1,11 @@
 import { engine, Entity, Transform } from "@dcl/sdk/ecs"
 import { Quaternion, Vector3 } from "@dcl/sdk/math"
+
 import { GameSettings } from "src/shared/settings"
-import { UiLaneScreen } from "./ui-world/ui.laneScreen"
+
+import { UiLaneScreen } from "src/client/ui-world/ui.laneScreen"
+import { WorldLeaderboards } from "src/client/ui-world/worldLeaderboards"
+
 
 export namespace UiWorld {
 
@@ -11,6 +15,8 @@ export namespace UiWorld {
 		for (let i = 0; i < GameSettings.MAX_LANES; i++) {
 			new UiLaneScreen(i)
 		}
+
+		WorldLeaderboards.init()
 	}
 
 

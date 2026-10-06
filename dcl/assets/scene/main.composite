@@ -78,6 +78,69 @@
             },
             "parent": 0
           }
+        },
+        "513": {
+          "json": {
+            "position": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            },
+            "rotation": {
+              "x": 0,
+              "y": 1,
+              "z": 0,
+              "w": 0
+            },
+            "parent": 0
+          }
+        },
+        "514": {
+          "json": {
+            "position": {
+              "x": 10,
+              "y": 128,
+              "z": 20.25
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            },
+            "rotation": {
+              "x": 0,
+              "y": -0.9659258127212524,
+              "z": 0,
+              "w": 0.258819043636322
+            },
+            "parent": 0
+          }
+        },
+        "515": {
+          "json": {
+            "position": {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "w": 1
+            },
+            "parent": 0
+          }
         }
       }
     },
@@ -121,6 +184,41 @@
             "visibleMeshesCollisionMask": 0,
             "invisibleMeshesCollisionMask": 3
           }
+        },
+        "513": {
+          "json": {
+            "src": "assets/models/scene-new.gltf",
+            "visibleMeshesCollisionMask": 0,
+            "invisibleMeshesCollisionMask": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "core::Material",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {},
+        "serializationType": "protocol-buffer",
+        "protocolBuffer": "PBMaterial"
+      },
+      "data": {
+        "514": {
+          "json": {}
+        }
+      }
+    },
+    {
+      "name": "core::MeshRenderer",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {},
+        "serializationType": "protocol-buffer",
+        "protocolBuffer": "PBMeshRenderer"
+      },
+      "data": {
+        "514": {
+          "json": {}
         }
       }
     },
@@ -140,6 +238,37 @@
         "512": {
           "json": {
             "value": "skybox.gltf"
+          }
+        },
+        "513": {
+          "json": {
+            "value": "scene-new.gltf"
+          }
+        },
+        "514": {
+          "json": {
+            "value": "gameJelly"
+          }
+        },
+        "515": {
+          "json": {
+            "value": "gameViper"
+          }
+        }
+      }
+    },
+    {
+      "name": "core::VisibilityComponent",
+      "jsonSchema": {
+        "type": "object",
+        "properties": {},
+        "serializationType": "protocol-buffer",
+        "protocolBuffer": "PBVisibilityComponent"
+      },
+      "data": {
+        "513": {
+          "json": {
+            "visible": false
           }
         }
       }
@@ -167,7 +296,23 @@
               "Tag Group 1",
               "Tag Group 2",
               "Tag Group 3",
-              "Tag Group 4"
+              "Tag Group 4",
+              "gameJelly",
+              "gameViper"
+            ]
+          }
+        },
+        "514": {
+          "json": {
+            "tags": [
+              "gameJelly"
+            ]
+          }
+        },
+        "515": {
+          "json": {
+            "tags": [
+              "gameViper"
             ]
           }
         }
@@ -219,7 +364,10 @@
                 "entity": 0,
                 "open": true,
                 "children": [
-                  512
+                  512,
+                  513,
+                  514,
+                  515
                 ]
               },
               {
@@ -232,6 +380,18 @@
               },
               {
                 "entity": 512,
+                "children": []
+              },
+              {
+                "entity": 513,
+                "children": []
+              },
+              {
+                "entity": 514,
+                "children": []
+              },
+              {
+                "entity": 515,
                 "children": []
               }
             ]
@@ -257,6 +417,15 @@
       },
       "data": {
         "512": {
+          "json": {}
+        },
+        "513": {
+          "json": {}
+        },
+        "514": {
+          "json": {}
+        },
+        "515": {
           "json": {}
         }
       }

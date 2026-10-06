@@ -8,6 +8,7 @@ import { ComponentManager } from 'src/shared/components/componentManager'
 import { ComponentStore } from 'src/shared/components/componentStore'
 import { PlayerUnlocks } from 'src/shared/components/definitions/shared.playerUnlocks'
 import { PLAYERS_GROUP_ID } from 'src/shared/components/registry'
+import { trails } from 'src/shared/data/unlocks'
 
 
 export const ParticleEffect = {
@@ -36,7 +37,12 @@ const UNLOCK_EMIT_MS        = 800
 const UNLOCK_LIFETIME       = 1.35
 const UNLOCK_REMOVE_MS      = UNLOCK_EMIT_MS + UNLOCK_LIFETIME * 1000 + 200
 
-const SPARKLE_TEXTURE = 'assets/images/unlocks/trails/sprites-sparkles.png'
+export const PARTILCE_TEXTURES = {
+	SPARKLES: 'assets/images/unlocks/trails/sprites-sparkles.png',
+	DUST: 'assets/images/unlocks/trails/sprites-dust.png',	
+} as const;	
+
+export type ParticleTextureName = typeof PARTILCE_TEXTURES[keyof typeof PARTILCE_TEXTURES]
 
 /** Chest height, slightly in front of the avatar so the fountain clears the body. */
 const UNLOCK_PLAYER_OFFSET = Vector3.create(0, 1, 0.2)
@@ -150,8 +156,18 @@ export namespace ParticleSpawner {
 	// MARK: preloadAssets
 	function preloadAssets(): void {
 		const entity = engine.addEntity()
+		const trailTextures = Object.values(trails)
+			.map((trail) => {
+				const emitter = trail.emitter as { texture?: { src?: string } } | undefined
+				return emitter?.texture?.src
+			})
+			.filter((src): src is string => typeof src === 'string')
+
 		AssetLoad.create(entity, {
-			assets: [SPARKLE_TEXTURE],
+			assets: [...new Set([
+				...Object.values(PARTILCE_TEXTURES),
+				...trailTextures,
+			])],
 		})
 	}
 
@@ -351,7 +367,7 @@ export namespace ParticleSpawner {
 			billboard            : true,
 			faceTravelDirection  : false,
 			simulationSpace      : PBParticleSystem_SimulationSpace.PSS_WORLD,
-			texture              : { src: SPARKLE_TEXTURE },
+			texture              : { src: PARTILCE_TEXTURES.SPARKLES },
 			spriteSheet          : { tilesX: 6, tilesY: 6, framesPerSecond: 24 },
 			playbackState        : PBParticleSystem_PlaybackState.PS_PLAYING,
 		}

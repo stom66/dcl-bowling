@@ -41,6 +41,7 @@ export class LetterboxLayer extends Layer {
 				justifyContent: 'space-between',
 				alignItems    : 'stretch',
 				borderWidth   : 0,
+				pointerFilter : 'none',
 			},
 		})
 
@@ -55,6 +56,8 @@ export class LetterboxLayer extends Layer {
 		eventBus.on(ClientEvents.ON_GROUP_ROLL_END,            () => { this.hideBars() })
 		eventBus.on(ClientEvents.ON_GROUP_FRAME_END,           () => { this.hideBars() })
 		eventBus.on(ClientEvents.ON_MY_FRAME_END,              () => { this.hideBars() })
+		eventBus.on(ClientEvents.ON_MY_ROLL_END,               () => { this.hideBars() })
+		eventBus.on(ClientEvents.REQUEST_LEAVE_GAME,           () => { this.hideBars() })
 	}
 
 

@@ -2,7 +2,7 @@ import type { Layer } from '@stom66/dcl-ui-component-kit'
 
 import { GameSettings } from 'src/shared/settings'
 
-import { bowlingControlsLayer } from 'src/client/ui/themes/bowling/layers/bowlingControls.layer'
+import { bowlingControlsLayer, clickToSetLayer } from 'src/client/ui/themes/bowling/layers/bowlingControls.layer'
 import { customizationLayer } from 'src/client/ui/themes/bowling/layers/customization.layer'
 import { debugLayer } from 'src/client/ui/themes/bowling/layers/debug.layer'
 import { gameStatusLayer } from 'src/client/ui/themes/bowling/layers/gameStatus.layer'
@@ -32,8 +32,9 @@ const IS_DEV = process.env.NODE_ENV === 'development'
 /**
  * Bowling layer list.
  * Leave sits under game status in paint order. The roll HUD, including the
- * bumper toggle, lives in bowling controls. Customization sits above gameplay
- * HUD; records and stats sit with it. The top-right toggles paint after
+ * bumper toggle, lives in bowling controls. Click-to-set is the square
+ * bottom-right button (click on desktop, tap on mobile). Customization sits
+ * above gameplay HUD; records and stats sit with it. The top-right toggles paint after
  * those windows. Ticket balance sits in the top of the right zone.
  * The playtest panel sits in that same zone, below the ticket balance, while
  * `GameSettings.PLAYTEST_DEBUG_PANEL` is on, with Bolotron 3000 stacked under it.
@@ -46,6 +47,7 @@ export const layers: Layer[] = [
 	gameStatusLayer,
 	scoresLayer,
 	bowlingControlsLayer,
+	clickToSetLayer,
 	laneLobbyLayer,
 	letterboxLayer,
 	customizationLayer,

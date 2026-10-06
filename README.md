@@ -67,6 +67,7 @@ Notable modules (non-exhaustive):
 - **`server/physics/`** — Cannon simulation, keyframe recording, and compression (see [Server-authoritative physics](#server-authoritative-physics))
 - **`client/laneWatcher.ts`** — watches synced lane components and drives client-side events
 - **`client/laneVisuals.ts`**, **`client/bowlingControls.ts`**, **`client/gameStateHandler.ts`** — playback, input, and high-level client reactions
+- **`client/particleSpawner.ts`** — spawns particle systems from a config or a named effect. Ball trails and the unlock fountain go through it.
 
 More detail on the physics module alone is in [`dcl/src/server/physics/README.md`](dcl/src/server/physics/README.md).
 
@@ -88,7 +89,7 @@ On the client, `LaneWatcher` attaches `onChange` listeners to each lane’s sync
 
 That bus is an in-process pub/sub layer (similar to Roblox *BindableEvents*). It is **not** Decentraland’s built-in MessageBus used for peer-to-peer messages. Use `eventBus` to decouple scripts: UI, camera, controls, and visuals subscribe to `ClientEvents` (e.g. `NOTIFY_LANE_STATE`, `ON_MY_ROLL_START`) instead of calling each other directly.
 
-Peer actions and bulky payloads still use **`net`** (`shared/net.ts`, via `registerMessages`) — for example join-game requests, roll input, and compressed physics playback — where CRDT components are the wrong fit or size limits apply.
+Peer actions and bulky payloads still use **`net`** (`shared/net.ts`, via `registerMessages`) — for example lobby join / start-countdown requests, roll input, and compressed physics playback — where CRDT components are the wrong fit or size limits apply.
 
 **Rough data flow**
 

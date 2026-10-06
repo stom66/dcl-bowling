@@ -25,12 +25,12 @@ const laneScreenPositions = [
 ]
 
 const laneLobbyPositions = [
-		Vector3.create(12.64,  0, 35.359),
-		Vector3.create(8.126,  0, 37.081),
-		Vector3.create(3.125,  0, 36.965),
-		Vector3.create(-1.485, 0, 35.042),
-		Vector3.create(-5.374, 0, 31.213),
-		Vector3.create(-7.62,  0, 26.085),	
+	Vector3.create(-7.62,  0, 26.085),	
+	Vector3.create(-5.374, 0, 31.213),
+	Vector3.create(-1.485, 0, 35.042),
+	Vector3.create(3.125,  0, 36.965),
+	Vector3.create(8.126,  0, 37.081),
+	Vector3.create(12.64,  0, 35.359),
 ]
 
 export function getRootPosition() {

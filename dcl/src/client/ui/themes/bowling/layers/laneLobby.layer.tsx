@@ -10,7 +10,9 @@ import { clockSync } from 'src/shared/utils/clockSync'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 
 import { ClientMessaging } from 'src/client/clientMessaging'
+import { ClientStore } from 'src/client/clientStore'
 import { bowlingRussoOneAlphaNumericAtlas, bowlingRussoOneSymbolsAtlas, primaryButtonAtlas, secondaryButtonAtlas } from 'src/client/ui/themes/bowling/atlases'
+import { bindLaneLobbyUi } from 'src/client/ui/themes/bowling/layers/laneLobbyUi'
 
 
 const FORCE_SHOW = false
@@ -20,6 +22,7 @@ const PANEL_PADDING      = 20
 const FRAME_BTN_W        = 120
 const FRAME_BTN_H        = 44
 const AVATAR_SIZE        = 52
+const AVATAR_BORDER      = 2
 const ACTION_BTN_W       = 200
 const ACTION_BTN_H       = 64
 const RADIAL_SIZE        = 88
@@ -30,6 +33,8 @@ const stringAtlases = {
 	characters: bowlingRussoOneAlphaNumericAtlas,
 	symbols   : bowlingRussoOneSymbolsAtlas,
 }
+
+const clientStore = ClientStore.getInstance()
 
 
 type LobbyUiProps = {
@@ -108,18 +113,21 @@ export class LaneLobbyLayer extends Layer {
 				this.pendingFrameCount = null
 			}
 
-			this.lobbyProps.set('phase', phase)
-			this.lobbyProps.set('players', LaneStore.getLaneUserIds(laneIndex))
-			this.lobbyProps.set(
-				'frameCount',
-				this.pendingFrameCount ?? serverFrames,
-			)
-			this.lobbyProps.set('endTime', startTime > 0 ? clockSync.toLocalTime(startTime) : 0)
-			this.lobbyProps.set('occupied', this.wasOpenedAsOccupied || (
+			const players  = LaneStore.getLaneUserIds(laneIndex)
+			const frames   = this.pendingFrameCount ?? serverFrames
+			const endTime  = startTime > 0 ? clockSync.toLocalTime(startTime) : 0
+			const occupied = this.wasOpenedAsOccupied || (
 				phase !== LanePhase.NONE
 				&& phase !== LanePhase.LOBBY
 				&& phase !== LanePhase.GAME_STARTING
-			))
+			)
+			const samePlayers = players.join() === this.lobbyProps.get('players').join()
+
+			if (this.lobbyProps.get('phase') !== phase)         this.lobbyProps.set('phase', phase)
+			if (!samePlayers)                                   this.lobbyProps.set('players', players)
+			if (this.lobbyProps.get('frameCount') !== frames)   this.lobbyProps.set('frameCount', frames)
+			if (this.lobbyProps.get('endTime') !== endTime)     this.lobbyProps.set('endTime', endTime)
+			if (this.lobbyProps.get('occupied') !== occupied)   this.lobbyProps.set('occupied', occupied)
 		})
 	}
 
@@ -180,17 +188,18 @@ export class LaneLobbyLayer extends Layer {
 
 	// MARK: body
 	protected body() {
-		const theme      = getTheme()
-		const laneIndex  = this.lobbyProps.get('laneIndex')
-		const occupied   = this.lobbyProps.get('occupied')
-		const phase      = this.lobbyProps.get('phase')
-		const frameCount = this.lobbyProps.get('frameCount')
-		const players    = this.lobbyProps.get('players')
-		const endTime    = this.lobbyProps.get('endTime')
-		const canEdit    = !occupied
-		const canStart   = !occupied && phase === LanePhase.LOBBY && players.length > 0
-		const starting   = phase === LanePhase.GAME_STARTING
-		const seconds    = endTime > 0 ? Math.max(0, Math.ceil((endTime - Date.now()) / 1000)) : 0
+		const theme       = getTheme()
+		const laneIndex   = this.lobbyProps.get('laneIndex')
+		const occupied    = this.lobbyProps.get('occupied')
+		const phase       = this.lobbyProps.get('phase')
+		const frameCount  = this.lobbyProps.get('frameCount')
+		const players     = this.lobbyProps.get('players')
+		const endTime     = this.lobbyProps.get('endTime')
+		const localUserId = clientStore.getUserId().toLowerCase()
+		const canEdit     = !occupied
+		const canStart    = !occupied && phase === LanePhase.LOBBY && players.length > 0
+		const starting    = phase === LanePhase.GAME_STARTING
+		const seconds     = endTime > 0 ? Math.max(0, Math.ceil((endTime - Date.now()) / 1000)) : 0
 		const progress   = endTime > 0
 			? Math.min(1, Math.max(0, endTime - Date.now()) / GameSettings.GAME_START_COUNTDOWN_DURATION)
 			: 0
@@ -231,16 +240,18 @@ export class LaneLobbyLayer extends Layer {
 									borderRadius    = {theme.border.radiusSmall}
 									alignItems      = "center"
 									justifyContent  = "center"
+									pointerFilter   = "block"
 									onMouseDown     = {() => {
 										if (canEdit) this.selectFrameCount(count)
 									}}
 								>
 									<IconString
-										value     = {`${count} FRAMES`}
-										width     = {FRAME_BTN_W - 16}
-										height    = {14}
-										iconColor = {selected ? theme.colors.dark : theme.colors.light}
-										atlases   = {stringAtlases}
+										value         = {`${count} FRAMES`}
+										width         = {FRAME_BTN_W - 16}
+										height        = {14}
+										iconColor     = {selected ? theme.colors.dark : theme.colors.light}
+										atlases       = {stringAtlases}
+										pointerFilter = "none"
 									/>
 								</UiBox>
 							)
@@ -255,15 +266,20 @@ export class LaneLobbyLayer extends Layer {
 								iconColor = {theme.colors.tertiary}
 								atlases   = {stringAtlases}
 							/>
-						) : players.map((userId) => (
-							<AvatarIcon
-								key          = {`lobby_avatar_${userId}`}
-								userId       = {userId}
-								width        = {AVATAR_SIZE}
-								height       = {AVATAR_SIZE}
-								borderRadius = {AVATAR_SIZE / 2}
-							/>
-						))}
+						) : players.map((userId) => {
+							const isLocal = userId.toLowerCase() === localUserId
+							return (
+								<AvatarIcon
+									key          = {`lobby_avatar_${userId}`}
+									userId       = {userId}
+									width        = {AVATAR_SIZE}
+									height       = {AVATAR_SIZE}
+									borderRadius = {AVATAR_SIZE / 2}
+									borderWidth  = {AVATAR_BORDER}
+									borderColor  = {isLocal ? theme.colors.primary : theme.colors.tertiary}
+								/>
+							)
+						})}
 					</Row>
 
 					{occupied ? (
@@ -356,19 +372,7 @@ export class LaneLobbyLayer extends Layer {
 
 export const laneLobbyLayer = new LaneLobbyLayer()
 
-
-// MARK: ShowLaneLobbyUI
-/** Opens the lobby panel for a 0-based lane index. */
-export function ShowLaneLobbyUI(
-	laneIndex: number,
-	occupied : boolean = false,
-): void {
-	laneLobbyLayer.openForLane(laneIndex, occupied)
-}
-
-
-// MARK: HideLaneLobbyUI
-/** Hides the lobby panel. */
-export function HideLaneLobbyUI(): void {
-	laneLobbyLayer.close()
-}
+bindLaneLobbyUi(
+	(laneIndex, occupied) => laneLobbyLayer.openForLane(laneIndex, occupied),
+	() => laneLobbyLayer.close(),
+)

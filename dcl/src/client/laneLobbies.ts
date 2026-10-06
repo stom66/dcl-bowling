@@ -2,13 +2,18 @@ import {
 	ColliderLayer,
 	engine,
 	Entity,
+	GltfContainer,
+	GltfNodeModifiers,
 	Material,
+	MaterialTransparencyMode,
 	MeshRenderer,
+	TextureWrapMode,
 	Transform,
 	TriggerArea,
 	triggerAreaEventsSystem,
+	VisibilityComponent,
 } from '@dcl/sdk/ecs'
-import { Color4, Vector3 } from '@dcl/sdk/math'
+import { Color3, Color4, Vector2, Vector3 } from '@dcl/sdk/math'
 
 import { LanePhase } from 'src/shared/enums'
 import { LaneStore } from 'src/shared/laneStore'
@@ -17,25 +22,34 @@ import { GameSettings } from 'src/shared/settings'
 import { ClientMessaging } from 'src/client/clientMessaging'
 import { ClientStore } from 'src/client/clientStore'
 import { getLaneLobbyPosition } from 'src/client/data/lanePositions'
-import { HideLaneLobbyUI, ShowLaneLobbyUI } from 'src/client/ui/themes/bowling/layers/laneLobby.layer'
+import { HideLaneLobbyUI, ShowLaneLobbyUI } from 'src/client/ui/themes/bowling/layers/laneLobbyUi'
 
+
+const LOBBY_ZONE_MODEL_SRC      = 'assets/models/lobby-zone.gltf'
+const HOLOGRAM_NODE_PATH        = 'lobby-zone.armature/root/spin/lobby-zone.hologram'
+const HOLOGRAM_ALBEDO_TEXTURE   = 'assets/models/tex/texture-lobbyHologram-baseColor-texture-lobbyHologram-alpha.png'
+const HOLOGRAM_EMISSIVE_TEXTURE = 'assets/models/tex/texture-lobbyHologram-baseColor.png'
 
 const TRIGGER_SCALE = 4
-const STUB_HEIGHT   = 2.5
-const SHOW_TRIGGER  = false
 
-const STATUS_COLOR_FREE     = Color4.create(0.2, 0.85, 0.45, 0.45)
-const STATUS_COLOR_STARTING = Color4.create(0.95, 0.7, 0.15, 0.45)
-const STATUS_COLOR_OCCUPIED = Color4.create(0.9, 0.2, 0.25, 0.45)
+/** Mesh UVs already cover the top third (open). Shift V down one row per state. */
+const HOLOGRAM_OFFSET_OPEN     = 0
+const HOLOGRAM_OFFSET_STARTING = -1 / 3
+const HOLOGRAM_OFFSET_BUSY     = -2 / 3
+
+const TRIGGER_DEBUG_COLOR = Color4.create(0.2, 0.6, 1, 0.3)
 
 type LobbyEntities = {
-	trigger: Entity
-	stub   : Entity
+	trigger   : Entity
+	model     : Entity
+	debugMesh : Entity
 }
 
 const lobbies: LobbyEntities[] = []
-const lastStubPhase: (LanePhase | undefined)[] = []
+const lastHologramPhase: (LanePhase | undefined)[] = []
 const clientStore = ClientStore.getInstance()
+
+let showTriggerDebug = false
 
 
 // MARK: isLaneJoinable
@@ -56,34 +70,96 @@ function isLaneOccupied(phase: LanePhase): boolean {
 }
 
 
-// MARK: statusColorForPhase
-/** Placeholder hologram tint for free / starting / occupied. */
-function statusColorForPhase(phase: LanePhase): Color4 {
-	if (phase === LanePhase.GAME_STARTING) return STATUS_COLOR_STARTING
-	if (isLaneOccupied(phase)) return STATUS_COLOR_OCCUPIED
-	return STATUS_COLOR_FREE
+// MARK: hologramOffsetForPhase
+/** UV V offset that shows the open / starting / busy row of the hologram atlas. */
+function hologramOffsetForPhase(phase: LanePhase): number {
+	if (phase === LanePhase.GAME_STARTING) return HOLOGRAM_OFFSET_STARTING
+	if (isLaneOccupied(phase)) return HOLOGRAM_OFFSET_BUSY
+	return HOLOGRAM_OFFSET_OPEN
 }
 
 
-// MARK: applyStubStatus
-/** Updates the stub marker material for a lane's current phase. */
-function applyStubStatus(
+// MARK: hologramMaterial
+/** PBR override for `lobby-hologram`, shifted to the row for the current lobby state. */
+function hologramMaterial(offsetY: number) {
+	const texture = Material.Texture.Common({
+		src     : HOLOGRAM_ALBEDO_TEXTURE,
+		wrapMode: TextureWrapMode.TWM_CLAMP,
+		offset  : Vector2.create(0, offsetY),
+	})
+	const emissive = Material.Texture.Common({
+		src     : HOLOGRAM_EMISSIVE_TEXTURE,
+		wrapMode: TextureWrapMode.TWM_CLAMP,
+		offset  : Vector2.create(0, offsetY),
+	})
+
+	return {
+		material: {
+			$case: 'pbr' as const,
+			pbr  : {
+				texture,
+				emissiveTexture  : emissive,
+				emissiveColor    : Color3.create(0.25, 0.25, 0.25),
+				emissiveIntensity: 1,
+				metallic         : 0,
+				roughness        : 0.845,
+				transparencyMode : MaterialTransparencyMode.MTM_ALPHA_BLEND,
+			},
+		},
+	}
+}
+
+
+// MARK: applyHologramStatus
+/** Updates the hologram atlas row for a lane's current phase. */
+function applyHologramStatus(
 	laneIndex: number,
 	phase    : LanePhase,
 ): void {
-	if (lastStubPhase[laneIndex] === phase) return
-	lastStubPhase[laneIndex] = phase
+	if (lastHologramPhase[laneIndex] === phase) return
+	lastHologramPhase[laneIndex] = phase
 
 	const lobby = lobbies[laneIndex]
 	if (!lobby) return
 
-	const color = statusColorForPhase(phase)
-	Material.setPbrMaterial(lobby.stub, {
-		albedoColor      : color,
-		emissiveColor    : color,
-		emissiveIntensity: 1.2,
-		transparencyMode : 1,
+	GltfNodeModifiers.createOrReplace(lobby.model, {
+		modifiers: [{
+			path    : HOLOGRAM_NODE_PATH,
+			material: hologramMaterial(hologramOffsetForPhase(phase)),
+		}],
 	})
+}
+
+
+// MARK: applyTriggerDebugVisibility
+/** Shows or hides the trigger-shape debug mesh on every lobby. */
+function applyTriggerDebugVisibility(): void {
+	for (const lobby of lobbies) {
+		const visibility = VisibilityComponent.getMutableOrNull(lobby.debugMesh)
+		if (visibility) {
+			visibility.visible = showTriggerDebug
+		}
+		else {
+			VisibilityComponent.create(lobby.debugMesh, { visible: showTriggerDebug })
+		}
+	}
+}
+
+
+// MARK: getShowLobbyTriggerDebug
+/** True when lobby trigger volumes are drawn as translucent debug meshes. */
+export function getShowLobbyTriggerDebug(): boolean {
+	return showTriggerDebug
+}
+
+
+// MARK: setShowLobbyTriggerDebug
+/** Enables or disables the lobby trigger-volume debug mesh. */
+export function setShowLobbyTriggerDebug(enabled: boolean): void {
+	if (showTriggerDebug === enabled) return
+	showTriggerDebug = enabled
+	applyTriggerDebugVisibility()
+	console.log('LaneLobbies: setShowLobbyTriggerDebug:', enabled)
 }
 
 
@@ -126,7 +202,7 @@ function onLobbyExit(laneIndex: number): void {
 
 // MARK: setupLaneLobbies
 /**
- * Spawns a trigger zone and status stub at each lane lobby position.
+ * Spawns the lobby-zone model and a join trigger at each lane lobby position.
  */
 export function setupLaneLobbies(): void {
 	for (let laneIndex = 0; laneIndex < GameSettings.MAX_LANES; laneIndex++) {
@@ -139,27 +215,37 @@ export function setupLaneLobbies(): void {
 		})
 		TriggerArea.setSphere(trigger, ColliderLayer.CL_PLAYER)
 
-		if (SHOW_TRIGGER) {
-			MeshRenderer.setSphere(trigger)
-			Material.setBasicMaterial(trigger, {
-				diffuseColor: Color4.create(0.2, 0.6, 1, 0.25),
-			})
-		}
-
-		const stub = engine.addEntity()
-		Transform.create(stub, {
-			position: Vector3.create(position.x, position.y + STUB_HEIGHT / 2, position.z),
-			scale   : Vector3.create(1.4, STUB_HEIGHT, 1.4),
+		const debugMesh = engine.addEntity()
+		Transform.create(debugMesh, {
+			parent: trigger,
 		})
-		MeshRenderer.setSphere(stub)
-		Material.setPbrMaterial(stub, {
-			albedoColor      : STATUS_COLOR_FREE,
-			emissiveColor    : STATUS_COLOR_FREE,
-			emissiveIntensity: 1.2,
-			transparencyMode : 1,
+		MeshRenderer.setSphere(debugMesh)
+		Material.setPbrMaterial(debugMesh, {
+			albedoColor      : TRIGGER_DEBUG_COLOR,
+			transparencyMode : MaterialTransparencyMode.MTM_ALPHA_BLEND,
+			metallic         : 0,
+			roughness        : 1,
+			castShadows      : false,
+		})
+		VisibilityComponent.create(debugMesh, { visible: showTriggerDebug })
+
+		const model = engine.addEntity()
+		Transform.create(model, {
+			position: Vector3.create(position.x, position.y, position.z),
+		})
+		GltfContainer.create(model, {
+			src                         : LOBBY_ZONE_MODEL_SRC,
+			visibleMeshesCollisionMask  : ColliderLayer.CL_NONE,
+			invisibleMeshesCollisionMask: ColliderLayer.CL_NONE,
+		})
+		GltfNodeModifiers.create(model, {
+			modifiers: [{
+				path    : HOLOGRAM_NODE_PATH,
+				material: hologramMaterial(HOLOGRAM_OFFSET_OPEN),
+			}],
 		})
 
-		lobbies[laneIndex] = { trigger, stub }
+		lobbies[laneIndex] = { trigger, model, debugMesh }
 
 		const capturedIndex = laneIndex
 		triggerAreaEventsSystem.onTriggerEnter(trigger, (event) => {
@@ -175,7 +261,7 @@ export function setupLaneLobbies(): void {
 	engine.addSystem(() => {
 		if (!LaneStore.areLanesReady()) return
 		for (let i = 0; i < GameSettings.MAX_LANES; i++) {
-			applyStubStatus(i, LaneStore.getPhase(i))
+			applyHologramStatus(i, LaneStore.getPhase(i))
 		}
 	})
 }
