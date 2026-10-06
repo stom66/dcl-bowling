@@ -247,12 +247,13 @@ export namespace PlayerProfileManager {
 
 	// MARK: requestUnlockItem
 	/**
-	 * Spends tickets to unlock a catalog item the player does not already own.
+	 * Spends tickets to unlock a catalog item the player does not already own,
+	 * then equips that item.
 	 */
-	export function requestUnlockItem(
+	export async function requestUnlockItem(
 		userId : string,
 		itemId : string
-	): void {
+	): Promise<void> {
 		const session = getSession(userId)
 		if (!session) {
 			console.log('PlayerProfileManager: requestUnlockItem: no session', userId)
@@ -286,13 +287,24 @@ export namespace PlayerProfileManager {
 			...state,
 			balance: state.balance - cost,
 		}))
-		session.unlocks.update((state) => ({
-			unlockedItemIds: [...state.unlockedItemIds, itemId],
-		}))
+
+		try {
+			await session.unlocks.updateAsync(async (state) => ({
+				unlockedItemIds: [...state.unlockedItemIds, itemId],
+			}))
+		} catch (error) {
+			void session.tickets.persist()
+			console.error('PlayerProfileManager: requestUnlockItem: failed to unlock', itemId, 'for', userId, error)
+			return
+		}
+
+		const scoring = entry.kind === 'scoring' ? entry.item : undefined
+		session.loadout.update((state) => applyEquip(state, entry.kind, itemId, scoring))
 
 		void session.tickets.persist()
 		void session.unlocks.persist()
-		console.log('PlayerProfileManager: requestUnlockItem: unlocked', itemId, 'for', userId)
+		void session.loadout.persist()
+		console.log('PlayerProfileManager: requestUnlockItem: unlocked and equipped', itemId, 'for', userId)
 	}
 
 

@@ -117,11 +117,11 @@ export namespace serverHandler {
 
 
 	// MARK: Unlock Item
-	export function handleRequestUnlockItem(data: RequestCatalogItemPayload, context: any) {
+	export async function handleRequestUnlockItem(data: RequestCatalogItemPayload, context: any) {
 		const userId = getUserId(context)
 		console.log('serverHandler: handleRequestUnlockItem: userId', userId, 'itemId', data?.itemId)
 		if (!data?.itemId) return
-		PlayerProfileManager.requestUnlockItem(userId, data.itemId)
+		await PlayerProfileManager.requestUnlockItem(userId, data.itemId)
 	}
 
 
