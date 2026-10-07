@@ -1,6 +1,7 @@
 import * as utils from '@dcl-sdk/utils'
 import { ColliderLayer, EasingFunction, engine, Entity, GltfContainer, ParticleSystem, PBParticleSystem, PBParticleSystem_BlendMode, PBParticleSystem_PlaybackState, PBParticleSystem_SimulationSpace, Transform, Tween, TweenSequence } from '@dcl/sdk/ecs'
 import { Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
+import { getPlatform, isMobile } from '@dcl/sdk/platform'
 
 import { balls } from 'src/shared/data/unlocks/balls'
 import { GameSettings } from 'src/shared/settings'
@@ -56,10 +57,17 @@ export namespace SkyboxObjects {
 	/**
 	 * Spawns one model for every ball unlock, sends each on its own orbit
 	 * above the alley, and starts the periodic one-shot meteor.
+	 * Skips all of that on mobile, after the explorer has reported its platform.
 	 */
-	export function init(): void {
+	export async function init(): Promise<void> {
 		if (isInitialized) return
 		isInitialized = true
+
+		await waitForPlatform()
+		if (isMobile()) {
+			console.log('SkyboxObjects: init: skipped on mobile')
+			return
+		}
 
 		for (const ball of Object.values(balls)) {
 			spawnBall(ball.modelSrc)
@@ -69,6 +77,26 @@ export namespace SkyboxObjects {
 		utils.timers.setInterval(fireMeteor, GameSettings.SKYBOX_METEOR_INTERVAL)
 
 		console.log('SkyboxObjects: init: spawned', Object.keys(balls).length, 'orbiting balls; meteor every', GameSettings.SKYBOX_METEOR_INTERVAL, 'ms')
+	}
+
+
+	// MARK: waitForPlatform
+	/**
+	 * Resolves once `getPlatform()` is non-null. Until then `isMobile()` is false
+	 * on every platform, including mobile.
+	 */
+	function waitForPlatform(): Promise<void> {
+		if (getPlatform() !== null) return Promise.resolve()
+
+		return new Promise((resolve) => {
+			function sys_waitForPlatform(): void {
+				if (getPlatform() === null) return
+				engine.removeSystem(sys_waitForPlatform)
+				resolve()
+			}
+
+			engine.addSystem(sys_waitForPlatform)
+		})
 	}
 
 
