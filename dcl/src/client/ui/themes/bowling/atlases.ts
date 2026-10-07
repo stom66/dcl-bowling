@@ -46,9 +46,9 @@ export const laneInfoAtlas = new TextureAtlas({
 })
 
 
-// MARK: bowlingIconAtlas
-export const bowlingIconAtlas = new TextureAtlas({
-	source : `${THEME_ASSET_PATH}/icon-atlas.png`,
+// MARK: uiStringsAtlas
+export const uiStringsAtlas = new TextureAtlas({
+	source : `${THEME_ASSET_PATH}/atlas-ui-strings.png`,
 	columns: 8,
 	rows   : 8,
 	named  : {
@@ -70,9 +70,6 @@ export const bowlingIconAtlas = new TextureAtlas({
 		lane5          : { xStart: 5, yStart: 8 },
 		lane6          : { xStart: 6, yStart: 8 },
 		leave          : { xStart: 1, xEnd  : 4, yStart: 6 },
-		clickToSet     : { xStart: 1, xEnd  : 8, yStart: 3 },
-		clickToSetRound: { xStart: 7, xEnd  : 8, yStart: 4, yEnd: 5 },
-		tapToSetRound  : { xStart: 5, xEnd  : 6, yStart: 4, yEnd: 5 },
 		position       : { xStart: 1, xEnd  : 4, yStart: 4 },
 		direction      : { xStart: 5, xEnd  : 8, yStart: 6 },
 		strength       : { xStart: 1, xEnd  : 4, yStart: 5 },
@@ -84,18 +81,21 @@ export const bowlingIconAtlas = new TextureAtlas({
 /**
  * Custom game glyphs (`atlas-gameIcons.png`) — 4×4. UV Y is bottom → top, so
  * PNG top row is `yStart: 4` and PNG bottom row is `yStart: 1`. Colored ball
- * is PNG row 2, column 1 (`yStart: 3`).
+ * is PNG row 2, column 1 (`yStart: 3`). Tap and click each occupy a 2×2 block
+ * on the bottom two rows: tap is columns 1–2, click is columns 3–4.
  */
 export const gameIconsAtlas = new TextureAtlas({
 	source : `${THEME_ASSET_PATH}/atlas-gameIcons.png`,
 	columns: 4,
 	rows   : 4,
 	named  : {
-		pin      : { xStart: 1, yStart: 4 },
-		ball     : { xStart: 2, yStart: 4 },
-		ticket   : { xStart: 3, yStart: 4 },
-		pinCrown : { xStart: 4, yStart: 4 },
-		ballColor: { xStart: 1, yStart: 3 },
+		pin       : { xStart: 1, yStart: 4 },
+		ball      : { xStart: 2, yStart: 4 },
+		ticket    : { xStart: 3, yStart: 4 },
+		pinCrown  : { xStart: 4, yStart: 4 },
+		ballColor : { xStart: 1, yStart: 3 },
+		tapToSet  : { xStart: 1, xEnd  : 2, yStart: 1, yEnd: 2 },
+		clickToSet: { xStart: 3, xEnd  : 4, yStart: 1, yEnd: 2 },
 	},
 })
 
@@ -324,37 +324,37 @@ export const bowlingThemeAssets = {
 
 // MARK: getBowlingDigitUvs
 /**
- * UV quad for a 0–10 glyph in {@link bowlingIconAtlas}.
+ * UV quad for a 0–10 glyph in {@link uiStringsAtlas}.
  */
 export function getBowlingDigitUvs(value: number): number[] {
 	const safe = Math.max(0, Math.min(10, Math.floor(Number.isFinite(value) ? value : 0)))
 	switch (safe) {
-		case 0:  return bowlingIconAtlas.uv.n0
-		case 1:  return bowlingIconAtlas.uv.n1
-		case 2:  return bowlingIconAtlas.uv.n2
-		case 3:  return bowlingIconAtlas.uv.n3
-		case 4:  return bowlingIconAtlas.uv.n4
-		case 5:  return bowlingIconAtlas.uv.n5
-		case 6:  return bowlingIconAtlas.uv.n6
-		case 7:  return bowlingIconAtlas.uv.n7
-		case 8:  return bowlingIconAtlas.uv.n8
-		case 9:  return bowlingIconAtlas.uv.n9
-		default: return bowlingIconAtlas.uv.n10
+		case 0:  return uiStringsAtlas.uv.n0
+		case 1:  return uiStringsAtlas.uv.n1
+		case 2:  return uiStringsAtlas.uv.n2
+		case 3:  return uiStringsAtlas.uv.n3
+		case 4:  return uiStringsAtlas.uv.n4
+		case 5:  return uiStringsAtlas.uv.n5
+		case 6:  return uiStringsAtlas.uv.n6
+		case 7:  return uiStringsAtlas.uv.n7
+		case 8:  return uiStringsAtlas.uv.n8
+		case 9:  return uiStringsAtlas.uv.n9
+		default: return uiStringsAtlas.uv.n10
 	}
 }
 
 
 // MARK: getLaneNumberUvs
 /**
- * UV quad for the L1–L6 lane badge in {@link bowlingIconAtlas}.
+ * UV quad for the L1–L6 lane badge in {@link uiStringsAtlas}.
  */
 export function getLaneNumberUvs(laneIndex: number): number[] {
 	switch (laneIndex) {
-		case 0:  return bowlingIconAtlas.uv.lane1
-		case 1:  return bowlingIconAtlas.uv.lane2
-		case 2:  return bowlingIconAtlas.uv.lane3
-		case 3:  return bowlingIconAtlas.uv.lane4
-		case 4:  return bowlingIconAtlas.uv.lane5
-		default: return bowlingIconAtlas.uv.lane6
+		case 0:  return uiStringsAtlas.uv.lane1
+		case 1:  return uiStringsAtlas.uv.lane2
+		case 2:  return uiStringsAtlas.uv.lane3
+		case 3:  return uiStringsAtlas.uv.lane4
+		case 4:  return uiStringsAtlas.uv.lane5
+		default: return uiStringsAtlas.uv.lane6
 	}
 }

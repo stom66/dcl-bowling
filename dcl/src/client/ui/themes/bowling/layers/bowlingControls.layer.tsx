@@ -25,7 +25,7 @@ import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 import { timers } from 'src/shared/utils/timers'
 
 import { areLaneBumpersEnabled, toggleLaneBumpers } from 'src/client/bowlingControls'
-import { bowlingIconAtlas, bowlingRussoOneAlphaNumericAtlas, bowlingRussoOneSymbolsAtlas } from 'src/client/ui/themes/bowling/atlases'
+import { uiStringsAtlas, bowlingRussoOneAlphaNumericAtlas, bowlingRussoOneSymbolsAtlas, gameIconsAtlas } from 'src/client/ui/themes/bowling/atlases'
 
 
 type IndicatorName = 'POSITION' | 'DIRECTION' | 'STRENGTH'
@@ -65,7 +65,7 @@ const CLICK_PULSE_OFFSET      = (CLICK_SIZE - CLICK_PULSE_BOX) / 2
 const CLICK_ONCE_WRAP         = `${CLICK_PULSE_SCALE * 100}%`
 const CLICK_ONCE_REST         = `${100 / CLICK_PULSE_SCALE}%`
 const CLICK_ONCE_ORIGIN       = `${((1 - CLICK_PULSE_SCALE) / 2) * 100}%`
-const CLICK_BORDER            = 4
+const CLICK_BORDER            = 2
 const CLICK_RADIUS            = 12
 const BUMPER_SIZE             = 107
 const BUMPER_ICON             = 48
@@ -244,22 +244,22 @@ export class BowlingControlsLayer extends Layer {
 					uiTransform    = {{ flexDirection: 'row' }}
 				>
 					<Icon
-						src       = {bowlingIconAtlas.source}
-						uvs       = {bowlingIconAtlas.uv.position}
+						src       = {uiStringsAtlas.source}
+						uvs       = {uiStringsAtlas.uv.position}
 						width     = {256}
 						height    = {64}
 						iconColor = {positionColor}
 					/>
 					<Icon
-						src       = {bowlingIconAtlas.source}
-						uvs       = {bowlingIconAtlas.uv.direction}
+						src       = {uiStringsAtlas.source}
+						uvs       = {uiStringsAtlas.uv.direction}
 						width     = {256}
 						height    = {64}
 						iconColor = {directionColor}
 					/>
 					<Icon
-						src       = {bowlingIconAtlas.source}
-						uvs       = {bowlingIconAtlas.uv.strength}
+						src       = {uiStringsAtlas.source}
+						uvs       = {uiStringsAtlas.uv.strength}
 						width     = {256}
 						height    = {64}
 						iconColor = {strengthColor}
@@ -506,8 +506,8 @@ export class ClickToSetLayer extends Layer {
 		const props      = this.clickProps
 		const clickColor = props.get('clickColor')
 		const labelUv    = isMobile()
-			? bowlingIconAtlas.uv.tapToSetRound
-			: bowlingIconAtlas.uv.clickToSetRound
+			? gameIconsAtlas.uv.tapToSet
+			: gameIconsAtlas.uv.clickToSet
 
 		return [
 			<Spinner
@@ -625,7 +625,7 @@ export class ClickToSetLayer extends Layer {
 								height         = "100%"
 							>
 								<Icon
-									src       = {bowlingIconAtlas.source}
+									src       = {gameIconsAtlas.source}
 									uvs       = {labelUv}
 									width     = "100%"
 									height    = "100%"

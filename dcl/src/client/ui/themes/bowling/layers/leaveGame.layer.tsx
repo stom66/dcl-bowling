@@ -13,7 +13,7 @@ import { UnFreezePlayer } from 'src/shared/utils/inputModifiers'
 
 import { ClientMessaging } from 'src/client/clientMessaging'
 import { ClientStore } from 'src/client/clientStore'
-import { bowlingIconAtlas, primaryButtonAtlas } from 'src/client/ui/themes/bowling/atlases'
+import { uiStringsAtlas, primaryButtonAtlas } from 'src/client/ui/themes/bowling/atlases'
 import { GAME_STATUS_PANEL_HEIGHT } from 'src/client/ui/themes/bowling/layers/gameStatus.layer'
 import { LETTERBOX_HUD_DURATION, onLetterboxHidden, onLetterboxShown } from 'src/client/ui/themes/bowling/layers/letterbox.layer'
 
@@ -132,8 +132,8 @@ export class LeaveGameLayer extends Layer {
 					borderWidth    = {0}
 				>
 					<Icon
-						src    = {bowlingIconAtlas.source}
-						uvs    = {bowlingIconAtlas.uv.leave}
+						src    = {uiStringsAtlas.source}
+						uvs    = {uiStringsAtlas.uv.leave}
 						width  = "75%"
 						height = "75%"
 					/>

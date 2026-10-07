@@ -13,7 +13,7 @@ import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 import { ClientMessaging } from 'src/client/clientMessaging'
 import { ClientStore } from 'src/client/clientStore'
 import { sfx, SoundManager } from 'src/client/soundManager'
-import { bowlingIconAtlas, bowlingThemeAssets, gameIconsAtlas } from 'src/client/ui/themes/bowling/atlases'
+import { uiStringsAtlas, bowlingThemeAssets, gameIconsAtlas } from 'src/client/ui/themes/bowling/atlases'
 
 
 type CatalogEntryRow = ReturnType<typeof getAllCatalogEntries>[number]
@@ -205,7 +205,7 @@ function categoryIcon(kind: CatalogCategory): { src?: string, uvs: number[] } {
 		case 'pin':
 			return { src: gameIconsAtlas.source, uvs: gameIconsAtlas.uv.pin }
 		case 'lane':
-			return { src: bowlingIconAtlas.source, uvs: bowlingIconAtlas.uv.lane1 }
+			return { src: uiStringsAtlas.source, uvs: uiStringsAtlas.uv.lane1 }
 		case 'spotlight':
 			return { uvs: atlasIconsFontAwesome.uv.lightbulb }
 		case 'spotlightColor':
