@@ -1,0 +1,23 @@
+---
+description: How to commit when asked to commit these changes
+alwaysApply: true
+---
+
+# Commit these changes
+
+When the user asks to "commit these changes", make one new commit for the files changed for the current feature. Do not amend, and do not push.
+
+Show the proposed commit message and wait for the user to confirm it before creating the commit.
+
+Stage only those files. Leave unrelated working-tree changes unstaged.
+
+Follow the existing commit style in this repo:
+
+- Conventional prefix, then a colon, then the message: `feat:`, `fix:`, `refactor:`, `chore:`, `build:`.
+- Lowercase the prefix and the message.
+- Keep programming names as written: methods, functions, classes, and other identifiers stay in their real casing.
+
+```
+feat: play a built-in emote when a roll replay ends
+fix: keep the local player id when the catalyst profile is missing
+```
