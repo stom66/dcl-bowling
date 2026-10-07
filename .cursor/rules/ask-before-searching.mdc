@@ -1,0 +1,18 @@
+---
+description: Stop and ask when a request does not match the project skills, instead of searching packages
+alwaysApply: true
+---
+
+# Ask before searching
+
+For Decentraland scene behavior, read the matching skill under `.agents/skills/` and the reference it points to. Use that copy. The copies under `.cursor/skills/` are often stale.
+
+If the request's words do not map onto that skill, stop and ask. Do this before searching `node_modules`, grepping the SDK or ECS packages, or reading generated type definitions.
+
+Ask when:
+
+- The user names an API in words the skill does not use, and the alternative is hunting for a second API.
+- Two skill copies disagree.
+- Two readings are plausible, and the wrong one means a long search.
+
+One short question is enough. Say what the skill already documents and what is unclear. Then wait.
