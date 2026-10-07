@@ -9,7 +9,7 @@
 		"type": "PASSIVE",
 		"shape": "BOX",
 		"friction": 0.5,
-		"restitution": 0.0,
+		"restitution": 0.5,
 		"mass": 1.0,
 		"dimensions": [
 			0.25,
@@ -33,7 +33,7 @@
 		"type": "PASSIVE",
 		"shape": "BOX",
 		"friction": 0.5,
-		"restitution": 0.0,
+		"restitution": 0.5,
 		"mass": 1.0,
 		"dimensions": [
 			0.25,
