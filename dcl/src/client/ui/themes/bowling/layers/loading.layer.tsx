@@ -1,5 +1,6 @@
+import { Color4 } from '@dcl/sdk/math'
 import ReactEcs from '@dcl/sdk/react-ecs'
-import { atlasIconsFontAwesome, Background, getTheme, Icon, Label, Layer, Spinner, UiBox, ZoneType } from '@stom66/dcl-ui-component-kit'
+import { alpha, atlasIconsFontAwesome, Background, easingFunctions, getTheme, Icon, Label, Layer, Spinner, tweenValue, UiBox, ZoneType } from '@stom66/dcl-ui-component-kit'
 
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 import { timers } from 'src/shared/utils/timers'
@@ -8,6 +9,7 @@ import { getLoadingStage } from 'src/client/loadingState'
 
 
 const LOADING_FAILED_TIMEOUT = 1000 * 6
+const FADE_OUT_DURATION      = 0.5
 let loadingFailedVisible     = false
 
 timers.setTimeout(() => {
@@ -17,10 +19,15 @@ timers.setTimeout(() => {
 
 // MARK: LoadingLayer
 /**
- * Full-screen loading overlay. Hides when `ClientEvents.LOAD_COMPLETE` fires.
+ * Full-screen loading overlay. Fades the backdrop out when
+ * `ClientEvents.LOAD_COMPLETE` fires, then hides and disables itself.
  * Custom loading art can be wired later via `assets/images/themes/bowling/`.
  */
 export class LoadingLayer extends Layer {
+	private backgroundColor: Color4 | undefined
+	private fading         = false
+	private enabled        = true
+
 	constructor() {
 		super({
 			id         : 'bowling-loading',
@@ -36,19 +43,57 @@ export class LoadingLayer extends Layer {
 		})
 
 		eventBus.on(ClientEvents.LOAD_COMPLETE, () => {
-			this.hide()
+			this.fadeOut()
 		})
+	}
+
+
+	// MARK: fadeOut
+	/**
+	 * Lerps the backdrop alpha to 0 over half a second, then hides and
+	 * disables the layer so it no longer mounts.
+	 */
+	private fadeOut() {
+		if (this.fading || !this.enabled) return
+
+		this.fading = true
+
+		const source         = this.backgroundColor ?? getTheme().colors.secondary
+		const from           = Color4.create(source.r, source.g, source.b, source.a)
+		const to             = alpha(from, 0)
+		this.backgroundColor = from
+
+		tweenValue(
+			0,
+			1,
+			FADE_OUT_DURATION,
+			(t) => { this.backgroundColor = Color4.lerp(from, to, t) },
+			() => {
+				this.hide(0)
+				this.enabled = false
+			},
+			easingFunctions.linear,
+		)
+	}
+
+
+	// MARK: render
+	/** Skips the loading overlay once the fade-out has finished. */
+	render(): ReactEcs.JSX.Element | ReactEcs.JSX.Element[] | null {
+		if (!this.enabled) return null
+		return super.render()
 	}
 
 
 	// MARK: body
 	protected body() {
-		const theme = getTheme()
+		const theme            = getTheme()
+		const backgroundColor  = this.backgroundColor ?? theme.colors.secondary
 
 		return [
 			<Background
 				key             = "loading-chrome"
-				backgroundColor = {theme.colors.secondary}
+				backgroundColor = {backgroundColor}
 				borderWidth     = {0}
 			/>,
 			<UiBox

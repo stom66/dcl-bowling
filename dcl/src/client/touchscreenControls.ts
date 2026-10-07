@@ -7,8 +7,8 @@ export namespace TouchscreenControls {
 
 	// MARK: init
 	/**
-	 * Hides the native mobile HUD while the local player's roll controls are on screen,
-	 * and brings it back when the roll, the match, or the lane ends.
+	 * Hides the native mobile HUD while the local player's roll controls are on
+	 * screen, or during the load fly-in, and brings it back when those end.
 	 */
 	export function init() {
 		eventBus.on(ClientEvents.ON_MY_ROLL_START, () => {
@@ -23,7 +23,10 @@ export namespace TouchscreenControls {
 		eventBus.on(ClientEvents.REQUEST_LEAVE_GAME, () => {
 			enableInputs()
 		})
-		eventBus.on(ClientEvents.LOAD_COMPLETE, () => {
+		eventBus.on(ClientEvents.ON_LOAD_FLY_IN_START, () => {
+			disableInputs()
+		})
+		eventBus.on(ClientEvents.ON_LOAD_FLY_IN_END, () => {
 			enableInputs()
 		})
 	}

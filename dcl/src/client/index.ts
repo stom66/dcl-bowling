@@ -9,7 +9,7 @@ import { blockedPlayers } from 'src/shared/data/blocklist'
 import { LaneStore } from 'src/shared/laneStore'
 import { GameSettings } from 'src/shared/settings'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
-import { FreezePlayer, UnFreezePlayer } from 'src/shared/utils/inputModifiers'
+import { FreezePlayer } from 'src/shared/utils/inputModifiers'
 
 import { CameraController } from 'src/client/cameraController'
 import { ClientHandler } from 'src/client/clientHandler'
@@ -133,7 +133,8 @@ export async function initClient() {
 
 	// MARK: onGameLoaded
 	/**
-	 * Emits `LOAD_COMPLETE` after the loading-screen delay and unfreezes once.
+	 * Emits `LOAD_COMPLETE` after the loading-screen delay. The fly-in camera
+	 * keeps the player frozen until it hands control back.
 	 * Call only after SetupUI so layer constructors have already subscribed.
 	 */
 	function onGameLoaded() {
@@ -148,7 +149,6 @@ export async function initClient() {
 
 		utils.timers.setTimeout(() => {
 			eventBus.emit(ClientEvents.LOAD_COMPLETE, {})
-			UnFreezePlayer()
 		}, GameSettings.LOADING_SCREEN_DELAY)
 	}
 

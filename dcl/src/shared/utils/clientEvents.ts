@@ -1,6 +1,8 @@
 // List of all client events used by the eventBus for inter-script communication
 export enum ClientEvents {
 	LOAD_COMPLETE                      = "loadComplete",
+	ON_LOAD_FLY_IN_START               = "onLoadFlyInStart",               // Virtual-camera load fly-in began
+	ON_LOAD_FLY_IN_END                 = "onLoadFlyInEnd",                 // Virtual-camera load fly-in handed back to the player
 
 	NOTIFY_LANE_STATE                   = "notifyLaneState",
 

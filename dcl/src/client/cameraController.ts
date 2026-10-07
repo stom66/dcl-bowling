@@ -4,9 +4,10 @@ import * as utils from "@dcl-sdk/utils"
 
 import { GameSettings, PlayerSettings } from "src/shared/settings";
 import { ClientEvents, eventBus } from "src/shared/utils/eventBus";
+import { FreezePlayer, UnFreezePlayer } from "src/shared/utils/inputModifiers";
 
 import { ClientStore } from "src/client/clientStore";
-import { getLanePosition } from "src/client/data/lanePositions";
+import { getLanePosition, getRootPosition } from "src/client/data/lanePositions";
 
 
 export namespace CameraController {
@@ -28,6 +29,11 @@ export namespace CameraController {
 	var cameraEndOffset                 = Vector3.create(0, 0, 16)
 	var summaryCameraHeight             = Vector3.create(0, 2.2, -6.5)
 	var summaryCameraEndOffset          = Vector3.create(0, 0, 8)
+	var flyInStartOffset                = Vector3.create(0, 36, 90)
+	var flyInLandRadius                 = 5
+	var flyInLandHeight                 = 2.4
+	var flyInLookHeight                 = 1.6
+	const flyInRotateAfter              = 0.2
 
 	const aimPitchDegrees               = 13.5
 	const cameraTransitionDuration      = 1
@@ -35,11 +41,30 @@ export namespace CameraController {
 	const cameraPlaybackDuration        = 1000 * 2
 	const cameraLookRaiseDuration       = 1000
 	const cameraPlaybackEndHoldDuration = 1000 * 3
+	/** Orbit heading that lands due north of the player (+Z). */
+	const flyInEndAngle                 = 0
 	var holdResetForSummary             = false
+	var flyInActive                     = false
+	var flyInMotion                     : FlyInMotion | undefined
+
+	type FlyInMotion = {
+		camera      : Entity
+		centerX     : number
+		centerZ     : number
+		startAngle  : number
+		angleSweep  : number
+		startRadius : number
+		startHeight : number
+		endRadius   : number
+		endHeight   : number
+		durationSec : number
+		elapsed     : number
+	}
 
 
 	// MARK: Init
 	export function init() {
+		eventBus.on(ClientEvents.LOAD_COMPLETE,                () => { triggerFlyInCamera() })
 		eventBus.on(ClientEvents.ON_MY_ROLL_START,             () => { onMyRollStart() })
 		eventBus.on(ClientEvents.ON_MY_ROLL_END,               () => { onMyRollEnd() })
 		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, () => { onGroupRollPlaybackStart() })
@@ -106,7 +131,11 @@ export namespace CameraController {
 
 
 	// MARK: setCameraView
-	function setCameraView(startPosition: Vector3, targetPosition: Vector3): boolean {
+	function setCameraView(
+		startPosition     : Vector3,
+		targetPosition    : Vector3,
+		transitionDuration: number = cameraTransitionDuration,
+	): boolean {
 		const previousCamera = camera
 		const previousTarget = cameraTarget
 
@@ -121,21 +150,11 @@ export namespace CameraController {
 		VirtualCamera.create(camera, {
 			lookAtEntity     : cameraTarget,
 			defaultTransition: {
-				transitionMode: VirtualCamera.Transition.Time(cameraTransitionDuration),
+				transitionMode: VirtualCamera.Transition.Time(transitionDuration),
 			}
 		})
 
-		const mainCamera = MainCamera.getMutableOrNull(engine.CameraEntity)
-		if (!mainCamera) {
-			console.log("CameraController: setCameraView: mainCamera not found")
-			engine.removeEntity(camera)
-			engine.removeEntity(cameraTarget)
-			camera       = previousCamera
-			cameraTarget = previousTarget
-			return false
-		}
-
-		mainCamera.virtualCameraEntity = camera
+		MainCamera.createOrReplace(engine.CameraEntity, { virtualCameraEntity: camera })
 
 		if (previousCamera && previousTarget) {
 			scheduleCameraDestroy(previousCamera, previousTarget)
@@ -155,6 +174,154 @@ export namespace CameraController {
 		const laneDistance = playbackTargetOffset.z - cameraHeight.z
 		const drop         = laneDistance * Math.tan(aimPitchDegrees * Math.PI / 180)
 		return Vector3.create(playbackTargetOffset.x, cameraHeight.y - drop, playbackTargetOffset.z)
+	}
+
+
+	// MARK: easeCubic
+	/** Cubic ease-in-out for the fly-in rotation and zoom. */
+	function easeCubic(t: number) {
+		return t < 0.5
+			? 4 * t * t * t
+			: 1 - Math.pow(-2 * t + 2, 3) / 2
+	}
+
+
+	// MARK: stopFlyInMotion
+	/** Stops the per-frame fly-in orbit system. */
+	function stopFlyInMotion() {
+		if (!flyInMotion) return
+		engine.removeSystem(flyInSystem)
+		flyInMotion = undefined
+	}
+
+
+	// MARK: flyInSystem
+	/**
+	 * Shrinks in for the full duration. Rotation starts after
+	 * {@link flyInRotateAfter} so the first stretch is a straight fly-over.
+	 */
+	function flyInSystem(dt: number) {
+		if (!flyInMotion) return
+
+		const motion    = flyInMotion
+		motion.elapsed += dt
+		const t         = Math.min(motion.elapsed / motion.durationSec, 1)
+		const zoom      = easeCubic(t)
+		const radius    = motion.startRadius + (motion.endRadius - motion.startRadius) * zoom
+		const height    = motion.startHeight + (motion.endHeight - motion.startHeight) * zoom
+		let   angle     = motion.startAngle
+		if (t > flyInRotateAfter) {
+			const rotateT = (t - flyInRotateAfter) / (1 - flyInRotateAfter)
+			angle         = motion.startAngle + easeCubic(rotateT) * motion.angleSweep
+		}
+
+		const transform = Transform.getMutableOrNull(motion.camera)
+		if (transform) {
+			transform.position = Vector3.create(
+				motion.centerX + Math.sin(angle) * radius,
+				height,
+				motion.centerZ + Math.cos(angle) * radius,
+			)
+		}
+
+		if (t < 1) return
+
+		stopFlyInMotion()
+		finishFlyIn()
+	}
+
+
+	// MARK: finishFlyIn
+	/**
+	 * Hands the camera back to the player and restores movement.
+	 */
+	function finishFlyIn() {
+		stopFlyInMotion()
+		if (flyInActive && camera) {
+			const virtual = VirtualCamera.getMutableOrNull(camera)
+			if (virtual) {
+				virtual.defaultTransition = {
+					transitionMode: VirtualCamera.Transition.Time(cameraTransitionDuration),
+				}
+			}
+		}
+
+		flyInActive = false
+		resetCamera()
+		UnFreezePlayer()
+		eventBus.emit(ClientEvents.ON_LOAD_FLY_IN_END, {})
+	}
+
+
+	// MARK: triggerFlyInCamera
+	/**
+	 * Flies in over the alley, then spirals around the player and returns
+	 * control. Keeps movement and touch controls disabled until then.
+	 */
+	export function triggerFlyInCamera() {
+		console.log("CameraController: triggerFlyInCamera")
+		stopFlyInMotion()
+		if (flyInActive || camera) {
+			flyInActive = false
+			resetCamera()
+		}
+
+		FreezePlayer()
+		eventBus.emit(ClientEvents.ON_LOAD_FLY_IN_START, {})
+		flyInActive = true
+
+		const duration = GameSettings.LOADING_CAMERA_FLY_IN_DURATION
+		if (duration <= 0) {
+			console.log("CameraController: triggerFlyInCamera: duration is 0, skipping")
+			finishFlyIn()
+			return
+		}
+
+		const playerTransform = Transform.getOrNull(engine.PlayerEntity)
+		if (!playerTransform) {
+			console.log("CameraController: triggerFlyInCamera: player transform not found")
+			finishFlyIn()
+			return
+		}
+
+		const playerPosition = playerTransform.position
+		const startPosition  = Vector3.add(getRootPosition(), flyInStartOffset)
+		const lookPosition   = Vector3.create(playerPosition.x, playerPosition.y + flyInLookHeight, playerPosition.z)
+		const offsetX        = startPosition.x - playerPosition.x
+		const offsetZ        = startPosition.z - playerPosition.z
+		const startRadius    = Math.sqrt(offsetX * offsetX + offsetZ * offsetZ)
+		const startAngle     = Math.atan2(offsetX, offsetZ)
+		const twoPi          = Math.PI * 2
+		let   angleSweep     = flyInEndAngle - startAngle
+		while (angleSweep <= 0) angleSweep += twoPi
+
+		if (!setCameraView(startPosition, lookPosition, 0)) {
+			console.log("CameraController: triggerFlyInCamera: failed to activate camera")
+			finishFlyIn()
+			return
+		}
+
+		const activeCamera = camera
+		if (!activeCamera) {
+			console.log("CameraController: triggerFlyInCamera: camera not found after camera activation")
+			finishFlyIn()
+			return
+		}
+
+		flyInMotion = {
+			camera      : activeCamera,
+			centerX     : playerPosition.x,
+			centerZ     : playerPosition.z,
+			startAngle  : startAngle,
+			angleSweep  : angleSweep,
+			startRadius : startRadius,
+			startHeight : startPosition.y,
+			endRadius   : flyInLandRadius,
+			endHeight   : playerPosition.y + flyInLandHeight,
+			durationSec : duration / 1000,
+			elapsed     : 0,
+		}
+		engine.addSystem(flyInSystem)
 	}
 
 
@@ -249,6 +416,13 @@ export namespace CameraController {
 	 * Releases the active virtual camera and destroys its entities.
 	 */
 	export function resetCamera() {
+		stopFlyInMotion()
+		if (flyInActive) {
+			flyInActive = false
+			UnFreezePlayer()
+			eventBus.emit(ClientEvents.ON_LOAD_FLY_IN_END, {})
+		}
+
 		clearPlaybackReleaseTimer()
 		if (!camera || !cameraTarget) return
 

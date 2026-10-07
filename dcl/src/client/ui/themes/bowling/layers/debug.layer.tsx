@@ -23,6 +23,7 @@ import { LaneStore } from 'src/shared/laneStore'
 import { GameSettings } from 'src/shared/settings'
 import { userProfileCache } from 'src/shared/utils/userProfileCache'
 
+import { CameraController } from 'src/client/cameraController'
 import { ClientMessaging } from 'src/client/clientMessaging'
 import { ClientStore } from 'src/client/clientStore'
 import { playerMover } from 'src/client/playerMover'
@@ -225,6 +226,22 @@ export class DebugLayer extends Layer {
 					fontSize  = {DEBUG_FONT_SIZE}
 					callback  = {() => {
 						playerMover.movePlayerToSpawnPoint()
+					}}
+					uiTransform = {{
+						positionType: 'relative',
+						position    : { top: 0, left: 0 },
+					}}
+				/>
+
+				<ButtonText
+					id        = "debug_fly_in_camera"
+					textLabel = "Fly-In Camera"
+					width     = "100%"
+					height    = {18}
+					minHeight = {18}
+					fontSize  = {DEBUG_FONT_SIZE}
+					callback  = {() => {
+						CameraController.triggerFlyInCamera()
 					}}
 					uiTransform = {{
 						positionType: 'relative',
