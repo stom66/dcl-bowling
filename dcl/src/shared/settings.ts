@@ -26,7 +26,7 @@ export class GameSettings {
 
 	static LOADING_SCREEN_DELAY           = IS_DEBUG ? 2000 : 1000 * 2
 	/** Virtual-camera fly-in after the loading screen starts to fade, in ms. */
-	static LOADING_CAMERA_FLY_IN_DURATION = 1000 * 5
+	static LOADING_CAMERA_FLY_IN_DURATION = 1000 * 7.5
 
 	static SERVER_TIME_UPDATE_INTERVAL    = (IS_DEBUG ? 15: 30) * 1000
 
