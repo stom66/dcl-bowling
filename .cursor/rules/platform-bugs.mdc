@@ -1,0 +1,10 @@
+---
+description: Never work around a platform bug without explicit confirmation. Report it instead.
+alwaysApply: true
+---
+
+# Platform bugs
+
+Anytime you come up against a bug that is a limitation of the platform, never work around it without explicit confirmation. Instead, you should generate a bug report and encourage that bug report to be submitted to the platform so that they can fix it properly.
+
+Do not remove or weaken a feature that was intentionally added because a Decentraland SDK, Explorer, or mobile client behavior looks wrong. Follow `.agents/skills/platform-bugs/SKILL.md`.
