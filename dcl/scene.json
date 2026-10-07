@@ -3,7 +3,7 @@
   "runtimeVersion": "7",
   "display": {
     "title": "Fastlane Bowling",
-    "description": "A bowling alley!",
+    "description": "Tonight, we bowl!\n\nLaunch into Fast Lane Bowling, a neon space-bowling showdown! Chase strikes, style your bowler, trigger effects, and take on three-, six or ten-frame glory!\n\nWarning: may contain pigeons.",
     "navmapThumbnail": "images/scene-thumbnail.png",
     "favicon": "favicon_asset"
   },
@@ -1122,8 +1122,8 @@
           129.5
         ],
         "z": [
-          -3,
-          3
+          -5,
+          5
         ]
       },
       "cameraTarget": {
@@ -1147,7 +1147,8 @@
   },
   "creator": "0xCEC7e38e088A87D77F2B60Fcae6840D00E018155",
   "skyboxConfig": {
-    "fixedTime": 86340
+    "fixedTime": 86340,
+    "transitionMode": 0
   },
   "source": {
     "origin": "creator-hub",
