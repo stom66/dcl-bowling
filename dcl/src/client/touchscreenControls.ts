@@ -1,4 +1,4 @@
-import { TouchScreenControls } from '@dcl/sdk/ecs'
+import { engine, InputAction, TouchScreenControls } from '@dcl/sdk/ecs'
 
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 
@@ -23,6 +23,9 @@ export namespace TouchscreenControls {
 		eventBus.on(ClientEvents.REQUEST_LEAVE_GAME, () => {
 			enableInputs()
 		})
+		eventBus.on(ClientEvents.LOAD_COMPLETE, () => {
+			enableInputs()
+		})
 	}
 
 
@@ -33,9 +36,20 @@ export namespace TouchscreenControls {
 	 * Unlisted buttons stay visible, so this hides each gamepad action explicitly.
 	 */
 	export function disableInputs() {
-		TouchScreenControls.hideJoystick()
-		TouchScreenControls.hideCrosshair()
-		TouchScreenControls.hideAll()
+		TouchScreenControls.createOrReplace(engine.RootEntity, {
+			hideJoystick : true,
+			hideCrosshair: true,
+			touchInputs  : [
+				{ inputAction: InputAction.IA_ACTION_3,  hide: true,},
+				{ inputAction: InputAction.IA_ACTION_4,  hide: true,},
+				{ inputAction: InputAction.IA_ACTION_5,  hide: true },
+				{ inputAction: InputAction.IA_ACTION_6,  hide: true },
+				{ inputAction: InputAction.IA_POINTER,   hide: true },
+				{ inputAction: InputAction.IA_PRIMARY,   hide: true },
+				{ inputAction: InputAction.IA_SECONDARY, hide: true },
+				{ inputAction: InputAction.IA_MODIFIER, hide: true },
+			],
+		})
 	}
 
 
@@ -44,8 +58,18 @@ export namespace TouchscreenControls {
 	 * Restores the default joystick, crosshair, and gamepad buttons.
 	 */
 	export function enableInputs() {
-		TouchScreenControls.showJoystick()
-		TouchScreenControls.showCrosshair()
-		TouchScreenControls.showAll()
+		TouchScreenControls.createOrReplace(engine.RootEntity, {
+			hideJoystick : false,
+			hideCrosshair: false,
+			touchInputs  : [
+				{ inputAction: InputAction.IA_ACTION_3,  hide: true,},
+				{ inputAction: InputAction.IA_ACTION_4,  hide: true,},
+				{ inputAction: InputAction.IA_ACTION_5,  hide: true },
+				{ inputAction: InputAction.IA_ACTION_6,  hide: true },
+				{ inputAction: InputAction.IA_POINTER,   hide: true },
+				{ inputAction: InputAction.IA_PRIMARY,   hide: true },
+				{ inputAction: InputAction.IA_SECONDARY, hide: true },
+			],
+		})
 	}
 }
