@@ -77,10 +77,17 @@ export function stopBallTrail(
 
 
 
+/** Gobo follow-spots block most of the cone, so they need this candela to read. */
+const FOLLOW_SPOT_MASKED_INTENSITY = 5000000
+
+/** Plain disc has no mask. The masked candela blows out the ball. */
+const FOLLOW_SPOT_PLAIN_INTENSITY  = 400000
+
+
 // MARK: applyFollowSpotlight
 /**
- * Replay follow-spot. Same spot setup as the working lobby test light.
- * Color and mask come from the equipped items.
+ * Replay follow-spot. Color and mask come from the equipped items.
+ * A plain beam uses a lower intensity so the full disc does not blow out the ball.
  */
 export function applyFollowSpotlight(
 	spotlightId      : string,
@@ -91,6 +98,7 @@ export function applyFollowSpotlight(
 	const colorItem = spotlightColors[spotlightColorId] ?? spotlightColors[DEFAULT_SPOTLIGHT_COLOR_ID]
 	const rgb       = colorItem?.color ?? pattern?.color ?? { r: 1, g: 1, b: 1 }
 	const maskSrc   = spotlightId === DEFAULT_SPOTLIGHT_ID ? undefined : pattern?.maskSrc
+	const intensity = maskSrc ? FOLLOW_SPOT_MASKED_INTENSITY : FOLLOW_SPOT_PLAIN_INTENSITY
 
 	const light = engine.addEntity()
 	Transform.create(light, {
@@ -103,7 +111,7 @@ export function applyFollowSpotlight(
 			outerAngle: 20,
 		}),
 		color             : Color3.create(rgb.r, rgb.g, rgb.b),
-		intensity         : 5000000,
+		intensity         : intensity,
 		shadowMaskTexture : maskSrc
 			? Material.Texture.Common({ src: maskSrc })
 			: undefined,
