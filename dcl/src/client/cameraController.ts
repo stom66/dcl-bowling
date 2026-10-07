@@ -2,7 +2,7 @@ import { EasingFunction, engine, Entity, MainCamera, Transform, Tween, VirtualCa
 import { Vector3 } from "@dcl/sdk/math";
 import * as utils from "@dcl-sdk/utils"
 
-import { PlayerSettings } from "src/shared/settings";
+import { GameSettings, PlayerSettings } from "src/shared/settings";
 import { ClientEvents, eventBus } from "src/shared/utils/eventBus";
 
 import { ClientStore } from "src/client/clientStore";
@@ -26,6 +26,8 @@ export namespace CameraController {
 	var playbackTargetOffset            = Vector3.create(0, 0.2, 19)
 
 	var cameraEndOffset                 = Vector3.create(0, 0, 16)
+	var summaryCameraHeight             = Vector3.create(0, 2.2, -6.5)
+	var summaryCameraEndOffset          = Vector3.create(0, 0, 8)
 
 	const aimPitchDegrees               = 13.5
 	const cameraTransitionDuration      = 1
@@ -33,6 +35,7 @@ export namespace CameraController {
 	const cameraPlaybackDuration        = 1000 * 2
 	const cameraLookRaiseDuration       = 1000
 	const cameraPlaybackEndHoldDuration = 1000 * 3
+	var holdResetForSummary             = false
 
 
 	// MARK: Init
@@ -43,7 +46,14 @@ export namespace CameraController {
 
 		eventBus.on(ClientEvents.REQUEST_LEAVE_GAME,           () => { resetCamera() })
 		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_END,   () => { resetCamera() })
-		eventBus.on(ClientEvents.ON_GROUP_GAME_END,            () => { resetCamera() })
+		eventBus.on(ClientEvents.ON_GAME_SUMMARY,              () => { holdResetForSummary = true })
+		eventBus.on(ClientEvents.ON_GROUP_GAME_END,            () => {
+			if (holdResetForSummary) {
+				holdResetForSummary = false
+				return
+			}
+			resetCamera()
+		})
 		eventBus.on(ClientEvents.ON_GROUP_FRAME_END,           () => { resetCamera() })
 		eventBus.on(ClientEvents.ON_MY_FRAME_END,              () => { resetCamera() })
 	}
@@ -209,8 +219,36 @@ export namespace CameraController {
 	}
 
 
+	// MARK: triggerSummaryCamera
+	/**
+	 * Dolly from behind the group spot down the lane. Holds until {@link resetCamera}.
+	 */
+	export function triggerSummaryCamera(laneIndex: number) {
+		console.log("CameraController: triggerSummaryCamera")
+		const laneOrigin     = getLanePosition(laneIndex)
+		const startPosition  = Vector3.add(laneOrigin, summaryCameraHeight)
+		const targetPosition = Vector3.add(laneOrigin, getAimTargetOffset())
+		const endPosition    = Vector3.add(startPosition, summaryCameraEndOffset)
+
+		if (!setCameraView(startPosition, targetPosition)) {
+			return
+		}
+
+		const activeCamera = camera
+		if (!activeCamera) {
+			console.log("CameraController: triggerSummaryCamera: camera not found after camera activation")
+			return
+		}
+
+		Tween.setMove(activeCamera, startPosition, endPosition, GameSettings.GAME_SUMMARY_CAMERA_DURATION)
+	}
+
+
 	// MARK: resetCamera
-	function resetCamera() {
+	/**
+	 * Releases the active virtual camera and destroys its entities.
+	 */
+	export function resetCamera() {
 		clearPlaybackReleaseTimer()
 		if (!camera || !cameraTarget) return
 

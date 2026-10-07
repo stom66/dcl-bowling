@@ -50,6 +50,8 @@ export class GameSettings {
 	static SHOW_NON_GROUP_ROLL_VISUALS    = true
 
 	static SHOW_FINAL_SCORES_DURATION     = 1000 * 5
+	static SHOW_GAME_SUMMARY_DURATION     = 1000 * 12
+	static GAME_SUMMARY_CAMERA_DURATION   = 1000 * 4
 
 	/** How often a one-shot meteor arcs over the alley. */
 	static SKYBOX_METEOR_INTERVAL         = 1000 * (IS_DEBUG ? 5 : 60)

@@ -63,6 +63,7 @@ type LetterboxProps = {
  */
 export class LetterboxLayer extends Layer {
 	private barProps: PropsController<LetterboxProps>
+	private holdHideForSummary = false
 
 	constructor() {
 		super({
@@ -86,7 +87,14 @@ export class LetterboxLayer extends Layer {
 
 		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, () => { this.showBars() })
 		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_END,   () => { this.hideBars() })
-		eventBus.on(ClientEvents.ON_GROUP_GAME_END,            () => { this.hideBars() })
+		eventBus.on(ClientEvents.ON_GAME_SUMMARY,              () => { this.holdHideForSummary = true })
+		eventBus.on(ClientEvents.ON_GROUP_GAME_END,            () => {
+			if (this.holdHideForSummary) {
+				this.holdHideForSummary = false
+				return
+			}
+			this.hideBars()
+		})
 		eventBus.on(ClientEvents.ON_GROUP_ROLL_END,            () => { this.hideBars() })
 		eventBus.on(ClientEvents.ON_GROUP_FRAME_END,           () => { this.hideBars() })
 		eventBus.on(ClientEvents.ON_MY_FRAME_END,              () => { this.hideBars() })

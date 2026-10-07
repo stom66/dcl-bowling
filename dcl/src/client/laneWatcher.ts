@@ -4,7 +4,7 @@ import * as LaneComponent from "src/shared/components/lane"
 import { LanePhase } from "src/shared/enums"
 import { LaneStore } from "src/shared/laneStore"
 import { GameSettings } from "src/shared/settings"
-import { LaneSnapshot } from "src/shared/types/shared-types"
+import { GameSummaryCard, LaneSnapshot } from "src/shared/types/shared-types"
 import { ClientEvents, eventBus } from "src/shared/utils/eventBus"
 import { userProfileCache } from "src/shared/utils/userProfileCache"
 
@@ -31,8 +31,13 @@ export namespace LaneWatcher {
 
 	// Server endGame sets phase=NONE and resetLane (empty players) in the same tick, so
 	// snapshot.players is already [] when we detect the transition. Cache the last
-	// non-empty roster so game-end can still tell "our" game from a spectator lane.
+	// non-empty roster and scorecard so game-end can still tell "our" game from a
+	// spectator lane and the ceremony can show the final board.
 	const lastKnownPlayersByLane: string[][] = Array.from({ length: GameSettings.MAX_LANES }, () => [])
+	const lastKnownCardByLane: (GameSummaryCard | undefined)[] = Array.from(
+		{ length: GameSettings.MAX_LANES },
+		() => undefined,
+	)
 
 	const pendingLanes       : Set<number> = new Set()
 	let flushScheduled       : boolean     = false
@@ -100,9 +105,7 @@ export namespace LaneWatcher {
 		if (laneIndex === undefined) return
 
 		const snapshot = LaneStore.getLaneSnapshot(laneIndex)
-		if (snapshot.players.length > 0) {
-			lastKnownPlayersByLane[laneIndex] = snapshot.players.slice()
-		}
+		cacheOccupiedCard(snapshot)
 		lastEmittedPhase[laneIndex]      = snapshot.phase
 		lastEmittedTurnUserId[laneIndex] = snapshot.currentFrameUserId
 		eventBus.emit(ClientEvents.NOTIFY_LANE_STATE, snapshot)
@@ -139,9 +142,7 @@ export namespace LaneWatcher {
 
 		for (const laneIndex of lanesToFlush) {
 			const snapshot = LaneStore.getLaneSnapshot(laneIndex)
-			if (snapshot.players.length > 0) {
-				lastKnownPlayersByLane[laneIndex] = snapshot.players.slice()
-			}
+			cacheOccupiedCard(snapshot)
 			eventBus.emit(ClientEvents.NOTIFY_LANE_STATE, snapshot)
 
 			emitPhaseTransition(snapshot)
@@ -191,9 +192,13 @@ export namespace LaneWatcher {
 		)
 		if (next === LanePhase.NONE && wasActiveMatch) {
 			const isMyGameEnd = wasMyLane(snapshot.laneIndex, myUserId)
+			const card        = lastKnownCardByLane[snapshot.laneIndex]
+			if (isMyGameEnd && isCompletedFinalFrame(card) && card) {
+				eventBus.emit(ClientEvents.ON_GAME_SUMMARY, card)
+			}
 			eventBus.emit(isMyGameEnd ? ClientEvents.ON_GROUP_GAME_END : ClientEvents.ON_NON_GROUP_GAME_END, snapshot)
 			if (isMyGameEnd) {
-				lastKnownPlayersByLane[snapshot.laneIndex] = []
+				clearLaneCache(snapshot.laneIndex)
 				ClientStore.getInstance().setLaneIndex(undefined)
 			}
 		}
@@ -202,7 +207,70 @@ export namespace LaneWatcher {
 			next === LanePhase.NONE
 			&& (prev === LanePhase.LOBBY || prev === LanePhase.GAME_STARTING)
 		) {
-			lastKnownPlayersByLane[snapshot.laneIndex] = []
+			clearLaneCache(snapshot.laneIndex)
 		}
+	}
+
+
+	// MARK: cacheOccupiedCard
+	/**
+	 * Stores the last roster and scorecard while the lane still has players.
+	 * The empty end tick must not overwrite this.
+	 */
+	function cacheOccupiedCard(snapshot: LaneSnapshot): void {
+		if (snapshot.players.length === 0) return
+
+		lastKnownPlayersByLane[snapshot.laneIndex] = snapshot.players.slice()
+		lastKnownCardByLane[snapshot.laneIndex]    = {
+			currentFrameIndex : snapshot.currentFrameIndex,
+			frameCount        : snapshot.frameCount,
+			frames            : cloneFrames(snapshot.frames),
+			laneIndex         : snapshot.laneIndex,
+			leaves            : cloneLeaves(LaneStore.getLeavesMap(snapshot.laneIndex)),
+			phase             : snapshot.phase,
+			players           : snapshot.players.slice(),
+		}
+	}
+
+
+	// MARK: clearLaneCache
+	/** Drops the cached roster and scorecard for a freed lane. */
+	function clearLaneCache(laneIndex: number): void {
+		lastKnownPlayersByLane[laneIndex] = []
+		lastKnownCardByLane[laneIndex]    = undefined
+	}
+
+
+	// MARK: isCompletedFinalFrame
+	/**
+	 * True when the cached card is the last frame just ended, not an abandoned lane.
+	 */
+	function isCompletedFinalFrame(card: GameSummaryCard | undefined): boolean {
+		if (!card) return false
+		if (card.phase !== LanePhase.FRAME_END) return false
+		if (card.frameCount <= 0) return false
+		return card.currentFrameIndex === card.frameCount - 1
+	}
+
+
+	// MARK: cloneFrames
+	/** Deep-copies a user-id to frames map. */
+	function cloneFrames(frames: Map<string, number[][]>): Map<string, number[][]> {
+		const next = new Map<string, number[][]>()
+		for (const [userId, userFrames] of frames) {
+			next.set(userId, userFrames.map((frame) => frame.slice()))
+		}
+		return next
+	}
+
+
+	// MARK: cloneLeaves
+	/** Deep-copies a user-id to pin-leave map. */
+	function cloneLeaves(leaves: Map<string, number[]>): Map<string, number[]> {
+		const next = new Map<string, number[]>()
+		for (const [userId, userLeaves] of leaves) {
+			next.set(userId, userLeaves.slice())
+		}
+		return next
 	}
 }

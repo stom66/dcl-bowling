@@ -16,6 +16,7 @@ import { ClientHandler } from 'src/client/clientHandler'
 import { ClientStore } from 'src/client/clientStore'
 import { init as initResultEmotes } from 'src/client/emotes'
 import { gameStateHandler } from 'src/client/gameStateHandler'
+import { GameSummary } from 'src/client/gameSummary'
 import { GltfSpawner } from 'src/client/gltfSpawner'
 import { setupLaneLobbies } from 'src/client/laneLobbies'
 import { LaneModels } from 'src/client/laneModels'
@@ -175,6 +176,7 @@ export async function initClient() {
 	LaneModels.init()
 	playerMover.init()
 	CameraController.init()
+	GameSummary.init()
 	initResultEmotes()
 	SoundManager.init()
 	ParticleSpawner.init()

@@ -6,6 +6,7 @@ import { bowlingControlsLayer, bumperToggleLayer, clickToSetLayer } from 'src/cl
 import { customizationLayer } from 'src/client/ui/themes/bowling/layers/customization.layer'
 import { debugLayer } from 'src/client/ui/themes/bowling/layers/debug.layer'
 import { gameStatusLayer } from 'src/client/ui/themes/bowling/layers/gameStatus.layer'
+import { gameSummaryLayer } from 'src/client/ui/themes/bowling/layers/gameSummary.layer'
 import { laneLobbyLayer } from 'src/client/ui/themes/bowling/layers/laneLobby.layer'
 import { leaderboardLayer } from 'src/client/ui/themes/bowling/layers/leaderboard.layer'
 import { leaveGameLayer } from 'src/client/ui/themes/bowling/layers/leaveGame.layer'
@@ -41,6 +42,7 @@ const IS_DEV = process.env.NODE_ENV === 'development'
  * `GameSettings.PLAYTEST_DEBUG_PANEL` is on, with Bolotron 3000 stacked under it.
  * Letterbox hides that top HUD (status, leave, toolbar, tickets, playtest,
  * and Bowl-o-tron) for the duration of a group roll replay.
+ * The end-of-game summary sits above the letterbox and under the loading screen.
  * Loading is near the end so
  * it covers gameplay until dismissed.
  * Version is last with the highest z-index.
@@ -54,6 +56,7 @@ export const layers: Layer[] = [
 	clickToSetLayer,
 	laneLobbyLayer,
 	letterboxLayer,
+	gameSummaryLayer,
 	customizationLayer,
 	leaderboardLayer,
 	statsLayer,

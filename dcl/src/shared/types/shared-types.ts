@@ -37,6 +37,22 @@ export type LaneSnapshot = {
 }
 
 
+// MARK: GameSummaryCard
+/**
+ * Last non-empty scorecard for a finished match. The end snapshot arrives empty,
+ * so clients keep this card for the ceremony UI.
+ */
+export type GameSummaryCard = {
+	currentFrameIndex : number
+	frameCount        : number
+	frames            : Map<string, number[][]>
+	laneIndex         : number
+	leaves            : Map<string, number[]>
+	phase             : LanePhase
+	players           : string[]
+}
+
+
 // MARK: LaneComponents
 
 export type LaneScores = {

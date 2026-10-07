@@ -13,15 +13,57 @@ export namespace playerMover {
 
 	const clientStore = ClientStore.getInstance()
 
+	let holdLobbyForSummary = false
+
+
+	// MARK: init
+	/**
+	 * Binds turn and game-end player moves, including the end-of-game summary hold.
+	 */
 	export function init() {
 		eventBus.on(ClientEvents.ON_MY_FRAME_START, movePlayerToStartOfLane)
 		eventBus.on(ClientEvents.ON_MY_FRAME_END, movePlayerToGroupZone)
 
 		eventBus.on(ClientEvents.ON_GROUP_GAME_START, movePlayerToGroupZone)
-		eventBus.on(ClientEvents.ON_GROUP_GAME_END, movePlayerToLobby)
+		eventBus.on(ClientEvents.ON_GAME_SUMMARY, () => { holdLobbyForSummary = true })
+		eventBus.on(ClientEvents.ON_GROUP_GAME_END, () => {
+			if (holdLobbyForSummary) {
+				holdLobbyForSummary = false
+				return
+			}
+			movePlayerToLobby()
+		})
 
-		
 		eventBus.on(ClientEvents.REQUEST_LEAVE_GAME, (data: {}) => { movePlayerToLobby() })
+	}
+
+
+	// MARK: movePlayerToSummarySpot
+	/**
+	 * Freezes the player at the lane group spot, facing down the lane.
+	 */
+	export function movePlayerToSummarySpot(laneIndex: number) {
+		const groupZoneOffset = Vector3.create(0, 0, -3.75)
+		const lanePosition    = getLanePosition(laneIndex)
+		const targetPosition  = Vector3.add(lanePosition, groupZoneOffset)
+		const faceForward     = Vector3.create(0, 0, 10)
+		movePlayerTo({
+			newRelativePosition: targetPosition,
+			cameraTarget       : Vector3.add(targetPosition, faceForward),
+		})
+		FreezePlayer()
+	}
+
+
+	// MARK: movePlayerToLaneLobby
+	/**
+	 * Drops the player at that lane's lobby and restores movement.
+	 */
+	export function movePlayerToLaneLobby(laneIndex: number) {
+		const lobbyCenter = getLaneLobbyPosition(laneIndex)
+		const randomPoint = GetRandomPointInCircle(lobbyCenter, 1.5)
+		movePlayerTo({ newRelativePosition: randomPoint })
+		UnFreezePlayer()
 	}
 
 	export function movePlayerToSpawnPoint() {

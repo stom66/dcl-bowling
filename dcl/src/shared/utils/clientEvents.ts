@@ -26,6 +26,8 @@ export enum ClientEvents {
 	ON_GROUP_ROLL_END                   = "onGroupRollEnd",                 // When someone else in the group ends their roll
 	ON_GROUP_FRAME_END                  = "onGroupFrameEnd",                // When someone else in the group ends their frame
 	ON_GROUP_GAME_END                   = "onGroupGameEnd",                 // When the group game ends
+	ON_GAME_SUMMARY                     = "onGameSummary",                  // Local end-of-game ceremony for a finished match
+	ON_GAME_SUMMARY_END                 = "onGameSummaryEnd",               // Continue or timeout closed the ceremony
 
 	ON_NON_GROUP_GAME_START             = "onNonGroupGameStart",            // When a non-group game ends
 	ON_NON_GROUP_FRAME_START            = "onNonGroupFrameStart",            // When a non-group member starts their frame
