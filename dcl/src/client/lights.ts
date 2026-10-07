@@ -3,9 +3,10 @@ import { Color3, Quaternion, Vector3 } from "@dcl/sdk/math"
 import { getPlatform, isMobile } from "@dcl/sdk/platform"
 
 import { getRootPosition } from "src/client/data/lanePositions"
+import { GameSettings } from "src/server/physics/physics.settings"
 
 
-const SHOW_LIGHT_MESH = true
+const SHOW_LIGHT_MESH = false
 
 const LOBBY_SHADOW_MASK = 'assets/images/spotlights/shadowmask-lobby.png'
 const LANE_SHADOW_MASK  = 'assets/images/spotlights/shadowmask-lobby.png'
@@ -92,7 +93,7 @@ export function setupLights() {
 		color               : Color3.fromHexString('#FFF29D'),
 		intensity           : 150000
 	})
-	MeshRenderer.setSphere(hallOfFame)
+	if (SHOW_LIGHT_MESH) MeshRenderer.setSphere(hallOfFame)
 
 	applyMobileIntensityWhenReady([light2, light3])
 
