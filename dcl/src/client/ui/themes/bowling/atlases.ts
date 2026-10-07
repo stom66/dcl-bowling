@@ -317,6 +317,7 @@ export const bowlingThemeAssets = {
 	infoWelcome    : `${THEME_ASSET_PATH}/info-welcome.png`,
 	inputBackground: `${THEME_ASSET_PATH}/bowling-input-bg.png`,
 	laneNumbers    : `${THEME_ASSET_PATH}/lane-numbers.png`,
+	loadingOverlay : `${THEME_ASSET_PATH}/loading-overlay.png`,
 	lockerHeader   : `${THEME_ASSET_PATH}/bg-customisation.png`,
 }
 
