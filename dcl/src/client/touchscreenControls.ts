@@ -40,6 +40,7 @@ export namespace TouchscreenControls {
 			hideJoystick : true,
 			hideCrosshair: true,
 			touchInputs  : [
+				{ inputAction: InputAction.IA_JUMP,      hide: true },
 				{ inputAction: InputAction.IA_ACTION_3,  hide: true,},
 				{ inputAction: InputAction.IA_ACTION_4,  hide: true,},
 				{ inputAction: InputAction.IA_ACTION_5,  hide: true },
@@ -47,7 +48,7 @@ export namespace TouchscreenControls {
 				{ inputAction: InputAction.IA_POINTER,   hide: true },
 				{ inputAction: InputAction.IA_PRIMARY,   hide: true },
 				{ inputAction: InputAction.IA_SECONDARY, hide: true },
-				{ inputAction: InputAction.IA_MODIFIER, hide: true },
+				{ inputAction: InputAction.IA_MODIFIER,  hide: true },
 			],
 		})
 	}
