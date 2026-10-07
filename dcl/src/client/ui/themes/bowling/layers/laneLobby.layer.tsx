@@ -69,6 +69,9 @@ export class LaneLobbyLayer extends Layer {
 	/** Send pending frames once the player is actually in the lobby. */
 	private flushPendingFrames = false
 
+	/** Bumped on each open so avatar portraits remount after a hide. */
+	private panelGeneration = 0
+
 	constructor() {
 		super({
 			id         : 'bowling-lane-lobby',
@@ -138,6 +141,7 @@ export class LaneLobbyLayer extends Layer {
 		laneIndex: number,
 		occupied : boolean,
 	): void {
+		this.panelGeneration++
 		this.wasOpenedAsOccupied = occupied
 		this.pendingFrameCount   = null
 		this.flushPendingFrames  = false
@@ -160,13 +164,28 @@ export class LaneLobbyLayer extends Layer {
 	// MARK: close
 	/**
 	 * Hides the panel and clears optimistic frame state.
-	 * Duration is 0 so a zone-exit hide cannot keep writing the off-screen
-	 * position after the next zone's show tween has finished.
+	 * Snaps off-screen without `isFullyHidden`, so the zone never gets
+	 * `display: none`. That flag blanks `avatarTexture` and it does not recover.
 	 */
 	close(): void {
 		this.pendingFrameCount  = null
 		this.flushPendingFrames = false
 		this.hide(0)
+		this.visibility.isFullyHidden = false
+	}
+
+
+	// MARK: render
+	/**
+	 * Keeps a hidden panel off-screen. An in-flight show tween would otherwise
+	 * slide it back after `close()`.
+	 */
+	render() {
+		if (this.visibility.isHidden) {
+			this.visibility.activeEdge = this.visibility.hideTo
+			this.visibility.position   = this.visibility.hiddenPosition
+		}
+		return super.render()
 	}
 
 
@@ -274,7 +293,7 @@ export class LaneLobbyLayer extends Layer {
 							const isLocal = userId.toLowerCase() === localUserId
 							return (
 								<AvatarIcon
-									key          = {`lobby_avatar_${userId}`}
+									key          = {`lobby_avatar_${this.panelGeneration}_${userId}`}
 									userId       = {userId}
 									width        = {AVATAR_SIZE}
 									height       = {AVATAR_SIZE}
