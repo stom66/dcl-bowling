@@ -18,7 +18,7 @@
     "upgrade-sdk:next": "npm install --save-dev @dcl/sdk@next",
     "upgrade-sdk:auth-server": "npm i -E @dcl/sdk@auth-server @dcl/js-runtime@auth-server",
     "server-logs": "sdk-commands sdk-server-logs",
-	"github:deploy.world": "gh workflow run deploy.world.yml"
+    "github:deploy.world": "gh workflow run deploy.world.yml"
   },
   "dependencies": {
     "@dcl-sdk/utils": "^1.4.0",
