@@ -773,20 +773,14 @@
         "0": {
           "json": {
             "name": "Fastlane Bowling",
-            "description": "Tonight, we bowl!\n\nLaunch into Fast Lane Bowling, a neon space-bowling showdown! Chase strikes, style your bowler, trigger effects, and take on three- or ten-frame glory!\n\nWarning: may contain pigeons.\n",
+            "description": "Tonight, we bowl!\n\nLaunch into Fast Lane Bowling, a neon space-bowling showdown! Chase strikes, style your bowler, trigger effects, and take on three-, six or ten-frame glory!\n\nWarning: may contain pigeons.",
             "thumbnail": "images/scene-thumbnail.png",
             "ageRating": "A",
             "categories": [],
             "author": "stom",
             "email": "",
-            "tags": [
-              ""
-            ],
+            "tags": [],
             "layout": {
-              "base": {
-                "x": 0,
-                "y": 0
-              },
               "parcels": [
                 {
                   "x": -16,
@@ -5144,7 +5138,11 @@
                   "x": 16,
                   "y": 16
                 }
-              ]
+              ],
+              "base": {
+                "x": 0,
+                "y": 0
+              }
             },
             "silenceVoiceChat": false,
             "disablePortableExperiences": false,
@@ -5161,8 +5159,11 @@
                     ]
                   },
                   "y": {
-                    "$case": "single",
-                    "value": 129.5
+                    "$case": "range",
+                    "value": [
+                      129.5,
+                      129.5
+                    ]
                   },
                   "z": {
                     "$case": "range",
