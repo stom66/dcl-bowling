@@ -10,7 +10,7 @@ export const spotlightPatterns: Record<string, SpotlightPatternItem> = {
 		defaultEquipped : true,
 		thumbSrc        : 'assets/images/unlocks/spotlights/default.png',
 		color           : { r: 1, g: 1, b: 1 },
-		intensity       : 0,
+		intensity       : 800,
 		innerAngle      : 20,
 		outerAngle      : 40,
 		shadow          : false,
