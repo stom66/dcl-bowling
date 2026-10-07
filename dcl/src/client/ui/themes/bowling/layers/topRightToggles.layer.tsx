@@ -8,6 +8,7 @@ import { bowlingRussoOneAlphaNumericAtlas, bowlingRussoOneSymbolsAtlas } from 's
 import { customizationLayer } from 'src/client/ui/themes/bowling/layers/customization.layer'
 import { leaderboardLayer } from 'src/client/ui/themes/bowling/layers/leaderboard.layer'
 import { statsLayer } from 'src/client/ui/themes/bowling/layers/stats.layer'
+import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 
 
 declare var process: {
@@ -185,6 +186,7 @@ export class TopRightTogglesLayer extends Layer {
 			id         : 'bowling-top-right-toggles',
 			zone       : ZoneType.TopRight,
 			canBeHidden: true,
+			startHidden: true,
 			zIndex     : 600,
 			uiTransform: {
 				width   : 'auto',
@@ -194,6 +196,10 @@ export class TopRightTogglesLayer extends Layer {
 					right: (IS_DEV && isDesktop()) ? RIGHT_INSET_LOCAL_DEV : RIGHT_INSET_DEFAULT,
 				},
 			},
+		})
+
+		eventBus.on(ClientEvents.ON_LOAD_FLY_IN_END, () => {
+			this.show()
 		})
 	}
 

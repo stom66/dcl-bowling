@@ -9,6 +9,7 @@ import { PlayerTickets } from 'src/shared/components/definitions/shared.playerTi
 import { ClientStore } from 'src/client/clientStore'
 import { gameIconsAtlas } from 'src/client/ui/themes/bowling/atlases'
 import { TOGGLE_BUTTONS_SIZE, TOGGLE_GAP } from './topRightToggles.layer'
+import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 
 
 const CHIP_WIDTH       = 188
@@ -136,11 +137,16 @@ export class TicketBalanceLayer extends Layer {
 			id         : 'bowling-ticket-balance',
 			zone       : ZoneType.RightTop,
 			canBeHidden: true,
+			startHidden: true,
 			uiTransform: {
 				width : CHIP_WIDTH,
 				height: CHIP_HEIGHT,
 				margin: { top: TOGGLE_BUTTONS_SIZE + TOGGLE_GAP },
 			},
+		})
+
+		eventBus.on(ClientEvents.ON_LOAD_FLY_IN_END, () => {
+			this.show()
 		})
 
 		this.displayedBalance = this.getBalance()

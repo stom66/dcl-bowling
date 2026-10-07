@@ -24,7 +24,7 @@ const OFFSET_HIDDEN_VH  = BAR_HEIGHT_VH * -1
 /** Slide time for the top HUD, matching the letterbox tween. */
 export const LETTERBOX_HUD_DURATION = 0.8
 
-let barsVisible = false
+let barsVisible = true
 
 const shownListeners : Array<() => void> = []
 const hiddenListeners: Array<() => void> = []
@@ -81,8 +81,12 @@ export class LetterboxLayer extends Layer {
 		})
 
 		this.barProps = new PropsController<LetterboxProps>({
-			topOffset   : OFFSET_HIDDEN_VH,
-			bottomOffset: OFFSET_HIDDEN_VH,
+			topOffset   : barsVisible ? OFFSET_VISIBLE_VH : OFFSET_HIDDEN_VH,
+			bottomOffset: barsVisible ? OFFSET_VISIBLE_VH : OFFSET_HIDDEN_VH,
+		})
+
+		eventBus.on(ClientEvents.ON_LOAD_FLY_IN_END, () => {
+			this.hideBars()
 		})
 
 		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_START, () => { this.showBars() })

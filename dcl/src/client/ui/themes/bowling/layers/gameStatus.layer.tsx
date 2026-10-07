@@ -75,6 +75,7 @@ export class GameStatusLayer extends Layer {
 			id         : 'bowling-game-status',
 			zone       : ZoneType.TopCenter,
 			canBeHidden: true,
+			startHidden: true,
 			uiTransform: {
 				height: 'auto',
 			},
@@ -108,6 +109,10 @@ export class GameStatusLayer extends Layer {
 				this.statusProps.set('endTime', clockSync.toLocalTime(data.gameStartTime))
 				this.statusProps.set('durationMs', GameSettings.GAME_START_COUNTDOWN_DURATION)
 			}
+		})
+
+		eventBus.on(ClientEvents.ON_LOAD_FLY_IN_END, () => {
+			this.show()
 		})
 	}
 
