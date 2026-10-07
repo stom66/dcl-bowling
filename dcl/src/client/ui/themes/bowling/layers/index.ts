@@ -2,7 +2,7 @@ import type { Layer } from '@stom66/dcl-ui-component-kit'
 
 import { GameSettings } from 'src/shared/settings'
 
-import { bowlingControlsLayer, clickToSetLayer } from 'src/client/ui/themes/bowling/layers/bowlingControls.layer'
+import { bowlingControlsLayer, bumperToggleLayer, clickToSetLayer } from 'src/client/ui/themes/bowling/layers/bowlingControls.layer'
 import { customizationLayer } from 'src/client/ui/themes/bowling/layers/customization.layer'
 import { debugLayer } from 'src/client/ui/themes/bowling/layers/debug.layer'
 import { gameStatusLayer } from 'src/client/ui/themes/bowling/layers/gameStatus.layer'
@@ -31,8 +31,9 @@ const IS_DEV = process.env.NODE_ENV === 'development'
 // MARK: layers
 /**
  * Bowling layer list.
- * Leave sits under game status in paint order. The roll HUD, including the
- * bumper toggle, lives in bowling controls. Click-to-set is the square
+ * Leave sits under game status in paint order. The position/direction/strength
+ * bar lives in bowling controls. The bumper toggle is its own layer: beside
+ * the bar on desktop, bottom-left on mobile. Click-to-set is the square
  * bottom-right button (click on desktop, tap on mobile). Customization sits
  * above gameplay HUD; records and stats sit with it. The top-right toggles paint after
  * those windows. Ticket balance sits in the top of the right zone.
@@ -49,6 +50,7 @@ export const layers: Layer[] = [
 	gameStatusLayer,
 	scoresLayer,
 	bowlingControlsLayer,
+	bumperToggleLayer,
 	clickToSetLayer,
 	laneLobbyLayer,
 	letterboxLayer,

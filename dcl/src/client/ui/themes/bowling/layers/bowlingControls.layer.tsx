@@ -49,31 +49,35 @@ const CLICK_SPIN_ID        = 'bowling-click-to-set-spin'
 const CLICK_SPIN_DURATION  = 6
 const SPINNER_BEAMS_SRC    = 'assets/images/ui-component-kit/spinner-beams-varied.png'
 
-const CONTROLS_WIDTH          = 960
 const INDICATOR_WIDTH         = 900
 const INDICATOR_HEIGHT        = 78
 const INDICATOR_MARGIN_BOTTOM = 32
-const CLICK_HEIGHT         = 107
-const CLICK_SIZE           = 228
-const CLICK_CORNER_INSET   = 8
-const CLICK_SPIN_SIZE      = CLICK_SIZE * 2
-const CLICK_PULSE_BOX      = CLICK_SIZE * CLICK_PULSE_SCALE
-const CLICK_PULSE_MIN      = 1 / CLICK_PULSE_SCALE
-const CLICK_PULSE_OFFSET   = (CLICK_SIZE - CLICK_PULSE_BOX) / 2
-const CLICK_ONCE_WRAP      = `${CLICK_PULSE_SCALE * 100}%`
-const CLICK_ONCE_REST      = `${100 / CLICK_PULSE_SCALE}%`
-const CLICK_ONCE_ORIGIN    = `${((1 - CLICK_PULSE_SCALE) / 2) * 100}%`
-const CLICK_BORDER         = 4
-const CLICK_RADIUS         = 12
-const BUMPER_SIZE          = CLICK_HEIGHT
-const BUMPER_ICON          = 48
-const BUMPER_LABEL_HEIGHT  = 16
-const BUMPER_GAP           = 8
-const BUMPER_LEFT          = CONTROLS_WIDTH / 2 + INDICATOR_WIDTH / 2 + BUMPER_GAP
-const BUMPER_TOP           = (CLICK_HEIGHT - BUMPER_SIZE) / 2
-const BUMPER_SPIN_ID       = 'bowling-bumper-spin'
-const BUMPER_SPIN_DEGREES  = 720
-const BUMPER_SPIN_DURATION = 0.5
+// BottomCenter's `left: 25%` plus a fixed pixel width only centers on the
+// 1920 desktop canvas. Mobile's virtual canvas is 1600, so these layers span
+// the full width and center (or corner-pin) their content in body().
+const HUD_EDGE_INSET          = 8
+const CORNER_MARGIN           = 64
+const CLICK_SIZE              = 228
+const CLICK_SPIN_SIZE         = CLICK_SIZE * 2
+const CLICK_PULSE_BOX         = CLICK_SIZE * CLICK_PULSE_SCALE
+const CLICK_PULSE_MIN         = 1 / CLICK_PULSE_SCALE
+const CLICK_PULSE_OFFSET      = (CLICK_SIZE - CLICK_PULSE_BOX) / 2
+const CLICK_ONCE_WRAP         = `${CLICK_PULSE_SCALE * 100}%`
+const CLICK_ONCE_REST         = `${100 / CLICK_PULSE_SCALE}%`
+const CLICK_ONCE_ORIGIN       = `${((1 - CLICK_PULSE_SCALE) / 2) * 100}%`
+const CLICK_BORDER            = 4
+const CLICK_RADIUS            = 12
+const BUMPER_SIZE             = 107
+const BUMPER_ICON             = 48
+const BUMPER_LABEL_HEIGHT     = 16
+const BUMPER_GAP              = 8
+const BUMPER_TRACK_WIDTH      = INDICATOR_WIDTH + (BUMPER_GAP + BUMPER_SIZE) * 2
+const BUMPER_SPIN_ID          = 'bowling-bumper-spin'
+const BUMPER_SPIN_DEGREES     = 720
+const BUMPER_SPIN_DURATION    = 0.5
+const MOBILE_BUMPER_LIFT      = 128
+const MOBILE_BUMPER_LEFT      = HUD_EDGE_INSET + CORNER_MARGIN
+const MOBILE_BUMPER_BOTTOM    = CORNER_MARGIN + MOBILE_BUMPER_LIFT
 
 type BowlingControlsProps = {
 	indicatorOffset: number
@@ -116,8 +120,9 @@ function tweenColor<T extends Record<string, Color4 | number>>(
 
 // MARK: BowlingControlsLayer
 /**
- * Bottom-center roll HUD: bumper toggle and the position/direction/strength tab.
- * Click-to-set is a separate bottom-right layer.
+ * Bottom-center roll HUD: the position/direction/strength tab.
+ * The bumper toggle and click-to-set are separate layers so they cannot
+ * change this bar's box.
  */
 export class BowlingControlsLayer extends Layer {
 	private controlProps: PropsController<BowlingControlsProps>
@@ -131,9 +136,12 @@ export class BowlingControlsLayer extends Layer {
 			showFrom   : 'bottom',
 			hideTo     : 'bottom',
 			uiTransform: {
-				width   : CONTROLS_WIDTH,
-				height  : 320,
-				overflow: 'visible',
+				width        : '100%',
+				height       : INDICATOR_HEIGHT + INDICATOR_MARGIN_BOTTOM,
+				overflow     : 'visible',
+				pointerFilter: 'none',
+				padding      : { bottom: INDICATOR_MARGIN_BOTTOM },
+				position     : { left: 0, right: 0, bottom: HUD_EDGE_INSET },
 			},
 		})
 
@@ -192,11 +200,113 @@ export class BowlingControlsLayer extends Layer {
 	}
 
 
+	// MARK: body
+	protected body() {
+		const theme = getTheme()
+		const props = this.controlProps
+
+		const indicatorOffset = props.get('indicatorOffset')
+		const positionColor   = props.get('positionColor')
+		const directionColor  = props.get('directionColor')
+		const strengthColor   = props.get('strengthColor')
+
+		return [
+			<UiBox
+				key             = "indicator_box"
+				width           = {INDICATOR_WIDTH}
+				height          = {INDICATOR_HEIGHT}
+				borderColor     = {theme.colors.primary}
+				borderWidth     = {4}
+				borderRadius    = {12}
+				backgroundColor = {theme.colors.secondary}
+				justifyContent  = "center"
+				alignItems      = "center"
+			>
+				<UiBox
+					key             = "indicator_tab"
+					width           = {300}
+					height          = {66}
+					borderRadius    = {8}
+					backgroundColor = {theme.colors.primary}
+					uiTransform     = {{
+						positionType: 'absolute',
+						position    : { left: indicatorOffset, top: 2 },
+					}}
+				/>
+				<UiBox
+					key            = "indicator_labels"
+					width          = {INDICATOR_WIDTH}
+					height         = {INDICATOR_HEIGHT}
+					justifyContent = "space-between"
+					alignItems     = "center"
+					padding        = {{ left: 24, right: 24 }}
+					borderWidth    = {0}
+					uiTransform    = {{ flexDirection: 'row' }}
+				>
+					<Icon
+						src       = {bowlingIconAtlas.source}
+						uvs       = {bowlingIconAtlas.uv.position}
+						width     = {256}
+						height    = {64}
+						iconColor = {positionColor}
+					/>
+					<Icon
+						src       = {bowlingIconAtlas.source}
+						uvs       = {bowlingIconAtlas.uv.direction}
+						width     = {256}
+						height    = {64}
+						iconColor = {directionColor}
+					/>
+					<Icon
+						src       = {bowlingIconAtlas.source}
+						uvs       = {bowlingIconAtlas.uv.strength}
+						width     = {256}
+						height    = {64}
+						iconColor = {strengthColor}
+					/>
+				</UiBox>
+			</UiBox>,
+		]
+	}
+}
+
+export const bowlingControlsLayer = new BowlingControlsLayer()
+
+
+// MARK: BumperToggleLayer
+/**
+ * Lane-bumper toggle for the roll HUD.
+ * Desktop sits just to the right of the centered position/direction/strength bar.
+ * Mobile pins to the bottom-left corner, opposite tap-to-set.
+ * The icon spins two full turns on each click.
+ */
+export class BumperToggleLayer extends Layer {
+	constructor() {
+		super({
+			id         : 'bowling-bumper-toggle',
+			zone       : ZoneType.BottomCenter,
+			canBeHidden: true,
+			startHidden: true,
+			showFrom   : 'bottom',
+			hideTo     : 'bottom',
+			uiTransform: {
+				width        : '100%',
+				height       : BUMPER_SIZE + MOBILE_BUMPER_BOTTOM,
+				overflow     : 'visible',
+				pointerFilter: 'none',
+				position     : { left: 0, right: 0, bottom: HUD_EDGE_INSET },
+			},
+		})
+
+		eventBus.on(ClientEvents.ON_MY_ROLL_START, () => { this.show(0.8) })
+		eventBus.on(ClientEvents.ON_MY_ROLL_REQUEST, () => { this.hide(0.8) })
+		eventBus.on(ClientEvents.ON_MY_ROLL_END,     () => { this.hide(0.8) })
+		eventBus.on(ClientEvents.ON_GROUP_GAME_END,  () => { this.hide(0.8) })
+	}
+
+
 	// MARK: bumperButton
-	/**
-	 * Square toggle just to the right of the position/direction/strength bar.
-	 * The icon spins two full turns on each click.
-	 */
+	/** Square bumper toggle. Placement is owned by the desktop track or the mobile corner slot. */
 	private bumperButton() {
 		const theme   = getTheme()
 		const enabled = areLaneBumpersEnabled()
@@ -219,9 +329,7 @@ export class BowlingControlsLayer extends Layer {
 					playOnce(BUMPER_SPIN_ID)
 				}}
 				uiTransform     = {{
-					positionType: 'absolute',
-					position    : { left: BUMPER_LEFT, top: BUMPER_TOP },
-					padding     : { top: 8, bottom: 22 },
+					padding: { top: 8, bottom: 22 },
 				}}
 			>
 				<Spinner
@@ -264,101 +372,56 @@ export class BowlingControlsLayer extends Layer {
 
 	// MARK: body
 	protected body() {
-		const theme = getTheme()
-		const props = this.controlProps
-
-		const indicatorOffset = props.get('indicatorOffset')
-		const positionColor   = props.get('positionColor')
-		const directionColor  = props.get('directionColor')
-		const strengthColor   = props.get('strengthColor')
-
-		return [
-			<UiBox
-				key            = "bowling-controls-stack"
-				width          = {CONTROLS_WIDTH}
-				height         = {320}
-				alignItems     = "center"
-				justifyContent = "flex-end"
-				borderWidth    = {0}
-				overflow       = "visible"
-				uiTransform    = {{ flexDirection: 'column' }}
-			>
+		if (isMobile()) {
+			return [
 				<UiBox
-					key         = "bumper_row"
-					width       = {CONTROLS_WIDTH}
-					height      = {CLICK_HEIGHT}
+					key         = "bumper-mobile-slot"
+					width       = {BUMPER_SIZE}
+					height      = {BUMPER_SIZE}
 					borderWidth = {0}
 					overflow    = "visible"
 					uiTransform = {{
 						positionType: 'absolute',
-						position    : { left: 0, bottom: INDICATOR_MARGIN_BOTTOM },
+						position    : { left: MOBILE_BUMPER_LEFT, bottom: MOBILE_BUMPER_BOTTOM },
 					}}
 				>
 					{this.bumperButton()}
-				</UiBox>
+				</UiBox>,
+			]
+		}
 
+		return [
+			<UiBox
+				key            = "bumper-desktop-track"
+				width          = "100%"
+				height         = "100%"
+				borderWidth    = {0}
+				overflow       = "visible"
+				pointerFilter  = "none"
+				justifyContent = "center"
+				alignItems     = "flex-end"
+				uiTransform    = {{ flexDirection: 'row' }}
+			>
 				<UiBox
-					key             = "indicator_box"
-					width           = {INDICATOR_WIDTH}
-					height          = {INDICATOR_HEIGHT}
-					borderColor     = {theme.colors.primary}
-					borderWidth     = {4}
-					borderRadius    = {12}
-					backgroundColor = {theme.colors.secondary}
-					justifyContent  = "center"
-					alignItems      = "center"
-					margin          = {{ top: 24, bottom: INDICATOR_MARGIN_BOTTOM }}
+					key            = "bumper-desktop-align"
+					width          = {BUMPER_TRACK_WIDTH}
+					height         = {BUMPER_SIZE}
+					borderWidth    = {0}
+					overflow       = "visible"
+					pointerFilter  = "none"
+					justifyContent = "flex-end"
+					alignItems     = "center"
+					margin         = {{ bottom: INDICATOR_MARGIN_BOTTOM }}
+					uiTransform    = {{ flexDirection: 'row' }}
 				>
-					<UiBox
-						key             = "indicator_tab"
-						width           = {300}
-						height          = {66}
-						borderRadius    = {8}
-						backgroundColor = {theme.colors.primary}
-						uiTransform     = {{
-							positionType: 'absolute',
-							position    : { left: indicatorOffset, top: 2 },
-						}}
-					/>
-					<UiBox
-						key            = "indicator_labels"
-						width          = {INDICATOR_WIDTH}
-						height         = {INDICATOR_HEIGHT}
-						justifyContent = "space-between"
-						alignItems     = "center"
-						padding        = {{ left: 24, right: 24 }}
-						borderWidth    = {0}
-						uiTransform    = {{ flexDirection: 'row' }}
-					>
-						<Icon
-							src       = {bowlingIconAtlas.source}
-							uvs       = {bowlingIconAtlas.uv.position}
-							width     = {256}
-							height    = {64}
-							iconColor = {positionColor}
-						/>
-						<Icon
-							src       = {bowlingIconAtlas.source}
-							uvs       = {bowlingIconAtlas.uv.direction}
-							width     = {256}
-							height    = {64}
-							iconColor = {directionColor}
-						/>
-						<Icon
-							src       = {bowlingIconAtlas.source}
-							uvs       = {bowlingIconAtlas.uv.strength}
-							width     = {256}
-							height    = {64}
-							iconColor = {strengthColor}
-						/>
-					</UiBox>
+					{this.bumperButton()}
 				</UiBox>
 			</UiBox>,
 		]
 	}
 }
 
-export const bowlingControlsLayer = new BowlingControlsLayer()
+export const bumperToggleLayer = new BumperToggleLayer()
 
 
 // MARK: ClickToSetLayer
@@ -383,9 +446,9 @@ export class ClickToSetLayer extends Layer {
 				width   : CLICK_SIZE,
 				height  : CLICK_SIZE,
 				overflow: 'visible',
-				margin  : { bottom: 64, right: 64 },
+				margin  : { bottom: CORNER_MARGIN, right: CORNER_MARGIN },
 				// Pixel corner. Mobile BottomRight's percentage `right` is placed from the left edge.
-				position: { right: CLICK_CORNER_INSET, bottom: CLICK_CORNER_INSET },
+				position: { right: HUD_EDGE_INSET, bottom: HUD_EDGE_INSET },
 			},
 		})
 
