@@ -158,11 +158,15 @@ export class LaneLobbyLayer extends Layer {
 
 
 	// MARK: close
-	/** Hides the panel and clears optimistic frame state. */
+	/**
+	 * Hides the panel and clears optimistic frame state.
+	 * Duration is 0 so a zone-exit hide cannot keep writing the off-screen
+	 * position after the next zone's show tween has finished.
+	 */
 	close(): void {
 		this.pendingFrameCount  = null
 		this.flushPendingFrames = false
-		this.hide(0.3)
+		this.hide(0)
 	}
 
 

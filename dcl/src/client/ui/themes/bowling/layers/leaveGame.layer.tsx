@@ -33,13 +33,24 @@ function requestLeaveGame() {
 }
 
 
+// MARK: isMatchStarted
+/** True once the local player's lane is past the lobby and the start countdown. */
+function isMatchStarted(): boolean {
+	const status = clientStore.getPlayerStatus()
+	return (
+		status === PlayerStatus.IN_GAME_WAITING
+		|| status === PlayerStatus.IN_GAME_PLAYING
+	)
+}
+
+
 // MARK: LeaveGameLayer
 /**
- * Top-center leave button, shown while the local player is in a game.
+ * Top-center leave button, shown once a match has started.
  * Offset by the status-panel height plus a gap so it sits below that HUD.
  */
 export class LeaveGameLayer extends Layer {
-	private wasInGame             = false
+	private wasMatchStarted       = false
 	private suppressedByLetterbox = false
 
 	constructor() {
@@ -58,14 +69,14 @@ export class LeaveGameLayer extends Layer {
 		onLetterboxHidden(() => { this.restoreAfterLetterbox() })
 
 		engine.addSystem(() => {
-			const isInGame = clientStore.getPlayerStatus() !== PlayerStatus.IDLE
+			const matchStarted = isMatchStarted()
 			if (this.suppressedByLetterbox) {
-				this.wasInGame = isInGame
+				this.wasMatchStarted = matchStarted
 				return
 			}
-			if (isInGame === this.wasInGame) return
-			this.wasInGame = isInGame
-			if (isInGame) {
+			if (matchStarted === this.wasMatchStarted) return
+			this.wasMatchStarted = matchStarted
+			if (matchStarted) {
 				this.show(0)
 			} else {
 				this.hide(0)
@@ -85,13 +96,13 @@ export class LeaveGameLayer extends Layer {
 
 	// MARK: restoreAfterLetterbox
 	/**
-	 * Brings the leave button back only when the local player is still in a game.
+	 * Brings the leave button back only when a match is still underway.
 	 */
 	private restoreAfterLetterbox() {
-		const isInGame = clientStore.getPlayerStatus() !== PlayerStatus.IDLE
+		const matchStarted = isMatchStarted()
 		this.suppressedByLetterbox = false
-		this.wasInGame            = isInGame
-		if (isInGame) this.show(LETTERBOX_HUD_DURATION)
+		this.wasMatchStarted       = matchStarted
+		if (matchStarted) this.show(LETTERBOX_HUD_DURATION)
 		else if (!this.visibility.isHidden) this.hide(0)
 	}
 

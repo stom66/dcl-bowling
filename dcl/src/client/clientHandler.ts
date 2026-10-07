@@ -5,6 +5,7 @@ import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 import { userProfileCache } from 'src/shared/utils/userProfileCache'
 
 import { ClientStore } from 'src/client/clientStore'
+import { isLobbyJoinDesired } from 'src/client/laneLobbies'
 import { LaneStore } from 'src/shared/laneStore'
 
 
@@ -35,6 +36,10 @@ export namespace ClientHandler {
 	function handleNotifyJoinGame(data: NotifyJoinGamePayload) {
 		console.log('ClientHandler: handleNotifyJoinGame: data', data)
 		clockSync.updateOffset(data.sentAt)
+		if (!isLobbyJoinDesired(data.laneIndex)) {
+			console.log('ClientHandler: handleNotifyJoinGame: ignoring confirm, laneIndex', data.laneIndex)
+			return
+		}
 		clientStore.setLaneIndex(data.laneIndex)
 	}
 

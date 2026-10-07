@@ -52,6 +52,9 @@ const lobbies: LobbyEntities[] = []
 const lastHologramPhase: (LanePhase | undefined)[] = []
 const clientStore = ClientStore.getInstance()
 
+/** Lane the local player means to be enrolled in. Cleared when they leave the lobby. */
+let desiredLane: number | undefined = undefined
+
 
 // MARK: isLaneJoinable
 /** True when a player may enroll in this lane's lobby. */
@@ -132,6 +135,16 @@ function applyHologramStatus(
 }
 
 
+// MARK: isLobbyJoinDesired
+/**
+ * True when a join confirm for this 0-based lane should enroll the local player.
+ * Confirms for a lobby they already walked out of are ignored.
+ */
+export function isLobbyJoinDesired(laneIndex: number): boolean {
+	return desiredLane === laneIndex
+}
+
+
 // MARK: onLobbyEnter
 /** Shows lobby UI and joins the lane when it is free / starting. */
 function onLobbyEnter(laneIndex: number): void {
@@ -144,8 +157,12 @@ function onLobbyEnter(laneIndex: number): void {
 	ShowLaneLobbyUI(laneIndex, isLaneOccupied(phase))
 
 	if (!isLaneJoinable(phase)) return
-	if (clientStore.getLaneIndex() === laneIndex) return
+	if (clientStore.getLaneIndex() === laneIndex) {
+		desiredLane = laneIndex
+		return
+	}
 
+	desiredLane = laneIndex
 	ClientMessaging.requestJoinLobby(laneIndex + 1)
 }
 
@@ -154,17 +171,28 @@ function onLobbyEnter(laneIndex: number): void {
 /**
  * Hides lobby UI. Leaves the server lobby only while still waiting
  * (not after the game has started and the player was moved to the lane).
+ * Also leaves when the join was sent but the confirm has not arrived yet.
  */
 function onLobbyExit(laneIndex: number): void {
 	console.log('LaneLobbies: onLobbyExit: laneIndex', laneIndex)
 
 	HideLaneLobbyUI()
 
-	if (clientStore.getLaneIndex() !== laneIndex) return
+	const enrolledHere = clientStore.getLaneIndex() === laneIndex
+	const joinPending  = desiredLane === laneIndex && !enrolledHere
+	if (!enrolledHere && !joinPending) return
 
-	const phase = LaneStore.getPhase(laneIndex)
-	if (phase !== LanePhase.LOBBY && phase !== LanePhase.GAME_STARTING) return
+	const phase = LaneStore.areLanesReady()
+		? LaneStore.getPhase(laneIndex)
+		: LanePhase.NONE
+	const matchStarted = (
+		phase !== LanePhase.NONE
+		&& phase !== LanePhase.LOBBY
+		&& phase !== LanePhase.GAME_STARTING
+	)
+	if (matchStarted) return
 
+	desiredLane = undefined
 	ClientMessaging.requestLeaveLobby()
 }
 
