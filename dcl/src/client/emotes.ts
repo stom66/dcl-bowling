@@ -1,6 +1,7 @@
 import { engine, Transform } from "@dcl/sdk/ecs"
-import { movePlayerTo, triggerEmote, triggerSceneEmote } from "~system/RestrictedActions"
+import { movePlayerTo, stopEmote, triggerEmote, triggerSceneEmote } from "~system/RestrictedActions"
 import * as utils from "@dcl-sdk/utils"
+import { ClientEvents, eventBus } from "src/shared/utils/eventBus"
 import { FreezePlayer, UnFreezePlayer } from "src/shared/utils/inputModifiers"
 
 const EMOTE_SRC               = 'assets/emotes/bowl6_emote.glb'
@@ -25,7 +26,8 @@ const OPEN_RESULT_EMOTES   = [
 	'kiss',
 ]
 
-let emoteActive = false
+let emoteActive       = false
+let resultEmoteActive = false
 
 export function PlayBowlingAnimation(loop: boolean) {
 	if (emoteActive) return
@@ -88,5 +90,31 @@ export function PlayRollResultEmote(
 
 	const predefinedEmote = pickEmote(emotes)
 	console.log('emotes: PlayRollResultEmote:', predefinedEmote)
+	resultEmoteActive = true
 	void triggerEmote({ predefinedEmote })
+}
+
+
+// MARK: StopRollResultEmote
+/**
+ * Stops the local player's current emote. `stopEmote` ends a built-in or scene
+ * emote, including one that loops.
+ */
+export function StopRollResultEmote(): void {
+	if (!resultEmoteActive) return
+	resultEmoteActive = false
+	console.log('emotes: StopRollResultEmote')
+	void stopEmote({})
+}
+
+
+// MARK: init
+/**
+ * Stops a result emote when the local player's next roll starts, so a looping
+ * emote such as cry does not carry into the lane.
+ */
+export function init(): void {
+	eventBus.on(ClientEvents.ON_MY_ROLL_START, () => {
+		StopRollResultEmote()
+	})
 }

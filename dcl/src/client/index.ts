@@ -14,6 +14,7 @@ import { FreezePlayer, UnFreezePlayer } from 'src/shared/utils/inputModifiers'
 import { CameraController } from 'src/client/cameraController'
 import { ClientHandler } from 'src/client/clientHandler'
 import { ClientStore } from 'src/client/clientStore'
+import { init as initResultEmotes } from 'src/client/emotes'
 import { gameStateHandler } from 'src/client/gameStateHandler'
 import { GltfSpawner } from 'src/client/gltfSpawner'
 import { setupLaneLobbies } from 'src/client/laneLobbies'
@@ -174,6 +175,7 @@ export async function initClient() {
 	LaneModels.init()
 	playerMover.init()
 	CameraController.init()
+	initResultEmotes()
 	SoundManager.init()
 	ParticleSpawner.init()
 	UiWorld.init()
@@ -182,6 +184,6 @@ export async function initClient() {
 
 	setupLaneLobbies()
 	setupLights()
-	SkyboxObjects.init()
+	await SkyboxObjects.init()
 	onGameLoaded()
 }
