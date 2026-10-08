@@ -21,6 +21,7 @@ import { PlayerStats } from 'src/shared/components/definitions/shared.playerStat
 import { PlayerTickets } from 'src/shared/components/definitions/shared.playerTickets'
 import { LaneStore } from 'src/shared/laneStore'
 import { GameSettings } from 'src/shared/settings'
+import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 import { userProfileCache } from 'src/shared/utils/userProfileCache'
 
 import { CameraController } from 'src/client/cameraController'
@@ -196,6 +197,32 @@ export class DebugLayer extends Layer {
 	}
 
 
+	// MARK: emitMyRollStart
+	/**
+	 * Fires the local roll-start event with a full pin rack.
+	 */
+	private emitMyRollStart() {
+		const now = Date.now()
+		eventBus.emit(ClientEvents.ON_MY_ROLL_START, {
+			userId            : clientStore.getUserId(),
+			pinStanding       : new Array(10).fill(true),
+			rollStartTimestamp: now,
+			sentAt            : now,
+		})
+	}
+
+
+	// MARK: emitMyRollEnd
+	/**
+	 * Fires the local roll-end event for the current user.
+	 */
+	private emitMyRollEnd() {
+		eventBus.emit(ClientEvents.ON_MY_ROLL_END, {
+			userId: clientStore.getUserId(),
+		})
+	}
+
+
 	// MARK: body
 	protected body() {
 		const theme = getTheme()
@@ -243,6 +270,34 @@ export class DebugLayer extends Layer {
 					callback  = {() => {
 						CameraController.triggerFlyInCamera()
 					}}
+					uiTransform = {{
+						positionType: 'relative',
+						position    : { top: 0, left: 0 },
+					}}
+				/>
+
+				<ButtonText
+					id        = "debug_my_roll_start"
+					textLabel = "My Roll Start"
+					width     = "100%"
+					height    = {18}
+					minHeight = {18}
+					fontSize  = {DEBUG_FONT_SIZE}
+					callback  = {() => { this.emitMyRollStart() }}
+					uiTransform = {{
+						positionType: 'relative',
+						position    : { top: 0, left: 0 },
+					}}
+				/>
+
+				<ButtonText
+					id        = "debug_my_roll_end"
+					textLabel = "My Roll End"
+					width     = "100%"
+					height    = {18}
+					minHeight = {18}
+					fontSize  = {DEBUG_FONT_SIZE}
+					callback  = {() => { this.emitMyRollEnd() }}
 					uiTransform = {{
 						positionType: 'relative',
 						position    : { top: 0, left: 0 },
