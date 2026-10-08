@@ -41,7 +41,7 @@ export class GameSettings {
 		10: 300,
 	}
 
-	static GAME_START_COUNTDOWN_DURATION  = 1000 * (IS_DEBUG ? 5 : 10)
+	static GAME_START_COUNTDOWN_DURATION  = 1000 * (IS_DEBUG ? 2 : 10)
 	static GAME_START_INITIAL_DELAY       = 1000 * 1                      // Time between starting the game, and starting the first frame
 	static FRAME_DELAY_BEFORE_ROLL_START  = 1000 * 2                      // How long to wait before the roll starts after the frame starts
 	static FRAME_DELAY_BETWEEN_TURNS      = 1000 * 3                      // How long to wait between Frames
