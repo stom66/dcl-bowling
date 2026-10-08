@@ -319,6 +319,7 @@ export const bowlingThemeAssets = {
 	laneNumbers    : `${THEME_ASSET_PATH}/lane-numbers.png`,
 	loadingOverlay : `${THEME_ASSET_PATH}/loading-overlay.png`,
 	lockerHeader   : `${THEME_ASSET_PATH}/bg-customisation.png`,
+	spinnerBalls   : `${THEME_ASSET_PATH}/tex-spinner-balls.png`,
 }
 
 

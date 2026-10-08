@@ -1,6 +1,6 @@
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs from '@dcl/sdk/react-ecs'
-import { alpha, atlasIconsFontAwesome, Background, easingFunctions, getTheme, Icon, Label, Layer, Spinner, tweenValue, UiBox, ZoneType } from '@stom66/dcl-ui-component-kit'
+import { alpha, Background, easingFunctions, getTheme, Icon, Label, Layer, Spinner, tweenValue, UiBox, ZoneType } from '@stom66/dcl-ui-component-kit'
 
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 import { timers } from 'src/shared/utils/timers'
@@ -12,8 +12,8 @@ import { bowlingThemeAssets } from 'src/client/ui/themes/bowling/atlases'
 const LOADING_FAILED_TIMEOUT = 1000 * 6
 const FADE_OUT_DURATION      = 0.5
 const LOADING_PANEL_SIZE     = 512
-const LOADING_SPINNER_SIZE   = 164
-const LOADING_SPINNER_BOTTOM = 26
+const LOADING_SPINNER_SIZE   = 300
+const LOADING_SPINNER_BOTTOM = -72
 let loadingFailedVisible     = false
 
 timers.setTimeout(() => {
@@ -109,12 +109,14 @@ export class LoadingLayer extends Layer {
 				borderWidth     = {0}
 			/>,
 			<UiBox
-				key          = "loading-panel"
-				width        = {LOADING_PANEL_SIZE}
-				height       = {LOADING_PANEL_SIZE}
-				borderWidth  = {0}
-				alignItems   = "center"
-				uiBackground = {{
+				key            = "loading-panel"
+				width          = {LOADING_PANEL_SIZE}
+				height         = {LOADING_PANEL_SIZE}
+				borderWidth    = {0}
+				alignItems     = "center"
+				alignContent   = 'center'
+				justifyContent = 'center'
+				uiBackground   = {{
 					color      : imageColor,
 					texture    : { src: bowlingThemeAssets.loadingOverlay, wrapMode: 'clamp' },
 					textureMode: 'stretch',
@@ -124,19 +126,19 @@ export class LoadingLayer extends Layer {
 					key           = "loading-spinner"
 					id            = "loading-spinner"
 					duration      = {1}
-					degrees       = {360}
+					degrees       = {180}
 					burstInterval = {0}
 					width         = {LOADING_SPINNER_SIZE}
 					height        = {LOADING_SPINNER_SIZE}
 					positionType  = "absolute"
 					position      = {{
-						left  : '50%',
+						left  : LOADING_PANEL_SIZE / 2,
 						bottom: LOADING_SPINNER_BOTTOM,
 					}}
 					margin        = {{ left: -LOADING_SPINNER_SIZE / 2 }}
 				>
 					<Icon
-						uvs       = {atlasIconsFontAwesome.uv.dots}
+						src       = {bowlingThemeAssets.spinnerBalls}
 						iconColor = {imageColor}
 						width     = {LOADING_SPINNER_SIZE}
 						height    = {LOADING_SPINNER_SIZE}
@@ -150,7 +152,9 @@ export class LoadingLayer extends Layer {
 					uiTransform     = {{
 						display     : loadingFailedVisible ? 'flex' : 'none',
 						positionType: 'absolute',
-						position    : { bottom: '-8%' },
+						position    : {
+							bottom: -128,
+						}
 					}}
 					value           = {`Waiting for ${getLoadingStage()}`}
 				/>
