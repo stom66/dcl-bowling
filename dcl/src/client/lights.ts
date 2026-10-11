@@ -3,16 +3,15 @@ import { Color3, Quaternion, Vector3 } from "@dcl/sdk/math"
 import { getPlatform, isMobile } from "@dcl/sdk/platform"
 
 import { getRootPosition } from "src/client/data/lanePositions"
-import { GameSettings } from "src/server/physics/physics.settings"
 
 
-const SHOW_LIGHT_MESH = false
+const SHOW_LIGHT_MESH = true
 
 const LOBBY_SHADOW_MASK = 'assets/images/spotlights/shadowmask-lobby.png'
 const LANE_SHADOW_MASK  = 'assets/images/spotlights/shadowmask-lobby.png'
 
 /** Candela for the two lights above the pin deck on desktop. */
-const BACK_LIGHT_INTENSITY = 125000
+const BACK_LIGHT_INTENSITY = 500000
 
 /**
  * Mobile renders the same candela much brighter than desktop.
@@ -21,101 +20,120 @@ const BACK_LIGHT_INTENSITY = 125000
  */
 const MOBILE_BACK_LIGHT_SCALE = 0.1
 
+const SPOTLIGHT_COLOR = Color3.fromHexString('#FFF29D')
+
+/** Downward beam used when a spotlight does not pass its own rotation. */
+const DEFAULT_SPOT_ROTATION = Quaternion.fromEulerDegrees(90, 0, 0)
+
+
+type SpawnLightConfig = {
+	parent?            : Entity
+	position           : Vector3
+	rotation?          : Quaternion
+	color?             : Color3
+	intensity?         : number
+	range?             : number
+	innerAngle?        : number
+	outerAngle?        : number
+	shadowMaskTexture? : string
+	type?              : 'point' | 'spot'
+}
+
 
 // MARK: setupLights
 /**
- * Adds the lobby point light and the two pin-deck lights.
+ * Adds the lobby point light, the two pin-deck lights, and the hall-of-fame spotlight.
  * Pin-deck intensity is lowered on mobile once the explorer reports its platform.
  */
 export function setupLights() {
 	const rootEntity = engine.addEntity()
 	Transform.create(rootEntity, { position: getRootPosition() })
 
-	// Add a light above the front desk
-	const light1 = engine.addEntity()
-	Transform.create(light1, {
-		parent  : rootEntity,
-		position: Vector3.create(0, 12, 0)
+	const lobbyLight = spawnLight({
+		parent           : rootEntity,
+		position         : Vector3.create(0, 12, 0),
+		intensity        : 500000,
+		shadowMaskTexture: LOBBY_SHADOW_MASK,
+		type             : 'point',
 	})
-	LightSource.create(light1, {
-		active            : true,
-		color             : Color3.White(),
-		intensity         : 500000,
-		range             : 128,
-		shadowMaskTexture : Material.Texture.Common({ src: LOBBY_SHADOW_MASK }),
-		type              : LightSource.Type.Point({}),
-	})
-	if (SHOW_LIGHT_MESH) MeshRenderer.setSphere(light1)
 
-	// Add a light at the back of the bowling alley
-	const light2 = engine.addEntity()
-	Transform.create(light2, {
-		parent  : rootEntity,
-		position: Vector3.create(-12, 20, 46)
+	const pinDeckLeft = spawnLight({
+		parent           : rootEntity,
+		position         : Vector3.create(-12, 12, 50),
+		intensity        : BACK_LIGHT_INTENSITY,
+		shadowMaskTexture: LANE_SHADOW_MASK,
+		type             : 'point',
 	})
-	LightSource.create(light2, {
-		active            : true,
-		color             : Color3.White(),
-		intensity         : BACK_LIGHT_INTENSITY,
-		range             : 128,
-		shadowMaskTexture : Material.Texture.Common({ src: LANE_SHADOW_MASK }),
-		type              : LightSource.Type.Point({}),
-	})
-	if (SHOW_LIGHT_MESH) MeshRenderer.setSphere(light2)
 
-	// Add a light at the back of the bowling alley
-	const light3 = engine.addEntity()
-	Transform.create(light3, {
-		parent  : rootEntity,
-		position: Vector3.create(12, 20, 46)
+	const pinDeckRight = spawnLight({
+		parent           : rootEntity,
+		position         : Vector3.create(12, 12, 50),
+		intensity        : BACK_LIGHT_INTENSITY,
+		shadowMaskTexture: LANE_SHADOW_MASK,
+		type             : 'point',
 	})
-	LightSource.create(light3, {
-		active            : true,
-		color             : Color3.White(),
-		intensity         : BACK_LIGHT_INTENSITY,
-		range             : 128,
-		shadowMaskTexture : Material.Texture.Common({ src: LANE_SHADOW_MASK }),
-		type              : LightSource.Type.Point({}),
+
+	// Hall of fame boards are placed in world space, same as this spotlight.
+	const hallOfFame = spawnLight({
+		position: Vector3.create(-14, 135, 12),
+		shadowMaskTexture: LOBBY_SHADOW_MASK,
+		intensity: 250000,
 	})
-	if (SHOW_LIGHT_MESH) MeshRenderer.setSphere(light3)
+
+	// Hall of fame boards are placed in world space, same as this spotlight.
+	const arcade = spawnLight({
+		position: Vector3.create(22, 138, 23),
+	})
+
+	applyMobileIntensityWhenReady([pinDeckLeft, pinDeckRight])
+}
 
 
-	const hallOfFame = engine.addEntity()
-	Transform.create(hallOfFame, {
-		position            : Vector3.create(-14, 135, 12),
-		rotation            : Quaternion.fromEulerDegrees(90, 0, 0)
-	 })
-	LightSource.create(hallOfFame, {
-		type                : LightSource.Type.Spot({
-			innerAngle         : 110,
-			outerAngle         : 140,
-		}),
-		color               : Color3.fromHexString('#FFF29D'),
-		intensity           : 150000
+// MARK: spawnLight
+/**
+ * Creates a light and returns its entity.
+ * Defaults to a downward spotlight. Pass `type: 'point'` for an omnidirectional light.
+ * `position` is local to `parent` when a parent is set, and world space otherwise.
+ */
+function spawnLight({
+	parent,
+	position,
+	rotation,
+	color             = SPOTLIGHT_COLOR,
+	intensity         = 250000,
+	range             = 128,
+	innerAngle        = 110,
+	outerAngle        = 140,
+	shadowMaskTexture,
+	type              = 'spot',
+}: SpawnLightConfig): Entity {
+	const entity = engine.addEntity()
+	Transform.create(entity, {
+		parent  : parent,
+		position: position,
+		rotation: rotation ?? (type === 'spot' ? DEFAULT_SPOT_ROTATION : Quaternion.Identity()),
 	})
-	if (SHOW_LIGHT_MESH) MeshRenderer.setSphere(hallOfFame)
 
-	applyMobileIntensityWhenReady([light2, light3])
-
-	// Add a light at the back of the bowling alley
-/* 	const testLight = engine.addEntity()
-	Transform.create(testLight, {
-		position: Vector3.create(16, 5, 9),
-		rotation: Quaternion.fromEulerDegrees(90, 0, 0)
-	 })
-	LightSource.create(testLight, {
-		type: LightSource.Type.Spot({
-			innerAngle: 10,
-			outerAngle: 20,
-		}),
-		color: Color3.White(),
-		intensity: 5000000,
-		// use one of the unlocked spotlight masks
-		shadowMaskTexture: Material.Texture.Common({
-			src: 'assets/images/unlocks/spotlights/spotlight-arrowBurst.png'
+	const lightType = type === 'point'
+		? LightSource.Type.Point({})
+		: LightSource.Type.Spot({
+			innerAngle: innerAngle,
+			outerAngle: outerAngle,
 		})
+
+	LightSource.create(entity, {
+		active            : true,
+		color             : color,
+		intensity         : intensity,
+		range             : range,
+		shadowMaskTexture : shadowMaskTexture
+			? Material.Texture.Common({ src: shadowMaskTexture })
+			: undefined,
+		type              : lightType,
 	})
-	MeshRenderer.setSphere(testLight) */
+	if (SHOW_LIGHT_MESH) MeshRenderer.setSphere(entity)
+
+	return entity
 }
 
 
