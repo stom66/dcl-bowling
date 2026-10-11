@@ -25,16 +25,15 @@ export class PlayerSettings {
 export class GameSettings {
 
 	static LOADING_SCREEN_DELAY           = IS_DEBUG ? 1000 * 2 : 1000 * 2
-	/** Virtual-camera fly-in after the loading screen starts to fade, in ms. */
 	static LOADING_CAMERA_FLY_IN_DURATION = IS_DEBUG ? 1000 * 1 : 1000 * 7.5
 
 	static SERVER_TIME_UPDATE_INTERVAL    = (IS_DEBUG ? 15: 30) * 1000
 
+	// Lane and game settings
 	static MAX_LANES                      = 6
 	static MAX_PLAYERS_PER_GAME           = IS_DEBUG ? 2 : 5
 	static GAME_FRAME_COUNTS              = [3, 6, 10] as const
 	static DEFAULT_FRAME_COUNT            : GameFrameCount = 6
-	static MAX_FRAMES_PER_GAME            = 10
 	static PERFECT_SCORE_BY_FRAME_COUNT   : Record<GameFrameCount, number> = {
 		3 : 90,
 		6 : 180,
