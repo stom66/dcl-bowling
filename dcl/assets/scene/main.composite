@@ -774,13 +774,17 @@
           "json": {
             "name": "Fastlane Bowling",
             "description": "Tonight, we bowl!\n\nLaunch into Fast Lane Bowling, a neon space-bowling showdown! Chase strikes, style your bowler, trigger effects, and take on three-, six or ten-frame glory!\n\nWarning: may contain pigeons.",
-            "thumbnail": "images/scene-thumbnail.png",
+            "thumbnail": "assets/images/capsule-1920x1080.png",
             "ageRating": "A",
             "categories": [],
             "author": "stom",
             "email": "",
             "tags": [],
             "layout": {
+              "base": {
+                "x": 0,
+                "y": 0
+              },
               "parcels": [
                 {
                   "x": -16,
@@ -5138,11 +5142,7 @@
                   "x": 16,
                   "y": 16
                 }
-              ],
-              "base": {
-                "x": 0,
-                "y": 0
-              }
+              ]
             },
             "silenceVoiceChat": false,
             "disablePortableExperiences": false,
