@@ -1,3 +1,4 @@
+import { engine, Transform } from '@dcl/sdk/ecs'
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs from '@dcl/sdk/react-ecs'
 import {
@@ -197,6 +198,21 @@ export class DebugLayer extends Layer {
 	}
 
 
+	// MARK: getPlayerPositionLabel
+	/**
+	 * Local player position. X and Z to two decimals; Y floored to three,
+	 * so a spawn that sits just under the floor does not round upward.
+	 */
+	private getPlayerPositionLabel(): string {
+		if (!Transform.has(engine.PlayerEntity)) return '-'
+		const position = Transform.get(engine.PlayerEntity).position
+		const x        = position.x.toFixed(2)
+		const y        = (Math.floor(position.y * 1000) / 1000).toFixed(3)
+		const z        = position.z.toFixed(2)
+		return `${x}, ${y}, ${z}`
+	}
+
+
 	// MARK: emitMyRollStart
 	/**
 	 * Fires the local roll-start event with a full pin rack.
@@ -341,6 +357,7 @@ export class DebugLayer extends Layer {
 				{this.field('displayName',  'displayName',  clientStore.getDisplayName())}
 				{this.field('userId',       'userId',       clientStore.getUserId())}
 				{this.field('playerStatus', 'playerStatus', clientStore.getPlayerStatus().toString())}
+				{this.field('position',     'position',     this.getPlayerPositionLabel())}
 
 				<Divider margin={{ top: 2, bottom: 2 }} thickness={1} />
 				{this.sectionTitle('debug-my-lane', 'My Lane (components)')}
