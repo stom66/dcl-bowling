@@ -1,4 +1,5 @@
 import { initClient } from "src/client/index";
+import "src/playtest-feedback";
 import { initServer } from "src/server/index";
 
 import { isServer } from "@dcl/sdk/network";

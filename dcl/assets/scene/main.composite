@@ -166,6 +166,11 @@
               }
             ]
           }
+        },
+        "513": {
+          "json": {
+            "states": []
+          }
         }
       }
     },
@@ -781,10 +786,6 @@
             "email": "",
             "tags": [],
             "layout": {
-              "base": {
-                "x": 0,
-                "y": 0
-              },
               "parcels": [
                 {
                   "x": -16,
@@ -5142,7 +5143,11 @@
                   "x": 16,
                   "y": 16
                 }
-              ]
+              ],
+              "base": {
+                "x": 0,
+                "y": 0
+              }
             },
             "silenceVoiceChat": false,
             "disablePortableExperiences": false,
