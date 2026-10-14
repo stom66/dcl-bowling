@@ -18,9 +18,17 @@ const ORBIT_HEIGHT             = [20,20]
 const ORBIT_TILT               = [-60, 60]
 const ORBIT_ORBIT_SPEED        = [0.05, 0.1]
 
-const CHILD_BALL_CHANCE        = 0.1
-const CHILD_BALL_SCALE         = 0.2
-const CHILD_BALL_DISTANCE      = 0.35
+const CHILD_BALL_CHANCE         = 0.2
+const CHILD_BALL_SCALE          = 0.2
+const CHILD_BALL_DISTANCE       = 0.35
+/** Degrees off the planet's orbital plane, so the moon stays out of the dust wake. */
+const CHILD_ORBIT_INCLINATION   = [55, 80]
+/** Radians per second around the tilted axis. */
+const CHILD_ORBIT_SPEED         = 2
+/** ParticleSystem ignores Transform.scale, so moon dust is sized explicitly. */
+const CHILD_PARTICLE_SIZE_SCALE = 3
+/** One planet's particle share. A quarter of that was about 2 particles per second. */
+const CHILD_PARTICLE_RATIO      = 1
 
 /** Unscaled bowling-ball mesh radius. Skybox `scale` is applied on top. */
 const BALL_MODEL_RADIUS        = 0.125
@@ -44,8 +52,11 @@ const METEOR_TRAIL_RATE        = 2
 const METEOR_FACE_TRAVEL       = Quaternion.lookRotation(Vector3.create(-1, 0, 0), Vector3.Up())
 
 //const PARTICLE_TRAIL_TEXTURE = 'assets/images/unlocks/trails/sprites-dust.png'
-const PARTICLE_TRAIL_MAX_COUNT = 256
-const PARTICLE_TRAIL_LIFESPAN  = 4.2
+/** Live particles shared equally by the orbiting balls. Meteor and child trails scale one ball's share. */
+const SKYBOX_PARTICLE_MAX_COUNT = 512
+const PARTICLE_TRAIL_LIFESPAN   = 2
+/** Half a planet trail. Emission rate doubles; the live count stays the same. */
+const CHILD_PARTICLE_LIFESPAN   = PARTICLE_TRAIL_LIFESPAN / 2
 
 
 export namespace SkyboxObjects {
@@ -139,7 +150,7 @@ export namespace SkyboxObjects {
 			2 * (180 / Math.PI),
 		)
 		attachDustTrail(ball, scale)
-		spawnChildBall(ball, scale)
+		spawnChildBall(ball, spinner, scale)
 	}
 
 
@@ -227,13 +238,16 @@ export namespace SkyboxObjects {
 	/**
 	 * Soft glowing dust left in a ball's wake. `scale` is world visual scale —
 	 * ParticleSystem ignores Transform.scale, so this must already include parent scale.
+	 * `sizeScale` multiplies particle size only, not the emitter radius.
 	 */
 	function attachDustTrail(
 		ball         : Entity,
 		scale        : number,
 		particleRatio: number = 1,
+		sizeScale    : number = 1,
+		lifetime     : number = PARTICLE_TRAIL_LIFESPAN,
 	): Entity | undefined {
-		return ParticleSpawner.spawn(dustConfig(scale, particleRatio), {
+		return ParticleSpawner.spawn(dustConfig(scale, particleRatio, sizeScale, lifetime), {
 			parent: ball,
 		})
 	}
@@ -243,20 +257,24 @@ export namespace SkyboxObjects {
 	function dustConfig(
 		scale        : number,
 		particleRatio: number,
+		sizeScale    : number,
+		lifetime     : number,
 	): PBParticleSystem {
-		const radius = BALL_MODEL_RADIUS * scale
+		const radius       = BALL_MODEL_RADIUS * scale
+		const maxParticles = particlesPerBall() * particleRatio
+		const particleSize = radius * sizeScale
 		return {
 			active               : true,
 			loop                 : true,
 			prewarm              : true,
-			rate                 : (PARTICLE_TRAIL_MAX_COUNT / PARTICLE_TRAIL_LIFESPAN) * particleRatio,
-			lifetime             : PARTICLE_TRAIL_LIFESPAN,
-			maxParticles         : PARTICLE_TRAIL_MAX_COUNT * particleRatio,
+			rate                 : maxParticles / lifetime,
+			lifetime             : lifetime,
+			maxParticles         : maxParticles,
 			gravity              : 0,
 			blendMode            : PBParticleSystem_BlendMode.PSB_ALPHA,
 			shape                : ParticleSystem.Shape.Sphere({ radius: radius * 0.85 }),
 			initialVelocitySpeed : { start: 0.04, end: 0.18 },
-			initialSize          : { start: radius * 0.01, end: radius * 0.125 },
+			initialSize          : { start: particleSize * 0.01, end: particleSize * 0.125 },
 			sizeOverTime         : { start: 1, end: 0 },
 			initialColor         : {
 				start : Color4.create(1.00, 0.96, 0.82, 0.42),
@@ -276,10 +294,26 @@ export namespace SkyboxObjects {
 	}
 
 
+	// MARK: particlesPerBall
+	/**
+	 * One orbiting ball's share of {@link SKYBOX_PARTICLE_MAX_COUNT}.
+	 */
+	function particlesPerBall(): number {
+		const ballCount = Object.keys(balls).length
+		if (ballCount <= 0) return 0
+		return SKYBOX_PARTICLE_MAX_COUNT / ballCount
+	}
+
+
 	// MARK: spawnChildBall
+	/**
+	 * Moon on a tilted orbit around the planet, clear of the planet's dust wake.
+	 * The rig is a sibling of the planet so the planet's own spin does not flatten the orbit.
+	 */
 	function spawnChildBall(
-		parent     : Entity,
-		parentScale: number,
+		planet     : Entity,
+		orbitParent: Entity,
+		planetScale: number,
 	): void {
 		if (Math.random() >= CHILD_BALL_CHANCE) return
 
@@ -287,24 +321,41 @@ export namespace SkyboxObjects {
 		const model   = catalog[Math.floor(Math.random() * catalog.length)]
 		if (!model) return
 
-		const angle = Math.random() * Math.PI * 2
+		const planetPosition = Transform.get(planet).position
+		const inclination    = randomRange(CHILD_ORBIT_INCLINATION[0], CHILD_ORBIT_INCLINATION[1]) * randomSign()
+		const worldScale     = planetScale * CHILD_BALL_SCALE
+
+		const moonPivot = engine.addEntity()
+		Transform.create(moonPivot, {
+			parent  : orbitParent,
+			position: planetPosition,
+			rotation: Quaternion.fromEulerDegrees(inclination, 0, 0),
+		})
+
+		const moonSpinner = engine.addEntity()
+		Transform.create(moonSpinner, {
+			parent  : moonPivot,
+			rotation: Quaternion.fromEulerDegrees(0, randomRange(0, 360), 0),
+		})
+		Tween.setRotateContinuous(
+			moonSpinner,
+			Quaternion.fromEulerDegrees(0, 1, 0),
+			CHILD_ORBIT_SPEED * randomSign() * (180 / Math.PI),
+		)
+
 		const child = engine.addEntity()
 		Transform.create(child, {
-			parent  : parent,
-			position: Vector3.create(
-				Math.cos(angle) * CHILD_BALL_DISTANCE,
-				0,
-				Math.sin(angle) * CHILD_BALL_DISTANCE,
-			),
-			scale: Vector3.create(CHILD_BALL_SCALE, CHILD_BALL_SCALE, CHILD_BALL_SCALE),
+			parent  : moonSpinner,
+			position: Vector3.create(CHILD_BALL_DISTANCE * planetScale, 0, 0),
+			scale   : Vector3.create(worldScale, worldScale, worldScale),
 		})
 		GltfContainer.create(child, {
 			src                         : model.modelSrc,
 			visibleMeshesCollisionMask  : ColliderLayer.CL_NONE,
 			invisibleMeshesCollisionMask: ColliderLayer.CL_NONE,
 		})
-		
-		attachDustTrail(child, parentScale * CHILD_BALL_SCALE, 0.25)
+
+		attachDustTrail(child, worldScale, CHILD_PARTICLE_RATIO, CHILD_PARTICLE_SIZE_SCALE, CHILD_PARTICLE_LIFESPAN)
 	}
 
 
