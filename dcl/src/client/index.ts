@@ -30,7 +30,7 @@ import { SoundManager } from 'src/client/soundManager'
 import { SetupUI } from 'src/client/ui'
 import { UiWorld } from 'src/client/ui-world'
 import { TouchscreenControls } from './touchscreenControls'
-import { RespawnTrigger } from './respawnTirgger'
+import { RespawnTrigger } from './respawnTrigger'
 
 
 function infiniteCount() {
