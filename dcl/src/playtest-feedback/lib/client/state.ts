@@ -348,6 +348,14 @@ function showStep(index: number): void {
   feedback.withComment = current.steps[index].comment
   feedback.step = index + 1
   feedback.steps = current.steps.length
+  // LOCAL PATCH (bowling): a continueLabel step is dialogue, not a scored question.
+  const scored = current.steps.filter((s) => s.question.continueLabel === undefined)
+  let seen = 0
+  for (let i = 0; i <= index; i++) {
+    if (current.steps[i].question.continueLabel === undefined) seen++
+  }
+  feedback.barSteps = scored.length
+  feedback.barStep = seen
   feedback.rating = answer?.rating ?? 0
   feedback.comment = answer?.comment ?? ''
 }
@@ -370,6 +378,9 @@ export const feedback = {
   // 1-based, "step/steps" in the progress bar
   step: 1,
   steps: 1,
+  // LOCAL PATCH (bowling): progress ignores dialogue steps.
+  barStep: 1,
+  barSteps: 1,
   rating: 0, // 0 = no rating
   comment: ''
 }
@@ -409,10 +420,50 @@ function cameBack(): boolean {
   return current?.steps[step].left === true
 }
 
+// LOCAL PATCH (bowling): the sprite they picked, drawn in front of later question text.
+let chosenMascotSheet: string | undefined
+let chosenMascotFrame = 0
+
+export function chosenMascot(): { sheet: string; frame: number } | undefined {
+  if (chosenMascotSheet === undefined) return undefined
+  return { sheet: chosenMascotSheet, frame: chosenMascotFrame }
+}
+
 function keepAnswer(): void {
   if (!current) return
-  current.steps[step].answer = hasAnswer() ? { rating: feedback.rating, comment: feedback.comment } : undefined
+  const question = current.steps[step].question
+  // Dialogue has no rating. The click still counts as continuing.
+  if (question.continueLabel) {
+    current.steps[step].answer = { rating: 0, comment: '' }
+    current.steps[step].left = true
+    return
+  }
+  const rating = feedback.rating
+  const answered = hasAnswer()
+  current.steps[step].answer = answered ? { rating, comment: feedback.comment } : undefined
   current.steps[step].left = true
+  const sheet = question.iconSheet
+  if (sheet && answered && rating >= 1) {
+    chosenMascotSheet = sheet
+    chosenMascotFrame = rating - 1
+  }
+}
+
+
+// MARK: continueDialogue
+/**
+ * Leaves a dialogue step. More questions in this group are shown next.
+ * The last step closes the group so a follow-up ask can open.
+ */
+export function continueDialogue(): void {
+  if (!current || feedback.phase !== 'open') return
+  console.log(`[FEEDBACK] continueDialogue: step ${step + 1} of ${current.steps.length}`)
+  if (step < current.steps.length - 1) {
+    keepAnswer()
+    showStep(step + 1)
+    return
+  }
+  submitGroup()
 }
 
 // unanswered: the Question counts as skipped
@@ -433,7 +484,7 @@ export function previousStep(): void {
 export function submitGroup(): void {
   if (!current || feedback.phase !== 'open' || !isLastStep()) return
   keepAnswer()
-  if (current.steps.some((s) => s.answer)) showToast()
+  if (current.steps.some((s) => s.answer && s.question.continueLabel === undefined)) showToast()
   sendGroup(current)
   finishGroup()
 }
@@ -544,6 +595,8 @@ const outbox = new Map<string, OutboxRow>()
 function sendGroup(ask: Ask): void {
   ask.steps.forEach((s, i) => {
     if (i > ask.reached) return
+    // LOCAL PATCH (bowling): dialogue is a click-through, not an answer.
+    if (s.question.continueLabel !== undefined) return
     sendRow({
       questionId: s.question.id,
       trigger: ask.trigger,

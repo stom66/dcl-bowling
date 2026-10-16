@@ -8,6 +8,10 @@ export type QuestionSpec = {
   commentPrompt?: string
   // LOCAL PATCH (bowling): text box only, no rating tiles. Reapply after replacing lib/.
   commentOnly?: boolean
+  // LOCAL PATCH (bowling): 1x5 sheet in assets/playtest-feedback/. Frame n is rating n.
+  iconSheet?: string
+  // LOCAL PATCH (bowling): text and one button, then the next question. Not saved.
+  continueLabel?: string
 }
 
 export type IntroSpec = {
@@ -24,6 +28,10 @@ export type Question = {
   commentPrompt?: string
   // LOCAL PATCH (bowling): text box only, no rating tiles.
   commentOnly?: boolean
+  // LOCAL PATCH (bowling): 1x5 sheet in assets/playtest-feedback/. Frame n is rating n.
+  iconSheet?: string
+  // LOCAL PATCH (bowling): text and one button, then the next question. Not saved.
+  continueLabel?: string
 }
 
 let series: Question[] = []
@@ -35,7 +43,9 @@ export function setQuestions(specs: Record<string, QuestionSpec>): void {
     text: specs[id].text,
     scale: specs[id].scale,
     commentPrompt: specs[id].commentPrompt,
-    commentOnly: specs[id].commentOnly
+    commentOnly: specs[id].commentOnly,
+    iconSheet: specs[id].iconSheet,
+    continueLabel: specs[id].continueLabel
   }))
 }
 

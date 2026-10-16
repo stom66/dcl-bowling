@@ -17,13 +17,19 @@ const NOTICE_MS = 4500
 
 const DECLINE_NOTICE = "Okay 😢"
 
-/** Open text, as soon as they agree to answer. */
+/** Picture row, as soon as they agree to answer. */
+const PICK_ONE = ['pickOne'] as const
+
+/** Open text, after that picture row closes. */
 const AFTER_INTRO = ['firstImpressions'] as const
 
 /** Asked on its own, the first time the local player's turn ends. */
 const AFTER_FIRST_TURN = ['startGame'] as const
 
-/** Remaining batch, after the player's first finished game. */
+/** A line they click through, after the first finished game. */
+const AFTER_FIRST_GAME_HELLO = ['finishedGame'] as const
+
+/** The two questions that follow that line. */
 const AFTER_FIRST_GAME = ['playGame', 'anythingWrong'] as const
 
 let askedStartGame  = false
@@ -31,7 +37,8 @@ let askedFirstGame  = false
 
 
 setIntroAccepted(() => {
-	void feedback.ask(AFTER_INTRO, 'after-intro')
+	void feedback.ask(PICK_ONE, 'after-intro')
+	void feedback.ask(AFTER_INTRO, 'after-intro-notes')
 })
 
 setIntroDeclined(() => {
@@ -74,7 +81,11 @@ function onFirstGameComplete(): void {
 	if (askedFirstGame) return
 	if (feedback.participation() !== 'in') return
 	askedFirstGame = true
-	void feedback.ask(AFTER_FIRST_GAME, 'after-first-game')
+	void feedback.ask(AFTER_FIRST_GAME_HELLO, 'after-first-game-hello').then((results) => {
+		if (results[0] !== 'submitted') return
+		if (feedback.participation() !== 'in') return
+		void feedback.ask(AFTER_FIRST_GAME, 'after-first-game')
+	})
 }
 
 

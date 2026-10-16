@@ -6,7 +6,9 @@ import { SCALES, ScaleLabels, scaleLabels } from '../shared/scales'
 import {
   acceptIntro,
   askQuestions,
+  chosenMascot,
   closeGroup,
+  continueDialogue,
   declineIntro,
   feedback,
   introAvatar,
@@ -166,7 +168,8 @@ let showScaleGallery = false
 function scaleGallery() {
   const seen = new Set<string>()
   const sets: ScaleLabels[] = []
-  for (const labels of [...Object.values(SCALES), ...allQuestions().map((q) => scaleLabels(q.scale))]) {
+  // LOCAL PATCH (bowling): icon-sheet questions are pictures, not these word tiles.
+  for (const labels of [...Object.values(SCALES), ...allQuestions().filter((q) => !q.iconSheet).map((q) => scaleLabels(q.scale))]) {
     const key = labels.join('|')
     if (!seen.has(key)) {
       seen.add(key)
@@ -349,6 +352,56 @@ function avatar(source: string | null) {
   )
 }
 
+// LOCAL PATCH (bowling): the picked sprite sits in front of later question text.
+function questionTitle(
+  text: string,
+  fontSize: number,
+  width: number,
+  align: 'top-left' | 'middle-center',
+  top: number,
+  showMascot: boolean,
+  wrap: boolean
+) {
+  const mascot = showMascot ? chosenMascot() : undefined
+  const icon = fontSize >= 32 ? 128 : 96
+  const gap = 16
+  const textWidth = mascot ? width - icon - gap : width
+  const textHeight = wrap || mascot ? wrappedHeight(text, fontSize, textWidth) : undefined
+  const rowHeight = Math.max(textHeight ?? 24, mascot ? icon : 0)
+  return (
+    <UiEntity
+      key="title"
+      uiTransform={{
+        width,
+        height: rowHeight,
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        margin: { top }
+      }}
+    >
+      {mascot ? (
+        <UiEntity
+          key="mascot"
+          uiTransform={{ width: icon, height: icon, margin: { right: gap } }}
+          uiBackground={{
+            textureMode: 'stretch',
+            texture: { src: `${ASSETS}${mascot.sheet}` },
+            uvs: sheetFrameUVs(mascot.frame)
+          }}
+        />
+      ) : null}
+      <Label
+        value={text}
+        fontSize={fontSize}
+        color={SNOW}
+        textAlign={mascot ? 'top-left' : align}
+        textWrap="wrap"
+        uiTransform={{ width: textWidth, height: textHeight, minHeight: 24 }}
+      />
+    </UiEntity>
+  )
+}
+
 function questionPanel() {
   const q = feedback.question
   if (!q) return null
@@ -356,34 +409,40 @@ function questionPanel() {
   const commentOnly = q.commentOnly === true
   const labels = scaleLabels(q.scale)
 
+  const dialogue = q.continueLabel
   return panel('question', { top: 60, bottom: 50 }, closeGroup, [
-    ...(feedback.steps > 1 ? [isCompleted() ? completedLabel() : progressBar()] : []),
-    <Label
-      key="title"
-      value={q.text}
-      fontSize={20}
-      color={SNOW}
-      textAlign="top-left"
-      textWrap="wrap"
-      uiTransform={{
-        width: 500,
-        height: commentOnly ? wrappedHeight(q.text, 20, 500) : undefined,
-        minHeight: 24,
-        margin: { top: (feedback.steps > 1 ? 32 : 0) - TEXT_NUDGE }
-      }}
-    />,
-    ...(commentOnly
+    ...(feedback.barSteps > 1 && !dialogue ? [isCompleted() ? completedLabel() : progressBar()] : []),
+    questionTitle(q.text, 20, 500, 'top-left', (feedback.barSteps > 1 ? 32 : 0) - TEXT_NUDGE, !q.iconSheet, commentOnly || !!dialogue),
+    ...(commentOnly || dialogue
       ? []
       : [
           <UiEntity key="tiles" uiTransform={{ width: 500, flexDirection: 'row', margin: { top: 40 + TEXT_NUDGE } }}>
             {Array.from({ length: MAX_RATING }, (_, i) =>
-              tile(i + 1, labels[i], i + 1 === feedback.rating, () => setRating(i + 1))
+              tile(i + 1, labels[i], i + 1 === feedback.rating, () => setRating(i + 1), q.iconSheet)
             )}
           </UiEntity>
         ]),
     ...(feedback.withComment ? [commentField(q.commentPrompt ?? '')] : []),
-    footer()
+    dialogue ? continueFooter(dialogue) : footer()
   ])
+}
+
+function continueFooter(label: string) {
+  return (
+    <UiEntity
+      key="footer"
+      uiTransform={{
+        width: 500,
+        height: 46,
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        margin: { top: 44 }
+      }}
+    >
+      {cta(label, continueDialogue, { kind: 'primary', key: 'continue', width: 340 })}
+    </UiEntity>
+  )
 }
 
 // Mobile: own layout (Figma 1600x720 frame), bigger type, buttons and cross.
@@ -436,35 +495,41 @@ function mobileQuestionPanel() {
   const labels = scaleLabels(q.scale)
   // tighter with the comment field, so the card stays clear of the top of the screen
   const gap = feedback.withComment ? 28 : 44
+  const dialogue = q.continueLabel
   return mobileCard('question', closeGroup, [
-    ...(feedback.steps > 1 ? [isCompleted() ? completedLabel(MOBILE_CONTENT) : progressBar(MOBILE_CONTENT)] : []),
-    <Label
-      key="title"
-      value={q.text}
-      fontSize={32}
-      color={SNOW}
-      textAlign="middle-center"
-      textWrap="wrap"
-      uiTransform={{ width: MOBILE_CONTENT, height: wrappedHeight(q.text, 32, MOBILE_CONTENT), margin: { top: feedback.steps > 1 ? 32 : 0 } }}
-    />,
-    ...(commentOnly
+    ...(feedback.barSteps > 1 && !dialogue ? [isCompleted() ? completedLabel(MOBILE_CONTENT) : progressBar(MOBILE_CONTENT)] : []),
+    questionTitle(q.text, 32, MOBILE_CONTENT, 'middle-center', feedback.barSteps > 1 ? 32 : 0, !q.iconSheet, true),
+    ...(commentOnly || dialogue
       ? []
       : [
           <UiEntity key="tiles" uiTransform={{ width: MOBILE_CONTENT, flexDirection: 'row', margin: { top: gap } }}>
             {Array.from({ length: MAX_RATING }, (_, i) =>
-              tile(i + 1, labels[i], i + 1 === feedback.rating, () => setRating(i + 1))
+              tile(i + 1, labels[i], i + 1 === feedback.rating, () => setRating(i + 1), q.iconSheet)
             )}
           </UiEntity>
         ]),
     ...(feedback.withComment
       ? [commentField(q.commentPrompt ?? '', { width: MOBILE_CONTENT, height: 96, fontSize: 22, top: gap })]
       : []),
-    mobileFooter(
-      gap,
-      isFirstStep() ? mobileCta('skip', closeGroup, SECONDARY) : mobileCta('back', previousStep, SECONDARY),
-      isLastStep() ? mobileCta('submit', submitGroup, RUBY) : mobileCta('next', nextStep, RUBY)
-    )
+    dialogue
+      ? mobileContinue(dialogue, gap)
+      : mobileFooter(
+          gap,
+          isFirstStep() ? mobileCta('skip', closeGroup, SECONDARY) : mobileCta('back', previousStep, SECONDARY),
+          isLastStep() ? mobileCta('submit', submitGroup, RUBY) : mobileCta('next', nextStep, RUBY)
+        )
   ])
+}
+
+function mobileContinue(label: string, top: number) {
+  return (
+    <UiEntity
+      key="footer"
+      uiTransform={{ width: MOBILE_CONTENT, flexDirection: 'row', justifyContent: 'center', margin: { top } }}
+    >
+      {mobileCta(label, continueDialogue, RUBY, MOBILE_CONTENT)}
+    </UiEntity>
+  )
 }
 
 function mobileFooter(top: number, left: ReactEcs.JSX.Element, right: ReactEcs.JSX.Element) {
@@ -483,11 +548,23 @@ function mobileCta(text: string, onClick: () => void, color: Color4, width = 249
   return (
     <UiEntity
       key={text}
-      uiTransform={{ width, height: 74, borderRadius: 16, justifyContent: 'center', alignItems: 'center' }}
+      uiTransform={{
+        width,
+        height: 74,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        pointerFilter: 'block'
+      }}
       uiBackground={{ color }}
       onMouseDown={onClick}
     >
-      <Label value={`<b>${text.toUpperCase()}</b>`} fontSize={26} color={SNOW} />
+      <Label
+        value={`<b>${text.toUpperCase()}</b>`}
+        fontSize={26}
+        color={SNOW}
+        uiTransform={{ pointerFilter: 'none' }}
+      />
     </UiEntity>
   )
 }
@@ -505,12 +582,12 @@ function progressBar(width = 500) {
         uiBackground={{ color: TILE }}
       >
         <UiEntity
-          uiTransform={{ width: (barWidth * feedback.step) / feedback.steps, height: 10, borderRadius: 5 }}
+          uiTransform={{ width: (barWidth * feedback.barStep) / feedback.barSteps, height: 10, borderRadius: 5 }}
           uiBackground={{ textureMode: 'nine-slices', textureSlices: FILL, texture: { src: ASSETS + 'progress-fill.png' } }}
         />
       </UiEntity>
       <Label
-        value={`${feedback.step}/${feedback.steps}`}
+        value={`${feedback.barStep}/${feedback.barSteps}`}
         fontSize={16}
         color={SNOW}
         // left-aligned, so a wider count runs on to the right
@@ -536,19 +613,30 @@ function completedLabel(width = 500) {
   )
 }
 
+// One row, equal cells, left to right. UV order is bottom-left, top-left, top-right, bottom-right.
+const SHEET_FRAMES = 5
+function sheetFrameUVs(frame: number): number[] {
+  const step = 1 / SHEET_FRAMES
+  const left = frame * step
+  const right = left + step
+  return [left, 0, left, 1, right, 1, right, 0]
+}
+
 // The selected border is an outer ruby tile, padded 3: the mobile explorer draws no borderWidth.
 // Every tile keeps it, transparent when not selected, so selecting shifts nothing.
 // The design's pink glow is missing: scene UI has no shadows.
 // Faces are images (Noto Emoji): the mobile explorer has no emoji font.
-function tile(value: number, label: string, selected: boolean, onClick: (() => void) | undefined) {
+// LOCAL PATCH (bowling): `sheet` swaps the faces for one cell of a 1x5 sprite sheet.
+function tile(value: number, label: string, selected: boolean, onClick: (() => void) | undefined, sheet?: string) {
   const lines = labelLines(label)
+  const pictured = sheet !== undefined
   return (
     <UiEntity
       key={value}
       uiTransform={{
         flexGrow: 1,
         flexBasis: 0,
-        height: 84,
+        height: pictured ? 104 : 84,
         margin: { left: value === 1 ? 0 : 16 },
         padding: 3,
         borderRadius: 6
@@ -562,26 +650,33 @@ function tile(value: number, label: string, selected: boolean, onClick: (() => v
           height: '100%',
           flexDirection: 'column',
           alignItems: 'center',
+          justifyContent: pictured ? 'center' : undefined,
           // the design's 12 a side is too narrow in the explorer's SemiBold; labelLines() breaks lines instead
-          padding: { top: 5, bottom: 1, left: 0, right: 0 },
+          padding: pictured ? 4 : { top: 5, bottom: 1, left: 0, right: 0 },
           borderRadius: 3
         }}
         uiBackground={{ color: selected ? TILE_SELECTED : TILE }}
       >
         <UiEntity
-          uiTransform={{ width: 30, height: 30 }}
-          uiBackground={{ textureMode: 'stretch', texture: { src: `${ASSETS}face-${value}.png` } }}
+          uiTransform={{ width: pictured ? 84 : 30, height: pictured ? 84 : 30 }}
+          uiBackground={{
+            textureMode: 'stretch',
+            texture: { src: pictured ? `${ASSETS}${sheet}` : `${ASSETS}face-${value}.png` },
+            uvs: pictured ? sheetFrameUVs(value - 1) : undefined
+          }}
         />
-        <Label
-          value={selected ? `<b>${lines.join('\n')}</b>` : lines.join('\n')}
-          fontSize={labelSize(lines)}
-          color={SNOW}
-          textAlign="top-center"
-          // nowrap: else a bold label loses its last letter to a new line
-          textWrap="nowrap"
-          // 3 under the design's 8: else a two-line label runs into the selected border
-          uiTransform={{ width: '100%', height: 34, margin: { top: 5 - TEXT_NUDGE } }}
-        />
+        {pictured ? null : (
+          <Label
+            value={selected ? `<b>${lines.join('\n')}</b>` : lines.join('\n')}
+            fontSize={labelSize(lines)}
+            color={SNOW}
+            textAlign="top-center"
+            // nowrap: else a bold label loses its last letter to a new line
+            textWrap="nowrap"
+            // 3 under the design's 8: else a two-line label runs into the selected border
+            uiTransform={{ width: '100%', height: 34, margin: { top: 5 - TEXT_NUDGE } }}
+          />
+        )}
       </UiEntity>
     </UiEntity>
   )
@@ -738,13 +833,19 @@ function cta(text: string, onClick: () => void, { kind, key, width, arrow }: Cta
         borderRadius: 12,
         flexDirection: 'row',
         justifyContent: 'center',
-        alignItems: 'center'
+        alignItems: 'center',
+        pointerFilter: 'block'
       }}
       uiBackground={{ color: kind === 'primary' ? RUBY : SECONDARY }}
       onMouseDown={onClick}
     >
       {arrow === 'left' && arrowIcon('left')}
-      <Label value={kind === 'primary' ? `<b>${caps}</b>` : caps} fontSize={14} color={SNOW} />
+      <Label
+        value={kind === 'primary' ? `<b>${caps}</b>` : caps}
+        fontSize={14}
+        color={SNOW}
+        uiTransform={{ pointerFilter: 'none' }}
+      />
       {arrow === 'right' && arrowIcon('right')}
     </UiEntity>
   )
@@ -755,7 +856,12 @@ const MIRRORED = [1, 0, 1, 1, 0, 1, 0, 0]
 function arrowIcon(side: 'left' | 'right') {
   return (
     <UiEntity
-      uiTransform={{ width: 8, height: 13, margin: side === 'right' ? { left: 20 } : { right: 10 } }}
+      uiTransform={{
+        width: 8,
+        height: 13,
+        margin: side === 'right' ? { left: 20 } : { right: 10 },
+        pointerFilter: 'none'
+      }}
       uiBackground={{
         textureMode: 'stretch',
         texture: { src: ASSETS + 'arrow-right.png' },

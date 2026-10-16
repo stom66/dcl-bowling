@@ -15,15 +15,21 @@ export const ASK_PARTICIPANTS_ONLY = true
 
 /** Opt-in shown by feedback.intro(). avatar null: no face. */
 export const INTRO: IntroSpec | null = {
-	title : "Hi, we're the Fastlane team!",
-	text  : "We're testing this bowling alley and would love to hear what you think. Your feedback will help us make it better.",
+	title : "Hi, this is stom! (the dev)",
+	text  : "We're testing this bowling alley and would love to hear what you think. Will you .",
 	avatar: null,
 }
 
 /** Once live, never change a Question's text under its id: new wording, new id. */
 export const QUESTIONS = {
+	pickOne: {
+		text     : 'Hurrah! Thank you :) Now please pick one',
+		// Left to right on pick-one.png. The star is the fourth icon. Words are stored, not shown.
+		scale    : ['Pigeon', 'Pigeon', 'Pigeon', 'Star', 'Pigeon'],
+		iconSheet: 'pick-one.png',
+	},
 	firstImpressions: {
-		text         : "That's great. We'll ask you some questions as you play the game. Are there any first impressions you'd like to report?",
+		text         : "That's great! We'll ask you some questions as you play the game. Are there any first impressions you'd like to report?",
 		// Open text. The scale is not shown.
 		scale        : 'INTEREST',
 		commentPrompt: 'Your first impressions (optional)',
@@ -33,6 +39,12 @@ export const QUESTIONS = {
 		text         : 'How easy was it to start the game?',
 		scale        : 'EASE',
 		commentPrompt: 'What made starting easy or hard? (optional)',
+	},
+	finishedGame: {
+		text         : "Hey, you finished a game! That's great.",
+		// Click-through. The scale is not shown and the click is not saved.
+		scale        : 'EASE',
+		continueLabel: 'Yes, I am a professional.',
 	},
 	playGame: {
 		text         : 'How easy was it to actually play the game?',
