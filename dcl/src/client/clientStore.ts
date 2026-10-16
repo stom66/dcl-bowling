@@ -174,6 +174,18 @@ export class ClientStore {
 		return LaneStore.getLeavesMap(this.laneIndex)
 	}
 
+
+
+	// MARK: getLeftUserIds
+	/**
+	 * User ids who have left the local lane's current match.
+	 * Undefined when the player is not in a lane.
+	 */
+	getLeftUserIds(): string[] | undefined {
+		if (this.laneIndex === undefined) return undefined
+		return LaneStore.getLeftUserIds(this.laneIndex)
+	}
+
 	getGameStartTime(): number {
 		if (this.laneIndex === undefined) return 0
 		return LaneStore.getGameStartTime(this.laneIndex)

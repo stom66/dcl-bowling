@@ -48,6 +48,7 @@ export type GameSummaryCard = {
 	frames            : Map<string, number[][]>
 	laneIndex         : number
 	leaves            : Map<string, number[]>
+	leftUserIds       : string[]
 	phase             : LanePhase
 	players           : string[]
 }
@@ -59,7 +60,9 @@ export type LaneScores = {
 	userId: string
 	frames: number[][]
 	/** Roll-0 standing-pin bitmask per frame. Bit `n` means pin `n + 1` was standing. */
-	leaves: number[]
+	leaves : number[]
+	/** True when this player left the match. The row stays so the scoreboard can show it. */
+	hasLeft: boolean
 }
 export type LanePlayers = {
 	userId     : string

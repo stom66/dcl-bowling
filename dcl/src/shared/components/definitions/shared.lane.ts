@@ -43,9 +43,10 @@ export const LaneScores = engine.defineComponent(
 		scores: Schemas.Optional(
 			Schemas.Array(
 				Schemas.Map({
-					userId: Schemas.String,
-					frames: Schemas.Array(Schemas.Array(Schemas.Int)),
-					leaves: Schemas.Optional(Schemas.Array(Schemas.Int)),
+					userId : Schemas.String,
+					frames : Schemas.Array(Schemas.Array(Schemas.Int)),
+					leaves : Schemas.Optional(Schemas.Array(Schemas.Int)),
+					hasLeft: Schemas.Optional(Schemas.Boolean),
 				})
 			)
 		)

@@ -34,6 +34,7 @@ export type ScoreboardViewProps = {
 	frames        : Map<string, number[][]>
 	keyPrefix     : string
 	leaves        : Map<string, number[]> | null
+	leftUserIds   : string[]
 	showRanks     : boolean
 	showTotalScore: boolean
 }
@@ -249,7 +250,7 @@ export function renderScoreboard(props: ScoreboardViewProps): ReactEcs.JSX.Eleme
 				alignItems    = "flex-start"
 				margin        = {{ bottom: 5 }}
 				borderWidth   = {0}
-				uiTransform   = {{ flexDirection: 'row' }}
+				uiTransform   = {{ flexDirection: 'row', positionType: 'relative' }}
 			>
 				<UiBox
 					key             = {`${props.keyPrefix}_row_${userId}_rank`}
@@ -335,6 +336,17 @@ export function renderScoreboard(props: ScoreboardViewProps): ReactEcs.JSX.Eleme
 						atlases   = {SCORE_ATLASES}
 					/>
 				</UiBox>
+				<UiBox
+					key             = {`${props.keyPrefix}_row_${userId}_left`}
+					width           = "100%"
+					height          = {2}
+					backgroundColor = {Color4.Red()}
+					uiTransform     = {{
+						display     : props.leftUserIds.includes(userId) ? 'flex' : 'none',
+						positionType: 'absolute',
+						position    : { top: (FRAME_CELL_HEIGHT - 2) / 2, left: 0 },
+					}}
+				/>
 			</UiBox>,
 		)
 	}

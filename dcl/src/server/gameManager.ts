@@ -52,34 +52,55 @@ class GameManager {
 	 */
 	async onPlayerRequestLeaveGame(userId: string) {
 		console.log('gameManager: onPlayerRequestLeaveGame: userId', userId)
+		this.onPlayerLeft(userId)
+	}
+
+
+	// MARK: onPlayerLeft
+	/**
+	 * Drops a player from their lane. Lobby and countdown remove them.
+	 * An active match keeps their score row, marks them left, and skips their turn.
+	 * Does not put them back if they rejoin.
+	 */
+	onPlayerLeft(userId: string) {
+		console.log('gameManager: onPlayerLeft: userId', userId)
 
 		const laneIndex = LaneStore.findLaneByUserId(userId)
 		if (laneIndex === undefined) {
-			console.log('gameManager: onPlayerRequestLeaveGame: user not in any lane')
+			console.log('gameManager: onPlayerLeft: user not in any lane')
 			return
 		}
 
-		const phase           = LaneStore.getPhase(laneIndex)
-		const wasInActiveGame = phase !== LanePhase.NONE
-			&& phase !== LanePhase.LOBBY
-			&& phase !== LanePhase.GAME_STARTING
-
-		LaneStore.removePlayer(laneIndex, userId)
-
-		if (LaneStore.getLaneUserIds(laneIndex).length === 0) {
-			this.clearCountdownTimer(laneIndex)
-			if (wasInActiveGame) {
-				this.abortGame(laneIndex)
-			}
-			else {
+		const phase = LaneStore.getPhase(laneIndex)
+		if (!this.isActiveMatch(phase)) {
+			LaneStore.removePlayer(laneIndex, userId)
+			if (LaneStore.getLaneUserIds(laneIndex).length === 0) {
+				this.clearCountdownTimer(laneIndex)
 				this.resetLane(laneIndex)
 			}
+			return
 		}
 
-		if (wasInActiveGame) {
-			Metrics.incrementPlayerStat(userId, PlayerStats.GAMES_LEFT_EARLY)
-			PlayerProfileManager.recordLeaveEarly(userId)
+		LaneStore.markPlayerLeft(laneIndex, userId)
+		LaneStore.removePlayer(laneIndex, userId)
+
+		Metrics.incrementPlayerStat(userId, PlayerStats.GAMES_LEFT_EARLY)
+		PlayerProfileManager.recordLeaveEarly(userId)
+
+		if (LaneStore.getLaneUserIds(laneIndex).length === 0) {
+			this.abortGame(laneIndex)
+			return
 		}
+
+		if (LaneStore.getCurrentFrameUserId(laneIndex) !== userId) return
+
+		const rt = this.getRuntime(laneIndex)
+		if (rt.phase === LanePhase.ROLL_PLAYBACK) {
+			console.log('gameManager: onPlayerLeft: replay in progress, skip after it finishes')
+			return
+		}
+
+		this.skipLeftPlayerFrame(laneIndex)
 	}
 
 
@@ -306,9 +327,9 @@ class GameManager {
 	 * same FRAME_START timing as later frames.
 	 */
 	private onWaitingPhaseComplete(laneIndex: number) {
-		if (LaneStore.getLaneUserIds(laneIndex).length === 0) {
-			console.log('gameManager: onWaitingPhaseComplete: no players, aborting')
-			this.endGame(laneIndex)
+		if (LaneStore.getActiveTurnUserIds(laneIndex).length === 0) {
+			console.log('gameManager: onWaitingPhaseComplete: no active players, aborting')
+			this.abortGame(laneIndex)
 			return
 		}
 
@@ -333,22 +354,35 @@ class GameManager {
 		frameIndex  : number,
 		delayMs     : number = GameSettings.FRAME_DELAY_BEFORE_ROLL_START,
 	) {
-		const players = LaneStore.getLaneUserIds(laneIndex)
-		if (players.length === 0) {
-			console.log('gameManager: startPlayerFrame: no players, ending game')
+		const turnOrder = LaneStore.getTurnOrder(laneIndex)
+		if (LaneStore.getActiveTurnUserIds(laneIndex).length === 0) {
+			console.log('gameManager: startPlayerFrame: no active players')
+			if (turnOrder.length > 0) {
+				this.abortGame(laneIndex)
+			}
+			else {
+				this.endGame(laneIndex)
+			}
+			return
+		}
+
+		const next = this.findNextActiveTurn(laneIndex, playerIndex, frameIndex)
+		if (!next) {
+			console.log('gameManager: startPlayerFrame: no remaining turns, ending game')
 			this.endGame(laneIndex)
 			return
 		}
-		if (playerIndex < 0 || playerIndex >= players.length) {
-			console.log('gameManager: startPlayerFrame: bad playerIndex', playerIndex)
+
+		const userId = turnOrder[next.playerIndex]
+		if (!userId) {
+			console.log('gameManager: startPlayerFrame: missing user at', next.playerIndex)
+			this.endGame(laneIndex)
 			return
 		}
 
-		const userId = players[playerIndex]!
+		console.log(`gameManager: startPlayerFrame: lane ${laneIndex}, frame ${next.frameIndex}, playerIdx ${next.playerIndex}, userId ${userId}`)
 
-		console.log(`gameManager: startPlayerFrame: lane ${laneIndex}, frame ${frameIndex}, playerIdx ${playerIndex}, userId ${userId}`)
-
-		LaneStore.setCurrentTurn(laneIndex, frameIndex, playerIndex, userId, 0, 0)
+		LaneStore.setCurrentTurn(laneIndex, next.frameIndex, next.playerIndex, userId, 0, 0)
 
 		const rt = this.getRuntime(laneIndex)
 		rt.pinStanding = newFullPinRack()
@@ -368,6 +402,12 @@ class GameManager {
 	private startPlayerRoll(laneIndex: number) {
 		const userId = LaneStore.getCurrentFrameUserId(laneIndex)
 		if (!userId) return
+
+		if (LaneStore.isPlayerLeft(laneIndex, userId)) {
+			console.log(`gameManager: startPlayerRoll: lane ${laneIndex}, user ${userId} has left, skipping`)
+			this.skipLeftPlayerFrame(laneIndex)
+			return
+		}
 
 		const rollIndex = LaneStore.getCurrentRollIndex(laneIndex)
 		const rt = this.getRuntime(laneIndex)
@@ -402,6 +442,10 @@ class GameManager {
 			console.log('gameManager: onPlayerRequestPlayRoll: user not in any lane')
 			return
 		}
+		if (LaneStore.isPlayerLeft(laneIndex, userId)) {
+			console.log('gameManager: onPlayerRequestPlayRoll: player has left, ignoring')
+			return
+		}
 		if (LaneStore.getCurrentFrameUserId(laneIndex) !== userId) {
 			console.log('gameManager: onPlayerRequestPlayRoll: not this player\'s turn, ignoring')
 			return
@@ -433,6 +477,10 @@ class GameManager {
 		const laneIndex = LaneStore.findLaneByUserId(userId)
 		if (laneIndex === undefined) {
 			console.log('gameManager: onPlayerRequestSetLaneBumpers: user not in any lane')
+			return
+		}
+		if (LaneStore.isPlayerLeft(laneIndex, userId)) {
+			console.log('gameManager: onPlayerRequestSetLaneBumpers: player has left, ignoring')
 			return
 		}
 		if (LaneStore.getCurrentFrameUserId(laneIndex) !== userId) {
@@ -589,6 +637,12 @@ class GameManager {
 		const userId = LaneStore.getCurrentFrameUserId(laneIndex)
 		if (!userId) return
 
+		if (LaneStore.isPlayerLeft(laneIndex, userId)) {
+			console.log(`gameManager: endRoll: lane ${laneIndex}, user ${userId} has left, skipping`)
+			this.skipLeftPlayerFrame(laneIndex)
+			return
+		}
+
 		if (timedOut) {
 			// No request arrived within ROLL_MAX_DURATION — count as 0-pin roll.
 			console.log(`gameManager: endRoll: lane ${laneIndex}, user ${userId} — TIMEOUT`)
@@ -681,26 +735,84 @@ class GameManager {
 	 * first player, advance the frame index. After 10 frames we end the game.
 	 */
 	private advanceToNextPlayerFrame(laneIndex: number) {
-		const players = LaneStore.getLaneUserIds(laneIndex)
-		if (players.length === 0) {
-			this.endGame(laneIndex)
+		if (LaneStore.getActiveTurnUserIds(laneIndex).length === 0) {
+			console.log('gameManager: advanceToNextPlayerFrame: no active players')
+			if (LaneStore.getTurnOrder(laneIndex).length > 0) {
+				this.abortGame(laneIndex)
+			}
+			else {
+				this.endGame(laneIndex)
+			}
 			return
 		}
 
-		let playerIndex = LaneStore.getCurrentFramePlayerIndex(laneIndex) + 1
-		let frameIndex  = LaneStore.getCurrentFrameIndex(laneIndex)
-
-		if (playerIndex >= players.length) {
-			playerIndex = 0
-			frameIndex++
-		}
-
-		if (frameIndex >= this.getLaneFrameCount(laneIndex)) {
-			this.endGame(laneIndex)
-			return
-		}
-
+		const playerIndex = LaneStore.getCurrentFramePlayerIndex(laneIndex) + 1
+		const frameIndex  = LaneStore.getCurrentFrameIndex(laneIndex)
 		this.startPlayerFrame(laneIndex, playerIndex, frameIndex)
+	}
+
+
+	// MARK: findNextActiveTurn
+	/**
+	 * Next scorecard slot at or after the given index whose player has not left.
+	 * Wraps to the next frame when the index passes the end of the order.
+	 * Returns undefined when the match has no turns left.
+	 */
+	private findNextActiveTurn(
+		laneIndex       : number,
+		startPlayerIndex: number,
+		startFrameIndex : number,
+	): { playerIndex: number, frameIndex: number } | undefined {
+		const turnOrder  = LaneStore.getTurnOrder(laneIndex)
+		const frameCount = this.getLaneFrameCount(laneIndex)
+		if (turnOrder.length === 0) return undefined
+
+		let playerIndex = startPlayerIndex
+		let frameIndex  = startFrameIndex
+		const maxSteps  = turnOrder.length * Math.max(frameCount, 1) + turnOrder.length
+
+		for (let step = 0; step < maxSteps; step++) {
+			if (frameIndex >= frameCount) return undefined
+			if (playerIndex >= turnOrder.length) {
+				playerIndex = 0
+				frameIndex++
+				continue
+			}
+
+			const userId = turnOrder[playerIndex]
+			if (userId && !LaneStore.isPlayerLeft(laneIndex, userId)) {
+				return { playerIndex, frameIndex }
+			}
+
+			playerIndex++
+		}
+
+		return undefined
+	}
+
+
+	// MARK: skipLeftPlayerFrame
+	/**
+	 * Cancels the current phase timer and bowls the next player who is still in the game.
+	 */
+	private skipLeftPlayerFrame(laneIndex: number) {
+		console.log('gameManager: skipLeftPlayerFrame: lane', laneIndex)
+
+		const rt        = this.getRuntime(laneIndex)
+		rt.phase        = LanePhase.NONE
+		rt.phaseEndTime = 0
+		this.advanceToNextPlayerFrame(laneIndex)
+	}
+
+
+	// MARK: isActiveMatch
+	/**
+	 * True once the lane is past the lobby and the start countdown.
+	 */
+	private isActiveMatch(phase: LanePhase): boolean {
+		return phase !== LanePhase.NONE
+			&& phase !== LanePhase.LOBBY
+			&& phase !== LanePhase.GAME_STARTING
 	}
 
 

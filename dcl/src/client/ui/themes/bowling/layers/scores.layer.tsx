@@ -23,9 +23,10 @@ const clientStore = ClientStore.getInstance()
  * Bottom-center scoreboard. Slides in after roll playback.
  */
 export class ScoresLayer extends Layer {
-	private lastKnownScores    : Map<string, number[][]> | null = null
-	private lastKnownLeaves    : Map<string, number[]> | null = null
-	private lastKnownFrameCount: number = GameSettings.DEFAULT_FRAME_COUNT
+	private lastKnownScores      : Map<string, number[][]> | null = null
+	private lastKnownLeaves      : Map<string, number[]> | null = null
+	private lastKnownLeftUserIds : string[] = []
+	private lastKnownFrameCount  : number = GameSettings.DEFAULT_FRAME_COUNT
 
 	constructor() {
 		super({
@@ -58,28 +59,33 @@ export class ScoresLayer extends Layer {
 	 * Current lane scorecard, or dummy data when the preview flag is on.
 	 */
 	private getLiveScorecard(): {
-		frameCount : number
-		frames     : Map<string, number[][]>
-		leaves     : Map<string, number[]> | null
+		frameCount  : number
+		frames      : Map<string, number[][]>
+		leaves      : Map<string, number[]> | null
+		leftUserIds : string[]
 	} {
-		let frames = clientStore.getFrames() ?? new Map<string, number[][]>()
-		let leaves = clientStore.getLeaves() ?? new Map<string, number[]>()
+		let frames      = clientStore.getFrames() ?? new Map<string, number[][]>()
+		let leaves      = clientStore.getLeaves() ?? new Map<string, number[]>()
+		let leftUserIds = clientStore.getLeftUserIds() ?? []
 		if (DEBUG_FORCE_SHOW) {
 			const dummy = getDummyScoreData()
-			frames = dummy.frames
-			leaves = dummy.leaves
+			frames      = dummy.frames
+			leaves      = dummy.leaves
+			leftUserIds = []
 		}
 		if (frames.size > 0) {
-			this.lastKnownScores     = frames
-			this.lastKnownLeaves     = leaves
-			const liveCount          = clientStore.getFrameCount()
-			this.lastKnownFrameCount = liveCount > 0 ? liveCount : this.lastKnownFrameCount
+			this.lastKnownScores      = frames
+			this.lastKnownLeaves      = leaves
+			this.lastKnownLeftUserIds = leftUserIds
+			const liveCount           = clientStore.getFrameCount()
+			this.lastKnownFrameCount  = liveCount > 0 ? liveCount : this.lastKnownFrameCount
 		}
 
 		return {
 			frameCount : this.getActiveFrameCount(frames),
 			frames     : this.lastKnownScores ?? frames,
 			leaves     : this.lastKnownLeaves ?? leaves,
+			leftUserIds: this.lastKnownLeftUserIds,
 		}
 	}
 
@@ -134,6 +140,7 @@ export class ScoresLayer extends Layer {
 					frames        : scorecard.frames,
 					keyPrefix     : 'ui_Scores',
 					leaves        : scorecard.leaves,
+					leftUserIds   : scorecard.leftUserIds,
 					showRanks     : false,
 					showTotalScore: true,
 				})}

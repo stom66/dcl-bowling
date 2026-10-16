@@ -165,8 +165,8 @@ export namespace LaneWatcher {
 		if (prev === next) return
 
 		const myUserId  = ClientStore.getInstance().getUserId()
-		const isMyTurn  = userProfileCache.isLocalUser(snapshot.currentFrameUserId)
 		const isMyLane  = snapshot.laneIndex === ClientStore.getInstance().getLaneIndex()
+		const isMyTurn  = isMyLane && userProfileCache.isLocalUser(snapshot.currentFrameUserId)
 
 		if (prev === LanePhase.GAME_STARTING && next === LanePhase.WAITING) {
 			eventBus.emit(isMyLane ? ClientEvents.ON_GROUP_GAME_START : ClientEvents.ON_NON_GROUP_GAME_START, snapshot)
@@ -227,6 +227,7 @@ export namespace LaneWatcher {
 			frames            : cloneFrames(snapshot.frames),
 			laneIndex         : snapshot.laneIndex,
 			leaves            : cloneLeaves(LaneStore.getLeavesMap(snapshot.laneIndex)),
+			leftUserIds       : LaneStore.getLeftUserIds(snapshot.laneIndex).slice(),
 			phase             : snapshot.phase,
 			players           : snapshot.players.slice(),
 		}

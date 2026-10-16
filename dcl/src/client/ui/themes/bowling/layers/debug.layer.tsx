@@ -304,6 +304,7 @@ export class DebugLayer extends Layer {
 			frames           : snapshot.frames,
 			laneIndex        : snapshot.laneIndex,
 			leaves           : LaneStore.areLanesReady() ? LaneStore.getLeavesMap(snapshot.laneIndex) : new Map(),
+			leftUserIds      : LaneStore.areLanesReady() ? LaneStore.getLeftUserIds(snapshot.laneIndex) : [],
 			phase            : LanePhase.FRAME_END,
 			players          : players,
 		}

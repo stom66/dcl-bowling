@@ -157,9 +157,10 @@ export namespace LaneStore {
 		const scores   = LaneComponent.LaneScores.getMutable(entity)
 
 		scores.scores = (gameData?.players ?? []).map((p) => ({
-			userId: p,
-			frames: [[]] as number[][],
-			leaves: [] as number[],
+			userId : p,
+			frames : [[]] as number[][],
+			leaves : [] as number[],
+			hasLeft: false,
 		}))
 	}
 
@@ -415,9 +416,10 @@ export namespace LaneStore {
 	export function getScores(laneIndex: number): LaneScoresRow[] {
 		const c = LaneComponent.LaneScores.get(getLaneEntity(laneIndex))
 		return c.scores?.map((s) => ({
-			userId: s.userId,
-			frames: s.frames.map((f) => f.slice()),
-			leaves: (s.leaves ?? []).slice(),
+			userId : s.userId,
+			frames : s.frames.map((f) => f.slice()),
+			leaves : (s.leaves ?? []).slice(),
+			hasLeft: s.hasLeft === true,
 		})) ?? []
 	}
 	export function getScoresMap(laneIndex: number): Map<string, number[][]> {
@@ -434,6 +436,72 @@ export namespace LaneStore {
 		const scores = getScores(laneIndex)
 		return new Map(scores.map((s) => [s.userId, s.leaves.slice()]))
 	}
+
+
+	// MARK: getTurnOrder
+	/**
+	 * Stable bowling order for this game: scorecard user ids, including players who have left.
+	 */
+	export function getTurnOrder(laneIndex: number): string[] {
+		return getScores(laneIndex).map((score) => score.userId)
+	}
+
+
+	// MARK: getActiveTurnUserIds
+	/**
+	 * Scorecard user ids who are still bowling. Leavers stay on the card but are not active.
+	 */
+	export function getActiveTurnUserIds(laneIndex: number): string[] {
+		return getScores(laneIndex)
+			.filter((score) => !score.hasLeft)
+			.map((score) => score.userId)
+	}
+
+
+	// MARK: isPlayerLeft
+	/**
+	 * True when this user's scorecard row is marked left.
+	 */
+	export function isPlayerLeft(
+		laneIndex: number,
+		userId   : string,
+	): boolean {
+		return getScores(laneIndex).some((score) => score.userId === userId && score.hasLeft)
+	}
+
+
+	// MARK: getLeftUserIds
+	/**
+	 * User ids whose scorecard row is marked left.
+	 */
+	export function getLeftUserIds(laneIndex: number): string[] {
+		return getScores(laneIndex)
+			.filter((score) => score.hasLeft)
+			.map((score) => score.userId)
+	}
+
+
+	// MARK: markPlayerLeft
+	/**
+	 * Marks a scorecard row as left without removing it. Server-only.
+	 */
+	export function markPlayerLeft(
+		laneIndex: number,
+		userId   : string,
+	): void {
+		if (!isServer()) return
+
+		const c      = LaneComponent.LaneScores.getMutable(getLaneEntity(laneIndex))
+		const scores = c.scores ?? []
+		const row    = scores.find((score) => score.userId === userId)
+		if (!row) {
+			console.log('LaneStore: markPlayerLeft: no score row', laneIndex, userId)
+			return
+		}
+
+		row.hasLeft = true
+		c.scores    = scores.slice()
+	}
 	export function addScore(
 		laneIndex : number,
 		frameIndex: number,
@@ -447,7 +515,7 @@ export namespace LaneStore {
 
 		let scores = c.scores.find((s) => s.userId === userId)
 		if (!scores) {
-			c.scores.push({ userId: userId, frames: [], leaves: [] })
+			c.scores.push({ userId: userId, frames: [], leaves: [], hasLeft: false })
 			scores = c.scores.find((s) => s.userId === userId)
 		}
 
@@ -475,7 +543,7 @@ export namespace LaneStore {
 
 		let scores = c.scores.find((s) => s.userId === userId)
 		if (!scores) {
-			c.scores.push({ userId: userId, frames: [], leaves: [] })
+			c.scores.push({ userId: userId, frames: [], leaves: [], hasLeft: false })
 			scores = c.scores.find((s) => s.userId === userId)
 		}
 
@@ -495,6 +563,8 @@ export namespace LaneStore {
 		const frameCount = getFrameCount(laneIndex)
 
 		for (const score of scores) {
+			if (score.hasLeft) continue
+
 			const frameResults = getFrameResults(score.frames, frameCount, score.leaves)
 			const totalScore   = getPlayerTotalScore(frameResults)
 

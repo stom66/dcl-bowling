@@ -6,7 +6,6 @@ import { ComponentManager } from "src/shared/components/componentManager"
 import { ComponentStore } from "src/shared/components/componentStore"
 import { LANES_GROUP_ID } from "src/shared/components/registry"
 import { blockedPlayers } from "src/shared/data/blocklist"
-import { LaneStore } from "src/shared/laneStore"
 import { GameSettings } from "src/shared/settings"
 import { DiscordWebhooks } from "src/shared/utils/discord-webhooks"
 import { eventBus, ServerEvents } from "src/shared/utils/eventBus"
@@ -57,12 +56,8 @@ export async function initServer(): Promise<void> {
 		}
 	})
 	onLeaveScene((userId) => {
-		const wasInGame = LaneStore.findLaneByUserId(userId) !== undefined
-		LaneStore.removePlayerFromAllLanes(userId)
+		gameManager.onPlayerLeft(userId)
 		if (!blockedPlayers.includes(userId)) {
-			if (wasInGame) {
-				PlayerProfileManager.recordLeaveEarly(userId)
-			}
 			Metrics.endSession(userId)
 			eventBus.emit(ServerEvents.PLAYER_SCENE_LEAVE, { userId })
 		}

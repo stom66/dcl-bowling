@@ -48,21 +48,29 @@ export namespace ClientHandler {
 	/** Roll start carries `pinStanding` + `rollStartTimestamp`, neither on a synced component. */
 	function handleNotifyPlayerRollStart(data: NotifyPlayerRollStartPayload) {
 		clockSync.updateOffset(data.sentAt)
-		if (userProfileCache.isLocalUser(data.userId)) {
-			eventBus.emit(ClientEvents.ON_MY_ROLL_START, data)
-		} else {
-			const laneIndex = LaneStore.findLaneByUserId(data.userId)
-			if (laneIndex === undefined) {
-				console.error('clientHandler: handleNotifyPlayerRollStart: laneIndex not found')
-				return
-			}
 
-			if (laneIndex == clientStore.getLaneIndex()) {
-				eventBus.emit(ClientEvents.ON_GROUP_ROLL_START, data)
-			} else {
-				eventBus.emit(ClientEvents.ON_NON_GROUP_ROLL_START, data)
-			}
+		const laneIndex     = LaneStore.findLaneByUserId(data.userId)
+		const myLane        = clientStore.getLaneIndex()
+		const isLocal       = userProfileCache.isLocalUser(data.userId)
+		const isMyLane      = myLane !== undefined && laneIndex === myLane
+		const isCurrentTurn = myLane !== undefined && LaneStore.getCurrentFrameUserId(myLane) === data.userId
+
+		if (isLocal && isMyLane && isCurrentTurn) {
+			eventBus.emit(ClientEvents.ON_MY_ROLL_START, data)
+			return
 		}
+
+		if (laneIndex === undefined) {
+			console.error('clientHandler: handleNotifyPlayerRollStart: laneIndex not found')
+			return
+		}
+
+		if (isMyLane) {
+			eventBus.emit(ClientEvents.ON_GROUP_ROLL_START, data)
+			return
+		}
+
+		eventBus.emit(ClientEvents.ON_NON_GROUP_ROLL_START, data)
 	}
 
 

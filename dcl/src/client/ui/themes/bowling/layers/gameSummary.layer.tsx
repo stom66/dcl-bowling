@@ -174,6 +174,7 @@ export class GameSummaryLayer extends Layer {
 						frames        : this.card.frames,
 						keyPrefix     : 'ui_GameSummary',
 						leaves        : this.card.leaves,
+						leftUserIds   : this.card.leftUserIds,
 						showRanks     : true,
 						showTotalScore: true,
 					})}
