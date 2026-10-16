@@ -20,8 +20,10 @@ import { PlayerLoadout } from 'src/shared/components/definitions/shared.playerLo
 import { PlayerPreferences } from 'src/shared/components/definitions/shared.playerPreferences'
 import { PlayerStats } from 'src/shared/components/definitions/shared.playerStats'
 import { PlayerTickets } from 'src/shared/components/definitions/shared.playerTickets'
+import { LanePhase } from 'src/shared/enums'
 import { LaneStore } from 'src/shared/laneStore'
 import { GameSettings } from 'src/shared/settings'
+import { GameSummaryCard, LaneSnapshot } from 'src/shared/types/shared-types'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 import { userProfileCache } from 'src/shared/utils/userProfileCache'
 
@@ -239,6 +241,75 @@ export class DebugLayer extends Layer {
 	}
 
 
+	// MARK: emitGroupGameStart
+	/**
+	 * Fires the local game-start event for the current lane.
+	 */
+	private emitGroupGameStart() {
+		eventBus.emit(ClientEvents.ON_GROUP_GAME_START, this.getDebugLaneSnapshot())
+	}
+
+
+	// MARK: emitGroupGameEnd
+	/**
+	 * Fires the finished-match sequence: ceremony first, then game end.
+	 * Listeners that hold the lobby and camera for the summary see both.
+	 */
+	private emitGroupGameEnd() {
+		const snapshot = this.getDebugLaneSnapshot()
+		eventBus.emit(ClientEvents.ON_GAME_SUMMARY, this.getDebugSummaryCard(snapshot))
+		eventBus.emit(ClientEvents.ON_GROUP_GAME_END, snapshot)
+	}
+
+
+	// MARK: getDebugLaneSnapshot
+	/**
+	 * Current lane snapshot, or lane 0 when the local player is not enrolled.
+	 */
+	private getDebugLaneSnapshot(): LaneSnapshot {
+		const laneIndex = clientStore.getLaneIndex() ?? 0
+		if (LaneStore.areLanesReady()) {
+			return LaneStore.getLaneSnapshot(laneIndex)
+		}
+
+		return {
+			currentFrameIndex      : 0,
+			currentFramePlayerIndex: 0,
+			currentFrameUserId     : clientStore.getUserId(),
+			currentRollIndex       : 0,
+			currentRollStartTime   : 0,
+			frameCount             : GameSettings.DEFAULT_FRAME_COUNT,
+			frames                 : new Map(),
+			gameStartTime          : 0,
+			laneIndex              : laneIndex,
+			phase                  : LanePhase.NONE,
+			players                : [],
+		}
+	}
+
+
+	// MARK: getDebugSummaryCard
+	/**
+	 * Scorecard for the debug ceremony. Uses the live lane when it has a roster.
+	 */
+	private getDebugSummaryCard(snapshot: LaneSnapshot): GameSummaryCard {
+		const userId  = clientStore.getUserId()
+		const players = snapshot.players.length > 0
+			? snapshot.players
+			: (userId ? [userId] : [])
+
+		return {
+			currentFrameIndex: snapshot.frameCount > 0 ? snapshot.frameCount - 1 : 0,
+			frameCount       : snapshot.frameCount > 0 ? snapshot.frameCount : GameSettings.DEFAULT_FRAME_COUNT,
+			frames           : snapshot.frames,
+			laneIndex        : snapshot.laneIndex,
+			leaves           : LaneStore.areLanesReady() ? LaneStore.getLeavesMap(snapshot.laneIndex) : new Map(),
+			phase            : LanePhase.FRAME_END,
+			players          : players,
+		}
+	}
+
+
 	// MARK: body
 	protected body() {
 		const theme = getTheme()
@@ -314,6 +385,34 @@ export class DebugLayer extends Layer {
 					minHeight = {18}
 					fontSize  = {DEBUG_FONT_SIZE}
 					callback  = {() => { this.emitMyRollEnd() }}
+					uiTransform = {{
+						positionType: 'relative',
+						position    : { top: 0, left: 0 },
+					}}
+				/>
+
+				<ButtonText
+					id        = "debug_game_start"
+					textLabel = "Game Start"
+					width     = "100%"
+					height    = {18}
+					minHeight = {18}
+					fontSize  = {DEBUG_FONT_SIZE}
+					callback  = {() => { this.emitGroupGameStart() }}
+					uiTransform = {{
+						positionType: 'relative',
+						position    : { top: 0, left: 0 },
+					}}
+				/>
+
+				<ButtonText
+					id        = "debug_game_end"
+					textLabel = "Game End"
+					width     = "100%"
+					height    = {18}
+					minHeight = {18}
+					fontSize  = {DEBUG_FONT_SIZE}
+					callback  = {() => { this.emitGroupGameEnd() }}
 					uiTransform = {{
 						positionType: 'relative',
 						position    : { top: 0, left: 0 },
