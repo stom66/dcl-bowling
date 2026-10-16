@@ -135,6 +135,19 @@ function applyHologramStatus(
 }
 
 
+// MARK: isLocalPlayerInMatch
+/**
+ * True when the local player is enrolled in a lane whose match has left the lobby.
+ * Between turns they can still walk, but lobby zones must not enroll or unenroll them.
+ */
+function isLocalPlayerInMatch(): boolean {
+	const laneIndex = clientStore.getLaneIndex()
+	if (laneIndex === undefined) return false
+	if (!LaneStore.areLanesReady()) return true
+	return isLaneOccupied(LaneStore.getPhase(laneIndex))
+}
+
+
 // MARK: isLobbyJoinDesired
 /**
  * True when a join confirm for this 0-based lane should enroll the local player.
@@ -146,9 +159,11 @@ export function isLobbyJoinDesired(laneIndex: number): boolean {
 
 
 // MARK: onLobbyEnter
-/** Shows lobby UI and joins the lane when it is free / starting. */
+/** Shows lobby UI and joins the lane when it is free and the player is not already in a match. */
 function onLobbyEnter(laneIndex: number): void {
 	console.log('LaneLobbies: onLobbyEnter: laneIndex', laneIndex)
+
+	if (isLocalPlayerInMatch()) return
 
 	const phase = LaneStore.areLanesReady()
 		? LaneStore.getPhase(laneIndex)
@@ -171,15 +186,18 @@ function onLobbyEnter(laneIndex: number): void {
 /**
  * Hides lobby UI. Leaves the server lobby only while still waiting
  * (not after the game has started and the player was moved to the lane).
- * Also leaves when the join was sent but the confirm has not arrived yet.
+ * Cancels a join that is still in flight only when this player has no lane yet,
+ * so walking through a different lobby keeps their current match.
  */
 function onLobbyExit(laneIndex: number): void {
 	console.log('LaneLobbies: onLobbyExit: laneIndex', laneIndex)
 
+	if (isLocalPlayerInMatch()) return
+
 	HideLaneLobbyUI()
 
 	const enrolledHere = clientStore.getLaneIndex() === laneIndex
-	const joinPending  = desiredLane === laneIndex && !enrolledHere
+	const joinPending  = desiredLane === laneIndex && clientStore.getLaneIndex() === undefined
 	if (!enrolledHere && !joinPending) return
 
 	const phase = LaneStore.areLanesReady()
