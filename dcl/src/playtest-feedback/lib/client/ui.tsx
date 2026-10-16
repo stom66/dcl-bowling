@@ -84,7 +84,7 @@ export function setupUi(debug: boolean): void {
   if (debug)
     void canSeeDebug().then((allowed) => {
       showDebug = allowed
-      console.log(`[FEEDBACK] debug panel ${allowed ? 'on' : 'hidden: not in preview, not the scene owner or a deployer'}`)
+      console.log(`[FEEDBACK] debug panel ${allowed ? 'on' : 'hidden: not a local preview'}`)
     })
   const ui = () => {
     if (!uiReleased) return <UiEntity uiTransform={{ width: 0, height: 0 }} />

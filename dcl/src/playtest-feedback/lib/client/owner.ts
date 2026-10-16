@@ -1,5 +1,3 @@
-import { engine } from '@dcl/sdk/ecs'
-import { getPlayer } from '@dcl/sdk/players'
 import { getRealm, getSceneInformation } from '~system/Runtime'
 
 // .zone realm (testnet Worlds): the .zone server, else mainnet
@@ -52,24 +50,8 @@ export async function findSceneOwner(): Promise<string | null> {
   return (await findSceneTeam()).owner
 }
 
-// Preview: anyone. Deployed: only owner and deployers, so a DEBUG left on never reaches players.
+// Local preview only. A deployed world hides the panel, including for the owner.
 export async function canSeeDebug(): Promise<boolean> {
   const { realmInfo } = await getRealm({})
-  if (realmInfo?.isPreview) return true
-  const { owner, deployers } = await findSceneTeam()
-  const player = await localPlayer()
-  return player === owner || deployers.includes(player)
-}
-
-// lowercase; userId appears a few frames after main()
-function localPlayer(): Promise<string> {
-  return new Promise((resolve) => {
-    function waitForPlayer() {
-      const userId = getPlayer()?.userId
-      if (!userId) return
-      engine.removeSystem(waitForPlayer)
-      resolve(userId.toLowerCase())
-    }
-    engine.addSystem(waitForPlayer)
-  })
+  return realmInfo?.isPreview === true
 }

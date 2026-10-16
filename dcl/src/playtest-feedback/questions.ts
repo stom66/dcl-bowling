@@ -1,7 +1,7 @@
 import { IntroSpec, QuestionSpec } from 'src/playtest-feedback/lib/shared/series'
 
 
-/** Ask buttons, top-left. Preview, and the World's owner and deployers. */
+/** Ask buttons. Local preview only. */
 export const DEBUG = true
 
 /** Local preview only: the mobile layout on desktop. Ignored once deployed. */
