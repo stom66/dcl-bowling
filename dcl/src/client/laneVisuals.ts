@@ -251,13 +251,28 @@ export class LaneVisuals {
 
 			GltfContainer.create(pinScale, { src })
 
-			GltfContainerLoadingState.onChange(pinScale, (state) => {
-				if (state?.currentState !== LoadingState.FINISHED) return
+			// onChange does not replay a state already stored on the entity, so a cached
+			// pin can already be FINISHED before the listener exists. Both paths share
+			// beginIntro so the drop runs once.
+			let introStarted = false
+			const beginIntro = () => {
+				if (introStarted) return
+				introStarted = true
 				utils.timers.setTimeout(() => {
 					Tween.setScale(pinScale, Vector3.Zero(), scaleEnd, tweenDurationMs, EasingFunction.EF_EASEBOUNCE)
 					Tween.setMove(pinPos, startPos, endPos, tweenDurationMs, EasingFunction.EF_EASEBOUNCE)
 				}, staggerMs * i)
+			}
+
+			GltfContainerLoadingState.onChange(pinScale, (state) => {
+				if (state?.currentState !== LoadingState.FINISHED) return
+				beginIntro()
 			})
+
+			const loadingState = GltfContainerLoadingState.getOrNull(pinScale)
+			if (loadingState?.currentState === LoadingState.FINISHED) {
+				beginIntro()
+			}
 
 			this.pinEntities[i] = pinPos
 		}
