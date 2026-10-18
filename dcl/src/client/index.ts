@@ -21,9 +21,10 @@ import { GltfSpawner } from 'src/client/gltfSpawner'
 import { setupLaneLobbies } from 'src/client/laneLobbies'
 import { LaneModels } from 'src/client/laneModels'
 import { LaneWatcher } from 'src/client/laneWatcher'
-import { setupLights } from 'src/client/lights'
+import { LightingGaffer } from 'src/client/lightingGaffer'
 import { setLoadingStage } from 'src/client/loadingState'
 import { ParticleSpawner } from 'src/client/particleSpawner'
+import { PlayAreaBounds } from 'src/client/playAreaBounds'
 import { playerMover } from 'src/client/playerMover'
 import { SkyboxObjects } from 'src/client/skyboxObjects'
 import { SoundManager } from 'src/client/soundManager'
@@ -183,9 +184,10 @@ export async function initClient() {
 	UiWorld.init()
 	TouchscreenControls.init()
 	RespawnTrigger.init()
+	PlayAreaBounds.init()
 
 	setupLaneLobbies()
-	setupLights()
+	LightingGaffer.init()
 	await SkyboxObjects.init()
 	onGameLoaded()
 }
