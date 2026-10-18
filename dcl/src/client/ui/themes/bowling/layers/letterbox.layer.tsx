@@ -59,7 +59,9 @@ type LetterboxProps = {
 /**
  * Full-screen cinematic bars that slide in during group roll playback.
  * The top HUD (status, toolbar, tickets, playtest, and Bowl-o-tron) hides
- * with the bars and returns when they leave. Leave-game listens separately.
+ * with the bars. Status, toolbar, and tickets return when the bars leave.
+ * The playtest windows return only when their own visibility rules allow it.
+ * Leave-game listens separately.
  */
 export class LetterboxLayer extends Layer {
 	private barProps: PropsController<LetterboxProps>
@@ -132,22 +134,22 @@ export class LetterboxLayer extends Layer {
 
 
 	// MARK: suppressTopHud
-	/** Slides the always-on top HUD off with the bars. */
+	/** Slides the top HUD off with the bars. */
 	private suppressTopHud() {
 		gameStatusLayer.hide(LETTERBOX_HUD_DURATION)
 		topRightTogglesLayer.hide(LETTERBOX_HUD_DURATION)
 		ticketBalanceLayer.hide(LETTERBOX_HUD_DURATION)
-		playtestDebugLayer.hide(LETTERBOX_HUD_DURATION)
+		playtestDebugLayer.suppressForLetterbox(LETTERBOX_HUD_DURATION)
 	}
 
 
 	// MARK: restoreTopHud
-	/** Slides the always-on top HUD back in with the bars. */
+	/** Slides the top HUD back. Playtest windows return only when their own rules allow it. */
 	private restoreTopHud() {
 		gameStatusLayer.show(LETTERBOX_HUD_DURATION)
 		topRightTogglesLayer.show(LETTERBOX_HUD_DURATION)
 		ticketBalanceLayer.show(LETTERBOX_HUD_DURATION)
-		playtestDebugLayer.show(LETTERBOX_HUD_DURATION)
+		playtestDebugLayer.restoreAfterLetterbox(LETTERBOX_HUD_DURATION)
 	}
 
 

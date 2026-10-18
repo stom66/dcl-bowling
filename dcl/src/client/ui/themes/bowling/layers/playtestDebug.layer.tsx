@@ -5,6 +5,7 @@ import { alpha, ButtonText, Column, darken, getTheme, Icon, Layer, Row, Text, Ui
 import { ComponentStore } from 'src/shared/components/componentStore'
 import { PlayerTickets } from 'src/shared/components/definitions/shared.playerTickets'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
+import { timers } from 'src/shared/utils/timers'
 
 import { ClientMessaging } from 'src/client/clientMessaging'
 import { ClientStore } from 'src/client/clientStore'
@@ -23,26 +24,107 @@ const TICKET_ICON_SIZE   = 22
 const TICKET_CHIP_HEIGHT = 40
 /** Same top inset as the ticket balance, plus the chip and a gap. */
 const PANEL_TOP          = TOGGLE_BUTTONS_SIZE + TOGGLE_GAP + TICKET_CHIP_HEIGHT + PANEL_GAP
+/** Wait after loading completes before the ticket and unlock panel appears. */
+const PLAYTEST_REVEAL_DELAY = 10 * 1000
 
 
 // MARK: PlaytestDebugLayer
 /**
- * Right-top playtest controls, stacked under the ticket balance.
- * Ticket and unlock actions sit above bowlotron 3000.
+ * Right-top playtest windows, stacked under the ticket balance.
+ * Ticket and unlock actions stay hidden until ten seconds after
+ * `ClientEvents.LOAD_COMPLETE`. Bowl-o-tron 3000 shows for the local
+ * player's turn (`ON_MY_FRAME_START`) and hides when that turn ends
+ * (`ON_MY_FRAME_END`).
  * Registered only while `GameSettings.PLAYTEST_DEBUG_PANEL` is on.
  */
 export class PlaytestDebugLayer extends Layer {
+	/** True once the post-load delay has elapsed. */
+	private playtestReady   = false
+	/** True from the local player's frame start until that frame ends. */
+	private turnActive      = false
+	/** True while the letterbox is holding the top HUD off screen. */
+	private letterboxHidden = false
+
 	constructor() {
 		super({
 			id         : 'bowling-playtest-debug',
 			zone       : ZoneType.RightTop,
 			canBeHidden: true,
+			startHidden: true,
 			uiTransform: {
 				width : PANEL_WIDTH,
 				height: 'auto',
 				margin: { top: PANEL_TOP },
 			},
 		})
+
+		this.bindVisibility()
+	}
+
+
+	// MARK: bindVisibility
+	/**
+	 * Shows each window on its own event, and keeps both off screen during letterbox.
+	 */
+	private bindVisibility() {
+		eventBus.on(ClientEvents.LOAD_COMPLETE, () => {
+			timers.setTimeout(() => {
+				this.playtestReady = true
+				this.syncVisibility()
+			}, PLAYTEST_REVEAL_DELAY)
+		})
+
+		eventBus.on(ClientEvents.ON_MY_FRAME_START, () => {
+			this.turnActive = true
+			this.syncVisibility()
+		})
+		eventBus.on(ClientEvents.ON_MY_FRAME_END, () => {
+			this.turnActive = false
+			this.syncVisibility()
+		})
+		eventBus.on(ClientEvents.ON_GROUP_GAME_END, () => {
+			this.turnActive = false
+			this.syncVisibility()
+		})
+		eventBus.on(ClientEvents.REQUEST_LEAVE_GAME, () => {
+			this.turnActive = false
+			this.syncVisibility()
+		})
+	}
+
+
+	// MARK: suppressForLetterbox
+	/**
+	 * Slides the playtest windows away with the cinematic bars.
+	 */
+	suppressForLetterbox(duration: number) {
+		this.letterboxHidden = true
+		this.syncVisibility(duration)
+	}
+
+
+	// MARK: restoreAfterLetterbox
+	/**
+	 * Brings back whichever windows are allowed once the bars leave.
+	 */
+	restoreAfterLetterbox(duration: number) {
+		this.letterboxHidden = false
+		this.syncVisibility(duration)
+	}
+
+
+	// MARK: syncVisibility
+	/**
+	 * Shows the layer when either window should be on screen.
+	 * A later show does not restart the slide if the layer is already in.
+	 */
+	private syncVisibility(duration = 0.2) {
+		const shouldShow = !this.letterboxHidden && (this.playtestReady || this.turnActive)
+		if (shouldShow) {
+			if (this.visibility.isHidden) this.show(duration)
+			return
+		}
+		if (!this.visibility.isHidden) this.hide(duration)
 	}
 
 
@@ -175,6 +257,7 @@ export class PlaytestDebugLayer extends Layer {
 		title    : string,
 		children : ReactEcs.JSX.Element[],
 		marginTop: number = 0,
+		visible  : boolean = true,
 	) {
 		const theme = getTheme()
 		return (
@@ -182,6 +265,7 @@ export class PlaytestDebugLayer extends Layer {
 				key             = {key}
 				width           = "100%"
 				height          = "auto"
+				display         = {visible ? 'flex' : 'none'}
 				alignItems      = "flex-start"
 				justifyContent  = "flex-start"
 				backgroundColor = {alpha(darken(theme.colors.info, 0.9), 0.9)}
@@ -221,7 +305,7 @@ export class PlaytestDebugLayer extends Layer {
 				this.ticketButton(100),
 				this.button('playtest_reset_unlocks', 'Reset Unlocks', () => { this.resetUnlocks() }),
 				this.button('playtest_reset_tickets', 'Reset Tickets', () => { this.resetTickets() }),
-			], PANEL_GAP),
+			], PANEL_GAP, this.playtestReady),
 			this.panel('bowlotron-chrome', 'Bowl-o-tron 3000', [
 				this.button('bowlotron_strike', 'Strike', () => {
 					this.bowl(Vector3.create(-0.07, 0.12, 0.8), Vector3.create(0, 0, 1), 1, 0)
@@ -232,7 +316,7 @@ export class PlaytestDebugLayer extends Layer {
 				this.button('bowlotron_spare_2', 'Spare Pt.2', () => {
 					this.bowl(Vector3.create(-0.2, 0.12, 0.8), Vector3.create(0, 0, 1), 1, 0)
 				}),
-			], PANEL_GAP),
+			], PANEL_GAP, this.turnActive),
 		]
 	}
 }
