@@ -1,6 +1,7 @@
 import * as utils from "@dcl-sdk/utils"
 import { Animator, EasingFunction, engine, Entity, GltfContainer, ParticleSystem, removeEntityWithChildren, Transform, Tween } from "@dcl/sdk/ecs"
 import { Quaternion, Vector3 } from "@dcl/sdk/math"
+import { isMobile } from "@dcl/sdk/platform"
 
 import { getBallModelSrc, getPinModelSrc } from "src/shared/data/unlocks"
 import { resolvePlayerLoadout, resolveScoringAnimation } from "src/shared/data/unlocks/resolveLoadout"
@@ -333,18 +334,45 @@ export class LaneVisuals {
 
 			GltfContainer.create(pinScale, { src })
 
-			// Cached pin models are already FINISHED and never emit onChange.
-			// whenGltfContainerFinished reads the current state, then polls.
-			whenGltfContainerFinished(pinScale, () => {
-				utils.timers.setTimeout(() => {
-					if (!Transform.has(pinScale) || !Transform.has(pinPos)) return
-					Tween.setScale(pinScale, Vector3.Zero(), scaleEnd, tweenDurationMs, EasingFunction.EF_EASEBOUNCE)
-					Tween.setMove(pinPos, startPos, endPos, tweenDurationMs, EasingFunction.EF_EASEBOUNCE)
-				}, staggerMs * i)
-			})
+			this.schedulePinIntro(pinPos, pinScale, startPos, endPos, scaleEnd, staggerMs * i, tweenDurationMs)
 
 			this.pinEntities[i] = pinPos
 		}
+	}
+
+
+
+	// MARK: schedulePinIntro
+	/**
+	 * Plays the scale-in and the drop.
+	 * Desktop waits until `GltfContainerLoadingState` is `FINISHED`, so the tween
+	 * does not run against an unloaded mesh.
+	 * Mobile starts the tween on spawn. That client does not report `FINISHED`
+	 * for these pin spawns, and waiting left the mesh at scale 0.
+	 */
+	private schedulePinIntro(
+		pinPos         : Entity,
+		pinScale       : Entity,
+		startPos       : Vector3,
+		endPos         : Vector3,
+		scaleEnd       : Vector3,
+		delayMs        : number,
+		tweenDurationMs: number,
+	): void {
+		const play = () => {
+			utils.timers.setTimeout(() => {
+				if (!Transform.has(pinScale) || !Transform.has(pinPos)) return
+				Tween.setScale(pinScale, Vector3.Zero(), scaleEnd, tweenDurationMs, EasingFunction.EF_EASEBOUNCE)
+				Tween.setMove(pinPos, startPos, endPos, tweenDurationMs, EasingFunction.EF_EASEBOUNCE)
+			}, delayMs)
+		}
+
+		if (isMobile()) {
+			play()
+			return
+		}
+
+		whenGltfContainerFinished(pinScale, play)
 	}
 
 

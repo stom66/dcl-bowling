@@ -1,57 +1,48 @@
-# Pin rack stays invisible on later roll playbacks
+# Pin rack stays invisible on mobile when the scale-in waits for load
 
-**Status:** needs a platform fix, no local workaround
-**Found:** 2026-10-07, updated 2026-10-17
+**Status:** workaround in the scene. Desktop still waits for `FINISHED`. Mobile does not.
+**Found:** 2026-10-07, updated 2026-10-18
 **Scene:** Fastlane (`dcl/`)
 **SDK:** `7.29.1-35154657340.commit-e2bbcc9` (`dcl/package.json`)
-**Client:** Decentraland mobile. Desktop build and client version were not captured.
+**Client:** Decentraland mobile. Desktop shows the same rack. Desktop build and both client versions were not captured.
 
 ## Summary
 
-During a roll's playback, the pins sometimes never appear. Players see this after the first roll, and it is much more common on mobile. The ball, countdown, and camera still play.
+Spawning a GLTF on mobile works. The ball, the countdown, the scene model, and these same pin files all load. The rack looked missing because each pin mesh is created at scale 0, and the scale-in ran only after `GltfContainerLoadingState` read as `LoadingState.FINISHED`. On mobile that read did not become `FINISHED`, so the mesh stayed at scale 0 for the whole replay. Desktop stores a value the read can see, so the same tween ran.
 
-The rack is created on every roll start. Each pin mesh is spawned at scale 0. The scale-in and the drop onto the deck run only from `GltfContainerLoadingState.onChange` when `currentState` is `LoadingState.FINISHED`. That listener does not receive the value already stored on the entity. It runs only when a later change arrives. If a later roll's cached pin model is already `FINISHED` before the listener is attached, or the client never sends another transition, the mesh stays at scale 0 for the whole replay. That looks like the pins were never spawned.
+The scale-in is there so the tween does not start before the mesh has loaded. That is the right sequence, and desktop still does it. Mobile does not report the state the sequence needs. Waiting longer, polling, or subscribing to `onChange` does not make the pins appear. The scene therefore skips the wait on mobile and starts the scale-in at spawn. A tween that begins before the mesh is resident is the lesser failure. An empty deck is not.
 
-The scale-in is intentional and is still in the scene. Nothing was changed to hide or replace it.
-
-An earlier note in this file guessed that the first roll was the one that failed and that a later cached spawn succeeded. That sequence was not logged. The player report is the later rolls.
+This is the same split as the rest of this project. The jump button hide and emoji in a `Label` already fail on mobile and work on desktop. The time spent here was not spent making the bowling better. It was spent finding out, again, that a documented client signal does not exist on the phone.
 
 ## Steps
 
 1. Open the scene on the Decentraland mobile client.
-2. Start a game and bowl the first roll. Confirm the pins are visible during that replay.
-3. Bowl the next roll and watch the pin deck during its replay.
+2. Start a game and bowl. Watch the pin deck during the replay.
+3. Repeat the same roll on the desktop client.
 
 ## Expected
 
-`GltfContainerLoadingState.onChange` fires with `currentState === LoadingState.FINISHED` for every pin spawn, including a spawn of a GLTF the client has already loaded. The scene then runs `Tween.setScale` from `Vector3.Zero()` to the pin's visual scale (`1.5`) and `Tween.setMove` from 2 m above the deck down to the rest pose (`dcl/src/client/laneVisuals.ts`, `setupPins`).
+After `GltfContainer.create`, `GltfContainerLoadingState` is readable as `LoadingState.FINISHED` on mobile, including a model that client has already loaded. The scene can then scale the pin up from 0. Desktop already does this. Mobile should do the same thing, so the scene can use one path.
 
-## What the scene does
+## Workaround
 
-`gameStateHandler.createLaneVisuals` builds a new `LaneVisuals` and calls `setupPins(data.pinStanding)` on every `NOTIFY_PLAYER_ROLL_START`, including the second roll of a frame. Standing pins are not skipped by the server after roll one unless that pin was actually knocked down.
+`LaneVisuals.schedulePinIntro` (`dcl/src/client/laneVisuals.ts`):
 
-Each standing pin is a parent entity at the drop start, and a child at scale 0 with the pin `GltfContainer`. The child subscribes to `GltfContainerLoadingState.onChange`. The scale-in and the drop are inside that callback, and only when `currentState` is `FINISHED`. There is no other path that reveals the mesh.
+- Desktop calls `whenGltfContainerFinished`, then runs `Tween.setScale` to `1.5` and `Tween.setMove` down onto the deck.
+- Mobile runs those tweens from the spawn. `isMobile()` is only false until `getPlatform()` has reported, and a roll starts long after that.
 
-In `@dcl/ecs` `7.29.1`, `Component.onChange` only stores the callback (`lww-element-set-component-definition.js`). The callback runs later from `__onChangeCallbacks`, when a change is delivered. It is not invoked with the current value at subscribe time. The type comment says it triggers when the entity changed on the last tick.
-
-The ball is created at scale 1 with no loading-state gate (`setupBall`), so a missed pin callback leaves the replay looking normal except for an empty deck.
-
-The pin files are small scene content (`dcl/assets/models/pins/`, about 16–22 KB each), so a long download is unlikely to explain a failure that starts after the model has already been shown once. The same callback pattern is used for the countdown and score models.
+`GltfContainer.create` is the same call on both. The mesh is not a different file on mobile.
 
 ## Suspected cause
 
-On a later roll the pin GLTF is already cached. The mobile client either applies `LoadingState.FINISHED` before `onChange` is subscribed, or it does not emit a new transition for that cached spawn. The intro never starts, and the child stays at scale 0.
-
-Desktop usually still delivers that transition on a later frame, so the same rack only fails sometimes.
-
-This was not confirmed in the client. There is no log yet of the loading-state sequence on the pin child for roll 1 versus roll 2. A useful trace is `GltfContainerLoadingState.getOrNull` immediately after `GltfContainer.create`, then every `onChange` value until the replay ends, on both rolls.
+The mobile client is not storing `LoadingState.FINISHED` where `GltfContainerLoadingState.getOrNull` can see it for these pin entities, or it never stores it. That was not traced inside the client. There is no log of that read on a phone and on desktop for the same roll.
 
 ## Fix that belongs on the platform
 
-Every spawn of a scene GLTF should report `LoadingState.FINISHED` through `GltfContainerLoadingState.onChange`, including a spawn of a model the client has already loaded. A state applied in the same turn as `GltfContainer.create` should still be visible to a listener registered immediately after that create.
+A pin spawn on mobile should make `GltfContainerLoadingState` readable as `LoadingState.FINISHED`, including a cached model. Then the scene can delete the mobile branch and wait on both clients.
 
 ## Where to send this
 
-SDK contract for the callback: [decentraland/js-sdk-toolchain](https://github.com/decentraland/js-sdk-toolchain/issues).
+Mobile client: the Explorer build that reproduced it. Desktop Explorer issues are [decentraland/unity-explorer](https://github.com/decentraland/unity-explorer/issues).
 
-Mobile client behavior: the Explorer build that reproduced it. Desktop Explorer issues are [decentraland/unity-explorer](https://github.com/decentraland/unity-explorer/issues).
+SDK contract for the loading state: [decentraland/js-sdk-toolchain](https://github.com/decentraland/js-sdk-toolchain/issues).
