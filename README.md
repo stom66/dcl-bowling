@@ -39,7 +39,7 @@ This repository is split into the following folders:
   - `/assets/fonts` — custom fonts
   - `/assets/images` — Affinity source files for UI images
   - `/assets/models` — source Blender/glTF files per model, including full-res textures
-  - `/assets/sfx` — raw WAV files for sound effects
+  - `/assets/sfx` — sound effect sources. Raw WAVs live in `/assets/sfx/src`; the scene plays the MP3s in `/dcl/assets/sfx`
   - `/assets/textures` — asset-agnostic textures used across the scene
 - `/config` — import/export settings, UVPackMaster presets, shader templates, etc.
 - `/dcl` — the DCL scene to deploy. Exported glTF files live in `/dcl/models` with optimised textures in `/dcl/assets/models/tex`
