@@ -12,12 +12,6 @@ export { sfx } from 'src/client/data/sfx'
 
 export namespace SoundManager {
 
-	// MARK: event bindings
-	eventBus.on(ClientEvents.ON_GAME_JOINED, () => {
-		playSound(sfx.confirm)
-	})
-
-
 	// MARK: settings
 	const FADE_DURATION          = 3.0                                // Duration when fading music in/out
 	const BGM_VOLUME             = 0.35                               // Volume when music is fully faded in
