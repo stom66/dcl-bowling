@@ -510,6 +510,7 @@ class GameManager {
 		const rollIndex         = LaneStore.getCurrentRollIndex(laneIndex)
 		const rt                = this.getRuntime(laneIndex)
 		const startingPinStates = rt.pinStanding.slice()
+		const power             = Math.max(GameSettings.MIN_ROLL_POWER, Math.min(1, data.power))
 
 		// Run the sim - the could take a couple of seconds
 		const simInput: SimulationInput = {
@@ -518,7 +519,7 @@ class GameManager {
 			pinStates: startingPinStates,
 			position : Vector3.create(data.position.x, data.position.y, data.position.z),
 			spin     : data.spin,
-			strength : data.power,
+			strength : power,
 		}
 		//console.log('gameManager: simulateAndPlaybackRoll: simInput', JSON.stringify(simInput, null, 2))
 		const simResults: SimulationResult = getSimulationResults(simInput, {
