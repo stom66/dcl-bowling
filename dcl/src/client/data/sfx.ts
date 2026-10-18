@@ -4,11 +4,6 @@ export const sfx = {
 		"assets/sfx/music/music_zapsplat_astro_race.mp3",
 	],
 
-	confirm: [
-		"assets/sfx/confirm_style_5_002.mp3",
-		"assets/sfx/confirm_style_5_001.mp3",
-	],
-
 	bowl_result_bad: [
 		"assets/sfx/error_style_2_echo_001.mp3",
 		"assets/sfx/error_style_2_echo_002.mp3",
