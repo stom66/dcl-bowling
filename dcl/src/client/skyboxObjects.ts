@@ -1,5 +1,5 @@
 import * as utils from '@dcl-sdk/utils'
-import { ColliderLayer, EasingFunction, engine, Entity, GltfContainer, ParticleSystem, PBParticleSystem, PBParticleSystem_BlendMode, PBParticleSystem_PlaybackState, PBParticleSystem_SimulationSpace, Transform, Tween, TweenSequence } from '@dcl/sdk/ecs'
+import { ColliderLayer, EasingFunction, engine, Entity, GltfContainer, ParticleSystem, PBParticleSystem, PBParticleSystem_BlendMode, PBParticleSystem_PlaybackState, PBParticleSystem_SimulationSpace, removeEntityWithChildren, Transform, Tween, TweenSequence } from '@dcl/sdk/ecs'
 import { Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { getPlatform, isMobile } from '@dcl/sdk/platform'
 
@@ -223,10 +223,9 @@ export namespace SkyboxObjects {
 		utils.timers.setTimeout(() => {
 			ParticleSpawner.stop(trail)
 			utils.timers.setTimeout(() => {
-				if (trail) engine.removeEntity(trail)
-				engine.removeEntity(meteor)
-				engine.removeEntity(spinner)
-				engine.removeEntity(pivot)
+				if (Transform.has(pivot)) {
+					removeEntityWithChildren(engine, pivot)
+				}
 			}, PARTICLE_TRAIL_LIFESPAN * 1000)
 		}, METEOR_DURATION_MS)
 
