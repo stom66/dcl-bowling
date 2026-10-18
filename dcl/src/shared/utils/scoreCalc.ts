@@ -151,6 +151,57 @@ export function getFrameResults(
 }
 
 
+export type StrikeSpareCounts = {
+	strikes : number
+	spares  : number
+}
+
+
+
+// MARK: countStrikesAndSpares
+/**
+ * Counts strike rolls and spare frames on a finished scorecard.
+ * A 10 that closes a spare is not a strike. Fill-ball strikes in the last frame each count.
+ */
+export function countStrikesAndSpares(
+	frames     : number[][],
+	frameCount : number,
+): StrikeSpareCounts {
+	const length = normalizeFrameCount(frameCount)
+	const played = Math.min(frames.length, length)
+	let strikes  = 0
+	let spares   = 0
+
+	for (let index = 0; index < played; index++) {
+		const frame   = frames[index] ?? []
+		const isFinal = index === length - 1
+		const first   = frame[0]
+		const second  = frame[1]
+		const third   = frame[2]
+
+		if (!isFinal) {
+			if (first === 10) strikes += 1
+			else if (frame.length >= 2 && (first ?? 0) + (second ?? 0) === 10) spares += 1
+			continue
+		}
+
+		if (first === 10) {
+			strikes += 1
+			if (second === 10) strikes += 1
+			if (third === 10) strikes += 1
+			continue
+		}
+
+		if (typeof first === 'number' && typeof second === 'number' && first + second === 10) {
+			spares += 1
+			if (third === 10) strikes += 1
+		}
+	}
+
+	return { strikes, spares }
+}
+
+
 // Pins 7 and 10 standing: head pin down, two groups that do not touch.
 const DUMMY_SPLIT_7_10 = (1 << 6) | (1 << 9)
 

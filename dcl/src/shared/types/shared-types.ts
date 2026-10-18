@@ -51,6 +51,7 @@ export type GameSummaryCard = {
 	leftUserIds       : string[]
 	phase             : LanePhase
 	players           : string[]
+	gameStartTime     : number
 }
 
 
@@ -166,6 +167,11 @@ export type RequestCatalogItemPayload = {
 /** Client → server: ticket grant. Admins, or any player when the playtest panel is on. */
 export type RequestTicketPayload = {
 	amount: number
+}
+
+/** Client → server: claim the pending reward at the head of the queue. */
+export type RequestClaimRewardPayload = {
+	rewardId: string
 }
 
 /** Client → server: persist player preferences. Unknown fields are ignored. */

@@ -13,6 +13,7 @@ import { leaveGameLayer } from 'src/client/ui/themes/bowling/layers/leaveGame.la
 import { letterboxLayer } from 'src/client/ui/themes/bowling/layers/letterbox.layer'
 import { loadingLayer } from 'src/client/ui/themes/bowling/layers/loading.layer'
 import { playtestDebugLayer } from 'src/client/ui/themes/bowling/layers/playtestDebug.layer'
+import { rewardLayer } from 'src/client/ui/themes/bowling/layers/reward.layer'
 import { scoresLayer } from 'src/client/ui/themes/bowling/layers/scores.layer'
 import { statsLayer } from 'src/client/ui/themes/bowling/layers/stats.layer'
 import { ticketBalanceLayer } from 'src/client/ui/themes/bowling/layers/ticketBalance.layer'
@@ -44,7 +45,8 @@ const IS_DEV = process.env.NODE_ENV === 'development'
  * shows during the local player's turn.
  * Letterbox hides that top HUD (status, leave, toolbar, tickets, playtest,
  * and Bowl-o-tron) for the duration of a group roll replay.
- * The end-of-game summary sits above the letterbox and under the loading screen.
+ * The end-of-game summary sits above the letterbox. Login rewards sit above
+ * that summary and under the loading screen.
  * Loading is near the end so
  * it covers gameplay until dismissed.
  * Version is last with the highest z-index.
@@ -66,6 +68,7 @@ export const layers: Layer[] = [
 	ticketBalanceLayer,
 	...(GameSettings.PLAYTEST_DEBUG_PANEL ? [playtestDebugLayer] : []),
 	...(IS_DEV ? [debugLayer] : []),
+	rewardLayer,
 	loadingLayer,
 	versionLayer,
 ]

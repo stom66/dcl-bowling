@@ -8,8 +8,6 @@ import { trails } from "src/shared/data/unlocks/trails"
 import { CatalogEntry, PlayerLoadoutState, ScoreKind, ScoringAnimationItem, UnlockMeta } from "src/shared/data/unlocks/types"
 
 
-export const TICKETS_PER_COMPLETED_GAME = 5
-
 export { balls } from "src/shared/data/unlocks/balls"
 export { lanes } from "src/shared/data/unlocks/lanes"
 export { pins } from "src/shared/data/unlocks/pins"
@@ -21,6 +19,7 @@ export type {
 	BallItem,
 	CatalogEntry,
 	CatalogKind,
+	GameTicketLine,
 	LaneItem,
 	PinItem,
 	PlayerActivityState,

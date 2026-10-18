@@ -230,6 +230,7 @@ export namespace LaneWatcher {
 			leftUserIds       : LaneStore.getLeftUserIds(snapshot.laneIndex).slice(),
 			phase             : snapshot.phase,
 			players           : snapshot.players.slice(),
+			gameStartTime     : snapshot.gameStartTime,
 		}
 	}
 

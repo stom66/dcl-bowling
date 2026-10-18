@@ -3,6 +3,7 @@ import { PlayerActivity } from "src/shared/components/definitions/shared.playerA
 import { PlayerIdentity } from "src/shared/components/definitions/shared.playerIdentity"
 import { PlayerLoadout } from "src/shared/components/definitions/shared.playerLoadout"
 import { PlayerPreferences } from "src/shared/components/definitions/shared.playerPreferences"
+import { PlayerRewards } from "src/shared/components/definitions/shared.playerRewards"
 import { PlayerStats } from "src/shared/components/definitions/shared.playerStats"
 import { PlayerTickets } from "src/shared/components/definitions/shared.playerTickets"
 import { PlayerUnlocks } from "src/shared/components/definitions/shared.playerUnlocks"
@@ -154,11 +155,13 @@ export const registry: ComponentRegistration[] = [
 		mode       : 'synced',
 		entityGroup: PLAYERS_GROUP_ID,
 		defaults   : () => ({
-			firstPlayedAt : 0,
-			lastPlayedAt  : 0,
-			currentStreak : 0,
-			maxStreak     : 0,
-			gamesPlayed   : 0,
+			firstPlayedAt     : 0,
+			lastPlayedAt      : 0,
+			lastPlayedVersion : '',
+			currentStreak     : 0,
+			maxStreak         : 0,
+			sessions          : 0,
+			gamesPlayed       : 0,
 		}),
 	},
 	{
@@ -185,7 +188,10 @@ export const registry: ComponentRegistration[] = [
 		mode       : 'synced',
 		entityGroup: PLAYERS_GROUP_ID,
 		defaults   : () => ({
-			balance: 0,
+			balance             : 0,
+			lastPayoutStartedAt : 0,
+			lastPayoutTotal     : 0,
+			lastPayoutLines     : [],
 		}),
 	},
 	{
@@ -209,6 +215,15 @@ export const registry: ComponentRegistration[] = [
 		defaults   : () => ({
 			bgmMuted       : false,
 			bumpersEnabled : false,
+		}),
+	},
+	{
+		component  : PlayerRewards,
+		mode       : 'synced',
+		entityGroup: PLAYERS_GROUP_ID,
+		defaults   : () => ({
+			redeemedIds : [],
+			pending     : [],
 		}),
 	},
 ]

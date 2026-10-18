@@ -8,6 +8,7 @@ import { PIN_LANE_LOCAL_POSITIONS } from "src/shared/physics/physics.pin-layout"
 import { GameFrameCount, GameSettings, normalizeFrameCount } from "src/shared/settings"
 import { NotifyPlayerRollPayload, RequestPlayRollPayload, RollPayload } from "src/shared/types/shared-types"
 import { isValidLaneIndex } from "src/shared/utils/laneIndex"
+import { countStrikesAndSpares } from "src/shared/utils/scoreCalc"
 import { pinStatesToLeaveBitmask } from "src/shared/utils/splits"
 import { userProfileCache } from "src/shared/utils/userProfileCache"
 
@@ -845,14 +846,25 @@ class GameManager {
 			}
 		}
 
-		PlayerProfileManager.onGameComplete(playerIds.map((userId) => ({
-			userId     : userId,
-			startedAt  : gameStartTime,
-			durationMs : durationMs,
-			frameCount : frameCount,
-			score      : LaneStore.getScoreForUserId(userId) ?? 0,
-			won        : userId === winnerUserId,
-		})))
+		const scores   = playerIds.map((userId) => LaneStore.getScoreForUserId(userId) ?? 0)
+		const topScore = scores.length > 0 ? Math.max(...scores) : 0
+
+		PlayerProfileManager.onGameComplete(playerIds.map((userId, index) => {
+			const frames = LaneStore.getFramesForUserId(userId) ?? []
+			const counts = countStrikesAndSpares(frames, frameCount)
+			const score  = scores[index] ?? 0
+			return {
+				userId,
+				startedAt      : gameStartTime,
+				durationMs,
+				frameCount,
+				score,
+				won            : userId === winnerUserId,
+				strikeCount    : counts.strikes,
+				spareCount     : counts.spares,
+				sharesTopScore : score === topScore,
+			}
+		}))
 
 		const boardScores = playerIds.map((userId) => ({
 			userId: userId,

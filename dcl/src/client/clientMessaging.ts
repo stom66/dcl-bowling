@@ -142,6 +142,17 @@ export namespace ClientMessaging {
 	}
 
 
+	// MARK: requestClaimReward
+	/**
+	 * Asks the server to grant the pending reward with this id.
+	 * The server only accepts the offer at the head of the queue.
+	 */
+	export function requestClaimReward(rewardId: string): void {
+		console.log('ClientMessaging: requestClaimReward: rewardId', rewardId)
+		net.send(MessageType.REQUEST_CLAIM_REWARD, { rewardId })
+	}
+
+
 	// MARK: requestSetPreferences
 	/**
 	 * Asks the server to persist player preferences such as background-music mute.

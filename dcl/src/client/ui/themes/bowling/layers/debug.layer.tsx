@@ -181,6 +181,8 @@ export class DebugLayer extends Layer {
 			this.field('bgmMuted',         'bgmMuted',         preferences ? String(preferences.bgmMuted) : 'syncing...'),
 			this.field('bumpersEnabled',   'bumpersEnabled',   preferences ? String(preferences.bumpersEnabled) : 'syncing...'),
 			this.field('gamesPlayed',      'gamesPlayed',      activity?.gamesPlayed.toString() ?? '-'),
+			this.field('sessions',         'sessions',         activity?.sessions.toString() ?? '-'),
+			this.field('lastVersion',      'lastVersion',      activity?.lastPlayedVersion || '-'),
 			this.field('streak',           'streak',           activity ? `${activity.currentStreak}/${activity.maxStreak}` : '-'),
 			this.field('careerPlayed',     'careerPlayed',     stats?.gamesPlayed.toString() ?? '-'),
 			this.field('careerWonLost',    'won/lost',         stats ? `${stats.gamesWon}/${stats.gamesLost}` : '-'),
@@ -307,6 +309,7 @@ export class DebugLayer extends Layer {
 			leftUserIds      : LaneStore.areLanesReady() ? LaneStore.getLeftUserIds(snapshot.laneIndex) : [],
 			phase            : LanePhase.FRAME_END,
 			players          : players,
+			gameStartTime    : snapshot.gameStartTime,
 		}
 	}
 

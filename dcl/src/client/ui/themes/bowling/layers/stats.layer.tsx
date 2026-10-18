@@ -263,6 +263,7 @@ export class StatsLayer extends Layer {
 
 		const recordCells: StatCell[] = [
 			{ id: 'stats-played',   label: 'Games played',  value: formatCount(stats?.gamesPlayed) },
+			{ id: 'stats-sessions', label: 'Sessions',      value: formatCount(activity?.sessions) },
 			{ id: 'stats-won',      label: 'Wins',          value: formatCount(stats?.gamesWon) },
 			{ id: 'stats-lost',     label: 'Losses',        value: formatCount(stats?.gamesLost) },
 			{ id: 'stats-winrate',  label: 'Win rate',      value: formatWinRate(stats?.gamesWon, stats?.gamesPlayed) },

@@ -3,11 +3,14 @@ import { ComponentStore } from "src/shared/components/componentStore"
 import { PlayerActivity } from "src/shared/components/definitions/shared.playerActivity"
 import { PlayerLoadout } from "src/shared/components/definitions/shared.playerLoadout"
 import { PlayerPreferences, PlayerPreferencesState } from "src/shared/components/definitions/shared.playerPreferences"
+import { PlayerRewards } from "src/shared/components/definitions/shared.playerRewards"
 import { PlayerStats } from "src/shared/components/definitions/shared.playerStats"
 import { PlayerTickets } from "src/shared/components/definitions/shared.playerTickets"
 import { PlayerUnlocks } from "src/shared/components/definitions/shared.playerUnlocks"
 import { PLAYERS_GROUP_ID } from "src/shared/components/registry"
 import { normalizeEntityKey } from "src/shared/components/types"
+import { buildGameTicketLines, sumTicketLines } from "src/shared/data/gameTickets"
+import { isRewardInWindow, isStreakRewardId, PendingRewardOffer, PlayerRewardsState, REWARDS, resolveRewardOffer, RewardPlayerContext } from "src/shared/data/rewards"
 import {
 	type CatalogKind,
 	getCatalogEntry,
@@ -15,7 +18,6 @@ import {
 	getDefaultScoringAnimIds,
 	getDefaultUnlockedIds,
 	isItemOwned,
-	TICKETS_PER_COMPLETED_GAME,
 } from "src/shared/data/unlocks"
 import {
 	PlayerActivityState,
@@ -24,8 +26,10 @@ import {
 	PlayerStatsState,
 	PlayerTicketsState,
 	PlayerUnlocksState,
+	GameTicketLine,
 	ScoringAnimationItem,
 } from "src/shared/data/unlocks/types"
+import { VERSION } from "src/shared/data/version"
 import { canUsePlaytestDebug, getPerfectScore, normalizeFrameCount } from "src/shared/settings"
 import { PlayerBackedState } from "src/shared/storage/player.storageBackedState"
 import { eventBus, ServerEvents } from "src/shared/utils/eventBus"
@@ -39,16 +43,20 @@ type PlayerSession = {
 	unlocks      : PlayerBackedState<PlayerUnlocksState>
 	loadout      : PlayerBackedState<PlayerLoadoutState>
 	preferences  : PlayerBackedState<PlayerPreferencesState>
+	rewards      : PlayerBackedState<PlayerRewardsState>
 }
 
 
 export type PlayerGameCompleteResult = {
-	userId     : string
-	startedAt  : number
-	durationMs : number
-	frameCount : number
-	score      : number
-	won        : boolean
+	userId         : string
+	startedAt      : number
+	durationMs     : number
+	frameCount     : number
+	score          : number
+	won            : boolean
+	strikeCount    : number
+	spareCount     : number
+	sharesTopScore : boolean
 }
 
 
@@ -129,14 +137,29 @@ export namespace PlayerProfileManager {
 			session.tickets.init(),
 			session.unlocks.init(),
 			session.preferences.init(),
+			session.rewards.init(),
 		])
 		await session.loadout.init()
 
 		seedGamesPlayedFromActivity(session)
 
-		session.activity.update((state) => applyVisit(state, Date.now()))
+		const now      = Date.now()
+		const activity = session.activity.get()
+		const visit    = applyVisit(activity, now)
+		offerRewards(session, {
+			userId  : session.userId,
+			now,
+			activity,
+			visit,
+			stats   : session.stats.get(),
+			tickets : session.tickets.get(),
+			unlocks : session.unlocks.get(),
+			version : VERSION,
+		})
+		session.activity.update(() => visit)
 		await session.activity.persist()
 		await session.stats.persist()
+		await session.rewards.persist()
 	}
 
 
@@ -157,6 +180,7 @@ export namespace PlayerProfileManager {
 			session.unlocks.persist(),
 			session.loadout.persist(),
 			session.preferences.persist(),
+			session.rewards.persist(),
 		])
 
 		ComponentManager.removeGroupEntity(PLAYERS_GROUP_ID, userId)
@@ -224,9 +248,21 @@ export namespace PlayerProfileManager {
 	 * Records completed-game career stats, tickets, and activity. Call from lane endGame only.
 	 */
 	export function onGameComplete(results: PlayerGameCompleteResult[]): void {
+		const today = utcDay(Date.now())
+
 		for (const result of results) {
 			const session = getSession(result.userId)
 			if (!session) continue
+
+			const firstGameToday = !session.stats.get().matches.some((match) => utcDay(match.startedAt) === today)
+			const lines          = buildGameTicketLines({
+				frameCount     : result.frameCount,
+				sharesTopScore : result.sharesTopScore,
+				strikeCount    : result.strikeCount,
+				spareCount     : result.spareCount,
+				firstGameToday : firstGameToday,
+			})
+			const total = sumTicketLines(lines)
 
 			session.activity.update((state) => ({
 				...state,
@@ -234,13 +270,17 @@ export namespace PlayerProfileManager {
 			}))
 			session.tickets.update((state) => ({
 				...state,
-				balance: state.balance + TICKETS_PER_COMPLETED_GAME,
+				balance             : state.balance + total,
+				lastPayoutStartedAt : result.startedAt,
+				lastPayoutTotal     : total,
+				lastPayoutLines     : lines,
 			}))
 			session.stats.update((state) => applyGameComplete(state, result))
 
 			void session.activity.persist()
 			void session.tickets.persist()
 			void session.stats.persist()
+			console.log('PlayerProfileManager: onGameComplete: userId', result.userId, 'tickets', total)
 		}
 	}
 
@@ -433,6 +473,31 @@ export namespace PlayerProfileManager {
 	}
 
 
+	// MARK: requestClaimReward
+	/**
+	 * Grants the pending offer at the head of the queue when `rewardId` matches it.
+	 * Tickets use the frozen amount. An unlock is added without equipping it.
+	 */
+	export function requestClaimReward(
+		userId   : string,
+		rewardId : string,
+	): void {
+		const session = getSession(userId)
+		if (!session) {
+			console.log('PlayerProfileManager: requestClaimReward: no session', userId)
+			return
+		}
+
+		if (!rewardId) {
+			console.log('PlayerProfileManager: requestClaimReward: missing rewardId', userId)
+			return
+		}
+
+		session.rewards.update((state) => claimHeadOffer(session, state, rewardId))
+		void session.rewards.persist()
+	}
+
+
 	// MARK: createSession
 	function createSession(userId: string): PlayerSession {
 		return {
@@ -465,10 +530,13 @@ export namespace PlayerProfileManager {
 				userId,
 				key           : 'tickets',
 				writeOnUpdate : false,
-				createDefault : () => ({ balance: 0 }),
+				createDefault : createEmptyTickets,
 				normalize     : normalizeTickets,
 				onPublish     : (state) => {
-					ComponentStore.createOrReplace(PlayerTickets, state, { key: userId })
+					ComponentStore.createOrReplace(PlayerTickets, {
+						...state,
+						lastPayoutLines: state.lastPayoutLines.map((line) => ({ ...line })),
+					}, { key: userId })
 				},
 			}),
 			unlocks: new PlayerBackedState<PlayerUnlocksState>({
@@ -506,6 +574,19 @@ export namespace PlayerProfileManager {
 					ComponentStore.createOrReplace(PlayerPreferences, state, { key: userId })
 				},
 			}),
+			rewards: new PlayerBackedState<PlayerRewardsState>({
+				userId,
+				key           : 'rewards',
+				writeOnUpdate : false,
+				createDefault : createEmptyRewards,
+				normalize     : normalizeRewards,
+				onPublish     : (state) => {
+					ComponentStore.createOrReplace(PlayerRewards, {
+						redeemedIds : [...state.redeemedIds],
+						pending     : state.pending.map((offer) => ({ ...offer })),
+					}, { key: userId })
+				},
+			}),
 		}
 	}
 }
@@ -514,11 +595,13 @@ export namespace PlayerProfileManager {
 // MARK: createEmptyActivity
 function createEmptyActivity(): PlayerActivityState {
 	return {
-		firstPlayedAt : 0,
-		lastPlayedAt  : 0,
-		currentStreak : 0,
-		maxStreak     : 0,
-		gamesPlayed   : 0,
+		firstPlayedAt     : 0,
+		lastPlayedAt      : 0,
+		lastPlayedVersion : '',
+		currentStreak     : 0,
+		maxStreak         : 0,
+		sessions          : 0,
+		gamesPlayed       : 0,
 	}
 }
 
@@ -542,11 +625,33 @@ function createEmptyStats(): PlayerStatsState {
 }
 
 
+// MARK: createEmptyTickets
+function createEmptyTickets(): PlayerTicketsState {
+	return {
+		balance             : 0,
+		lastPayoutStartedAt : 0,
+		lastPayoutTotal     : 0,
+		lastPayoutLines     : [],
+	}
+}
+
+
+
 // MARK: createEmptyPreferences
 function createEmptyPreferences(): PlayerPreferencesState {
 	return {
 		bgmMuted       : false,
 		bumpersEnabled : false,
+	}
+}
+
+
+
+// MARK: createEmptyRewards
+function createEmptyRewards(): PlayerRewardsState {
+	return {
+		redeemedIds : [],
+		pending     : [],
 	}
 }
 
@@ -625,9 +730,13 @@ function applyVisit(
 	state : PlayerActivityState,
 	now   : number
 ): PlayerActivityState {
-	const next: PlayerActivityState = { ...state }
+	const next: PlayerActivityState = {
+		...state,
+		sessions          : state.sessions + 1,
+		lastPlayedVersion : VERSION,
+	}
 
-	if (!next.firstPlayedAt) {
+	if (!state.firstPlayedAt) {
 		next.firstPlayedAt = now
 		next.currentStreak = 1
 		next.maxStreak     = 1
@@ -636,14 +745,14 @@ function applyVisit(
 	}
 
 	const today   = utcDay(now)
-	const lastDay = utcDay(next.lastPlayedAt)
+	const lastDay = utcDay(state.lastPlayedAt)
 	if (today === lastDay) {
 		next.lastPlayedAt = now
 		return next
 	}
 
-	next.currentStreak = today === lastDay + 1 ? next.currentStreak + 1 : 1
-	next.maxStreak     = Math.max(next.maxStreak, next.currentStreak)
+	next.currentStreak = today === lastDay + 1 ? state.currentStreak + 1 : 1
+	next.maxStreak     = Math.max(state.maxStreak, next.currentStreak)
 	next.lastPlayedAt  = now
 	return next
 }
@@ -692,13 +801,20 @@ function asStringArray(value: unknown): string[] {
 
 // MARK: normalizeActivity
 function normalizeActivity(raw: unknown): PlayerActivityState {
-	const data = asRecord(raw)
+	const data         = asRecord(raw)
+	const lastPlayedAt = asNumber(data.lastPlayedAt, 0)
+	const hasSessions  = typeof data.sessions === 'number' && Number.isFinite(data.sessions)
+	let sessions       = hasSessions ? Math.max(0, Math.floor(data.sessions as number)) : 0
+	if (!hasSessions && lastPlayedAt > 0) sessions = 1
+
 	return {
-		firstPlayedAt : asNumber(data.firstPlayedAt, 0),
-		lastPlayedAt  : asNumber(data.lastPlayedAt, 0),
-		currentStreak : asNumber(data.currentStreak, 0),
-		maxStreak     : asNumber(data.maxStreak, 0),
-		gamesPlayed   : asNumber(data.gamesPlayed, 0),
+		firstPlayedAt     : asNumber(data.firstPlayedAt, 0),
+		lastPlayedAt      : lastPlayedAt,
+		lastPlayedVersion : typeof data.lastPlayedVersion === 'string' ? data.lastPlayedVersion : '',
+		currentStreak     : asNumber(data.currentStreak, 0),
+		maxStreak         : asNumber(data.maxStreak, 0),
+		sessions          : sessions,
+		gamesPlayed       : asNumber(data.gamesPlayed, 0),
 	}
 }
 
@@ -747,8 +863,172 @@ function normalizeMatches(value: unknown): PlayerMatchSummary[] {
 function normalizeTickets(raw: unknown): PlayerTicketsState {
 	const data = asRecord(raw)
 	return {
-		balance: Math.max(0, Math.floor(asNumber(data.balance, 0))),
+		balance             : Math.max(0, Math.floor(asNumber(data.balance, 0))),
+		lastPayoutStartedAt : asNumber(data.lastPayoutStartedAt, 0),
+		lastPayoutTotal     : Math.max(0, Math.floor(asNumber(data.lastPayoutTotal, 0))),
+		lastPayoutLines     : normalizeTicketLines(data.lastPayoutLines),
 	}
+}
+
+
+
+// MARK: normalizeTicketLines
+function normalizeTicketLines(value: unknown): GameTicketLine[] {
+	if (!Array.isArray(value)) return []
+
+	const lines: GameTicketLine[] = []
+	for (const entry of value) {
+		const data  = asRecord(entry)
+		const label = typeof data.label === 'string' ? data.label : ''
+		if (!label) continue
+		lines.push({
+			label,
+			count   : Math.max(0, Math.floor(asNumber(data.count, 0))),
+			tickets : Math.max(0, Math.floor(asNumber(data.tickets, 0))),
+		})
+	}
+	return lines
+}
+
+
+
+// MARK: normalizeRewards
+function normalizeRewards(raw: unknown): PlayerRewardsState {
+	const data = asRecord(raw)
+	return {
+		redeemedIds : asStringArray(data.redeemedIds),
+		pending     : normalizePendingOffers(data.pending),
+	}
+}
+
+
+
+// MARK: normalizePendingOffers
+function normalizePendingOffers(value: unknown): PendingRewardOffer[] {
+	if (!Array.isArray(value)) return []
+
+	const offers: PendingRewardOffer[] = []
+	for (const entry of value) {
+		const data = asRecord(entry)
+		const id   = typeof data.id === 'string' ? data.id : ''
+		if (!id) continue
+		offers.push({
+			id,
+			title       : typeof data.title === 'string' ? data.title : '',
+			message     : typeof data.message === 'string' ? data.message : '',
+			buttonLabel : typeof data.buttonLabel === 'string' && data.buttonLabel !== ''
+				? data.buttonLabel
+				: 'Thanks!',
+			kind        : data.kind === 'unlock' ? 'unlock' : 'tickets',
+			tickets     : Math.max(0, Math.floor(asNumber(data.tickets, 0))),
+			itemId      : typeof data.itemId === 'string' ? data.itemId : '',
+		})
+	}
+	return offers
+}
+
+
+
+// MARK: offerRewards
+/**
+ * Drops pending offers that left the catalog, then appends newly eligible ones.
+ * A missed day clears redeemed streak rewards so that climb can pay again.
+ */
+function offerRewards(
+	session : PlayerSession,
+	player  : RewardPlayerContext,
+): void {
+	const streakReset = player.activity.firstPlayedAt > 0
+		&& player.visit.currentStreak === 1
+		&& utcDay(player.now) !== utcDay(player.activity.lastPlayedAt)
+
+	session.rewards.update((state) => {
+		const catalogIds  = new Set(REWARDS.map((reward) => reward.id))
+		const pending     = state.pending.filter((offer) => catalogIds.has(offer.id))
+		const pendingIds  = new Set(pending.map((offer) => offer.id))
+		const redeemedIds = streakReset
+			? state.redeemedIds.filter((id) => !isStreakRewardId(id))
+			: state.redeemedIds
+		const redeemed    = new Set(redeemedIds)
+
+		for (const reward of REWARDS) {
+			if (redeemed.has(reward.id) || pendingIds.has(reward.id)) continue
+			if (!isRewardInWindow(reward, player.now)) continue
+			if (!reward.isEligible(player)) continue
+
+			pending.push(resolveRewardOffer(reward, player))
+			pendingIds.add(reward.id)
+		}
+
+		return {
+			redeemedIds,
+			pending,
+		}
+	})
+}
+
+
+
+// MARK: claimHeadOffer
+/**
+ * Grants `rewardId` only when it is the first pending offer.
+ */
+function claimHeadOffer(
+	session  : PlayerSession,
+	state    : PlayerRewardsState,
+	rewardId : string,
+): PlayerRewardsState {
+	const head = state.pending[0]
+	if (!head || head.id !== rewardId) {
+		console.log('PlayerProfileManager: requestClaimReward: not the pending offer', rewardId)
+		return state
+	}
+
+	if (head.kind === 'tickets') {
+		const amount = Math.max(0, Math.floor(head.tickets))
+		session.tickets.update((tickets) => ({
+			...tickets,
+			balance: tickets.balance + amount,
+		}))
+		void session.tickets.persist()
+	}
+
+	if (head.kind === 'unlock' && head.itemId) {
+		grantRewardUnlock(session, head.itemId)
+	}
+
+	console.log('PlayerProfileManager: requestClaimReward: claimed', head.id, 'for', session.userId)
+	return {
+		redeemedIds : state.redeemedIds.includes(head.id) ? state.redeemedIds : [...state.redeemedIds, head.id],
+		pending     : state.pending.slice(1),
+	}
+}
+
+
+
+// MARK: grantRewardUnlock
+/**
+ * Adds a catalog item from a reward without equipping it.
+ */
+function grantRewardUnlock(
+	session : PlayerSession,
+	itemId  : string,
+): void {
+	const entry = getCatalogEntry(itemId)
+	if (!entry) {
+		console.log('PlayerProfileManager: requestClaimReward: unknown unlock', itemId)
+		return
+	}
+
+	if (isItemOwned(itemId, session.unlocks.get().unlockedItemIds)) {
+		console.log('PlayerProfileManager: requestClaimReward: already owned', itemId)
+		return
+	}
+
+	session.unlocks.update((state) => ({
+		unlockedItemIds: [...state.unlockedItemIds, itemId],
+	}))
+	void session.unlocks.persist()
 }
 
 

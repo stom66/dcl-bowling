@@ -14,7 +14,9 @@ import {
 	ZoneType,
 } from '@stom66/dcl-ui-component-kit'
 
-import { TICKETS_PER_COMPLETED_GAME } from 'src/shared/data/unlocks'
+import { ComponentStore } from 'src/shared/components/componentStore'
+import { PlayerTickets } from 'src/shared/components/definitions/shared.playerTickets'
+import { GameTicketLine } from 'src/shared/data/unlocks'
 import { getPerfectScore, normalizeFrameCount } from 'src/shared/settings'
 import { GameSummaryCard } from 'src/shared/types/shared-types'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
@@ -124,6 +126,118 @@ export class GameSummaryLayer extends Layer {
 	}
 
 
+	// MARK: getTicketLines
+	/**
+	 * Payout lines for this match. Empty until the server publish matches the card.
+	 */
+	private getTicketLines(): GameTicketLine[] | undefined {
+		if (!this.card || this.card.gameStartTime <= 0) return undefined
+
+		const userId  = clientStore.getUserId()
+		const tickets = userId ? ComponentStore.getOrNull(PlayerTickets, { key: userId }) : null
+		if (!tickets) return undefined
+		if (Number(tickets.lastPayoutStartedAt) !== this.card.gameStartTime) return undefined
+		return tickets.lastPayoutLines.map((line) => ({
+			label   : line.label,
+			count   : line.count,
+			tickets : line.tickets,
+		}))
+	}
+
+
+	// MARK: renderTicketPayout
+	/**
+	 * Line-by-line ticket rows for the match being celebrated, plus the total.
+	 */
+	private renderTicketPayout(
+		fontColor : Color4,
+		iconColor : Color4,
+	) {
+		const lines = this.getTicketLines()
+		if (!lines) {
+			return (
+				<Text
+					key       = "game-summary-tickets-pending"
+					value     = "Tickets syncing"
+					fontSize  = {22}
+					fontColor = {fontColor}
+					textAlign = "middle-center"
+					width     = "100%"
+					height    = {32}
+					margin    = {{ bottom: 16 }}
+				/>
+			)
+		}
+
+		const total = lines.reduce((sum, line) => sum + line.tickets, 0)
+		return (
+			<UiBox
+				key            = "game-summary-tickets"
+				width          = "100%"
+				height         = "auto"
+				alignItems     = "center"
+				justifyContent = "center"
+				margin         = {{ bottom: 16 }}
+				borderWidth    = {0}
+				uiTransform    = {{ flexDirection: 'column' }}
+			>
+				{lines.map((line) => (
+					<Row
+						key            = {`game-summary-ticket-${line.label}`}
+						width          = {360}
+						height         = {28}
+						spacing        = {8}
+						alignItems     = "center"
+						justifyContent = "space-between"
+					>
+						<Text
+							value     = {`${line.label} × ${line.count}`}
+							fontSize  = {22}
+							fontColor = {fontColor}
+							textAlign = "middle-left"
+							width     = {260}
+							height    = {28}
+						/>
+						<Text
+							value     = {`+${line.tickets}`}
+							fontSize  = {22}
+							fontColor = {fontColor}
+							textAlign = "middle-right"
+							width     = {80}
+							height    = {28}
+						/>
+					</Row>
+				))}
+				<Row
+					key            = "game-summary-ticket-total"
+					width          = "auto"
+					height         = {TICKET_ICON_SIZE}
+					spacing        = {8}
+					alignItems     = "center"
+					justifyContent = "center"
+					margin         = {{ top: 8 }}
+				>
+					<Icon
+						src       = {gameIconsAtlas.source}
+						uvs       = {gameIconsAtlas.uv.ticket}
+						width     = {TICKET_ICON_SIZE}
+						height    = {TICKET_ICON_SIZE}
+						iconColor = {iconColor}
+					/>
+					<Text
+						value     = {`+${total}`}
+						fontSize  = {28}
+						fontColor = {fontColor}
+						textAlign = "middle-left"
+						width     = {80}
+						height    = {TICKET_ICON_SIZE}
+					/>
+				</Row>
+			</UiBox>
+		)
+	}
+
+
 	// MARK: body
 	protected body() {
 		if (!this.card) return []
@@ -179,31 +293,7 @@ export class GameSummaryLayer extends Layer {
 						showTotalScore: true,
 					})}
 				</UiBox>
-				<Row
-					key             = "game-summary-tickets"
-					width           = "auto"
-					height          = {TICKET_ICON_SIZE}
-					spacing         = {8}
-					alignItems      = "center"
-					justifyContent  = "center"
-					margin          = {{ bottom: 16 }}
-				>
-					<Icon
-						src       = {gameIconsAtlas.source}
-						uvs       = {gameIconsAtlas.uv.ticket}
-						width     = {TICKET_ICON_SIZE}
-						height    = {TICKET_ICON_SIZE}
-						iconColor = {theme.colors.primary}
-					/>
-					<Text
-						value     = {`+${TICKETS_PER_COMPLETED_GAME}`}
-						fontSize  = {28}
-						fontColor = {theme.colors.light}
-						textAlign = "middle-left"
-						width     = {80}
-						height    = {TICKET_ICON_SIZE}
-					/>
-				</Row>
+				{this.renderTicketPayout(theme.colors.light, theme.colors.primary)}
 				<ButtonImage
 					id             = "btn_game_summary_continue"
 					atlas          = {primaryButtonAtlas}

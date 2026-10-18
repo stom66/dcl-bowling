@@ -90,11 +90,13 @@ export type PlayerLoadoutState = {
 
 
 export type PlayerActivityState = {
-	firstPlayedAt : number
-	lastPlayedAt  : number
-	currentStreak : number
-	maxStreak     : number
-	gamesPlayed   : number
+	firstPlayedAt     : number
+	lastPlayedAt      : number
+	lastPlayedVersion : string
+	currentStreak     : number
+	maxStreak         : number
+	sessions          : number
+	gamesPlayed       : number
 }
 
 
@@ -123,8 +125,18 @@ export type PlayerStatsState = {
 }
 
 
+export type GameTicketLine = {
+	label   : string
+	count   : number
+	tickets : number
+}
+
+
 export type PlayerTicketsState = {
-	balance: number
+	balance             : number
+	lastPayoutStartedAt : number
+	lastPayoutTotal     : number
+	lastPayoutLines     : GameTicketLine[]
 }
 
 

@@ -2,7 +2,7 @@ import * as utils from "@dcl-sdk/utils"
 
 import { MessageType, net } from 'src/shared/net'
 import { canUsePlaytestDebug, GameSettings } from 'src/shared/settings'
-import { RequestCatalogItemPayload, RequestJoinLobbyPayload, RequestPlayRollPayload, RequestSetLaneBumpersPayload, RequestSetLaneFrameCountPayload, RequestSetPreferencesPayload, RequestTicketPayload } from 'src/shared/types/shared-types'
+import { RequestCatalogItemPayload, RequestClaimRewardPayload, RequestJoinLobbyPayload, RequestPlayRollPayload, RequestSetLaneBumpersPayload, RequestSetLaneFrameCountPayload, RequestSetPreferencesPayload, RequestTicketPayload } from 'src/shared/types/shared-types'
 
 import { gameManager } from 'src/server/gameManager'
 import { PlayerProfileManager } from 'src/server/playerProfileManager'
@@ -29,6 +29,7 @@ export namespace serverHandler {
 		net.onMessage(MessageType.REQUEST_RESET_UNLOCKS, (_data, context) => handleRequestResetUnlocks(context))
 		net.onMessage(MessageType.REQUEST_EQUIP_ITEM, (data, context) => handleRequestEquipItem(data, context))
 		net.onMessage(MessageType.REQUEST_TICKET, (data, context) => handleRequestTicket(data, context))
+		net.onMessage(MessageType.REQUEST_CLAIM_REWARD, (data, context) => handleRequestClaimReward(data, context))
 		net.onMessage(MessageType.REQUEST_SET_PREFERENCES, (data, context) => handleRequestSetPreferences(data, context))
 		net.onMessage(MessageType.REQUEST_SET_LANE_BUMPERS, (data, context) => handleRequestSetLaneBumpers(data, context))
 	}
@@ -162,6 +163,21 @@ export namespace serverHandler {
 		}
 		if (typeof data?.amount !== 'number') return
 		PlayerProfileManager.requestAddTickets(userId, data.amount)
+	}
+
+
+	// MARK: Claim Reward
+	/**
+	 * Claims the sender's pending reward when the id is the head of the queue.
+	 */
+	export function handleRequestClaimReward(
+		data    : RequestClaimRewardPayload,
+		context : any
+	) {
+		const userId = getUserId(context)
+		console.log('serverHandler: handleRequestClaimReward: userId', userId, 'rewardId', data?.rewardId)
+		if (typeof data?.rewardId !== 'string' || data.rewardId === '') return
+		PlayerProfileManager.requestClaimReward(userId, data.rewardId)
 	}
 
 
