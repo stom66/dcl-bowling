@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Fastlane game length</title>
+	<style>
+		:root {
+			color-scheme: dark;
+			--bg: #14021c;
+			--panel: #1d0231;
+			--ink: #f4e9ff;
+			--muted: #b9a3cf;
+			--line: #6b4698;
+			--accent: #e7b4ff;
+		}
+
+		* { box-sizing: border-box; }
+
+		body {
+			margin: 0;
+			min-height: 100vh;
+			background: var(--bg);
+			color: var(--ink);
+			font: 16px/1.4 "Segoe UI", sans-serif;
+		}
+
+		main {
+			max-width: 1040px;
+			margin: 0 auto;
+			padding: 32px 20px 48px;
+		}
+
+		h1 {
+			margin: 0 0 8px;
+			font-size: 28px;
+			font-weight: 650;
+		}
+
+		p {
+			margin: 0 0 20px;
+			color: var(--muted);
+		}
+
+		.totals {
+			display: flex;
+			gap: 16px;
+			margin-bottom: 20px;
+		}
+
+		.total {
+			flex: 1;
+			padding: 16px 18px;
+			border: 2px solid var(--line);
+			border-radius: 12px;
+			background: var(--panel);
+		}
+
+		.total span {
+			display: block;
+			color: var(--muted);
+			font-size: 13px;
+			letter-spacing: 0.04em;
+			text-transform: uppercase;
+		}
+
+		.total strong {
+			display: block;
+			margin-top: 4px;
+			color: var(--accent);
+			font-size: 28px;
+			font-weight: 650;
+		}
+
+		table {
+			width: 100%;
+			border-collapse: collapse;
+			background: var(--panel);
+			border: 2px solid var(--line);
+			border-radius: 12px;
+			overflow: hidden;
+		}
+
+		th, td {
+			padding: 10px 14px;
+			text-align: left;
+			border-bottom: 1px solid #3a2158;
+		}
+
+		th {
+			color: var(--muted);
+			font-size: 13px;
+			font-weight: 600;
+			letter-spacing: 0.04em;
+			text-transform: uppercase;
+		}
+
+		tr:last-child td { border-bottom: 0; }
+
+		td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+		input, select, button {
+			font: inherit;
+			color: var(--ink);
+			background: #2a0c42;
+			border: 1px solid var(--line);
+			border-radius: 8px;
+		}
+
+		input, select {
+			width: 88px;
+			padding: 6px 8px;
+		}
+
+		button {
+			margin-top: 16px;
+			padding: 8px 14px;
+			cursor: pointer;
+		}
+
+		button:hover { border-color: var(--accent); }
+
+		.note {
+			margin-top: 16px;
+			color: var(--muted);
+			font-size: 14px;
+		}
+
+		h2 {
+			margin: 28px 0 8px;
+			font-size: 18px;
+			font-weight: 650;
+		}
+
+		.legend {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 10px 16px;
+			margin: 0 0 16px;
+			color: var(--muted);
+			font-size: 13px;
+		}
+
+		.legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+		.swatch {
+			width: 12px;
+			height: 12px;
+			border-radius: 3px;
+			background: var(--swatch);
+		}
+
+		.sequence { margin-bottom: 8px; }
+
+		.sequence p,
+		.chart-caption {
+			margin: 0 0 8px;
+			color: var(--muted);
+			font-size: 13px;
+		}
+
+		.labeled {
+			display: flex;
+			height: 44px;
+			margin-bottom: 14px;
+			overflow: hidden;
+			border-radius: 8px;
+			background: #2a0c42;
+		}
+
+		.labeled .seg {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			min-width: 0;
+			overflow: hidden;
+			color: #1a1024;
+			font-size: 12px;
+			font-weight: 650;
+		}
+
+		.match {
+			margin-bottom: 18px;
+		}
+
+		.track {
+			height: 28px;
+			overflow: hidden;
+			border-radius: 8px;
+			background: #2a0c42;
+		}
+
+		.bar {
+			display: flex;
+			height: 100%;
+		}
+
+		.frame {
+			display: flex;
+			min-width: 0;
+			height: 100%;
+			box-shadow: inset -1px 0 0 rgba(20, 2, 28, 0.85);
+		}
+
+		.seg { height: 100%; background: var(--swatch); }
+
+		.axis {
+			display: flex;
+			justify-content: space-between;
+			margin-top: 4px;
+			color: var(--muted);
+			font-size: 12px;
+			font-variant-numeric: tabular-nums;
+		}
+	</style>
+</head>
+<body>
+	<main>
+		<h1>Game length</h1>
+		<p>Try the timings. This page does not change a running game. The lobby label uses the live settings and rounds to the nearest minute.</p>
+
+		<div class="totals">
+			<div class="total">
+				<span>Short game</span>
+				<strong id="min-total">—</strong>
+			</div>
+			<div class="total">
+				<span>Long game</span>
+				<strong id="max-total">—</strong>
+			</div>
+		</div>
+
+		<h2>Timeline</h2>
+		<p>Width is time. A frame is the walk up, two balls, and the walk back. The last frame has a third ball. The long game is the same order with more time spent aiming.</p>
+		<div class="legend" id="legend"></div>
+		<div id="sequences"></div>
+		<div id="matches"></div>
+
+		<table>
+			<thead>
+				<tr>
+					<th>Timing</th>
+					<th class="num">Value</th>
+					<th class="num">Count</th>
+					<th class="num">Short</th>
+					<th class="num">Long</th>
+				</tr>
+			</thead>
+			<tbody id="rows"></tbody>
+		</table>
+
+		<button id="reset" type="button">Reset to current settings</button>
+		<p class="note">The live game uses one 3 second wait both to move back to the group and for the gap after each ball. Here those are separate, so you can try them on their own. Moving to the start of the lane is the wait after the bowler is placed on the approach. The teleport itself is instant.</p>
+	</main>
+
+	<script>
+		// Same formula as dcl/src/shared/gameLength.ts, with the shared 3s gap split into two inputs.
+		const DEFAULTS = {
+			players      : 5,
+			frames       : 6,
+			countdown    : 10,
+			initialWait  : 1,
+			moveToStart  : 2,
+			moveBack     : 3,
+			gapAfterBall : 3,
+			replay       : 10,
+			typicalAim   : 6,
+			maxAim       : 30,
+		}
+
+		const FIELDS = [
+			{ key: 'players',      label: 'Players',                         kind: 'number', min: 1, max: 8, step: 1 },
+			{ key: 'frames',       label: 'Frames',                          kind: 'frames' },
+			{ key: 'countdown',    label: 'Start countdown (seconds)',       kind: 'number', min: 0, step: 0.5 },
+			{ key: 'initialWait',  label: 'Wait before the first frame',     kind: 'number', min: 0, step: 0.5 },
+			{ key: 'moveToStart',  label: 'Move to the start of the lane',   kind: 'number', min: 0, step: 0.5 },
+			{ key: 'moveBack',     label: 'Move back to the group',          kind: 'number', min: 0, step: 0.5 },
+			{ key: 'gapAfterBall', label: 'Gap after each ball',             kind: 'number', min: 0, step: 0.5 },
+			{ key: 'replay',       label: 'Replay window',                   kind: 'number', min: 0, step: 0.5 },
+			{ key: 'typicalAim',   label: 'Typical aim (short game)',        kind: 'number', min: 0, step: 0.5 },
+			{ key: 'maxAim',       label: 'Maximum aim (long game)',         kind: 'number', min: 0, step: 0.5 },
+		]
+
+		const PHASES = [
+			{ key: 'countdown',    name: 'Countdown',  color: '#c4b5e0' },
+			{ key: 'initialWait',  name: 'First wait', color: '#8d7ca8' },
+			{ key: 'moveToStart',  name: 'To the line', color: '#f2c14e' },
+			{ key: 'aim',          name: 'Aim',        color: '#7dcea0' },
+			{ key: 'replay',       name: 'Replay',     color: '#5dade2' },
+			{ key: 'gapAfterBall', name: 'After ball', color: '#e59866' },
+			{ key: 'moveBack',     name: 'Back',       color: '#c39bd3' },
+		]
+
+		const phaseByKey = Object.fromEntries(PHASES.map((phase) => [phase.key, phase]))
+
+		let values = { ...DEFAULTS }
+		const controls = {}
+
+		function readNumber(key, fallback) {
+			const raw = Number(values[key])
+			if (!Number.isFinite(raw)) return fallback
+			return Math.max(0, raw)
+		}
+
+		function estimate() {
+			const players      = Math.max(1, Math.round(readNumber('players', DEFAULTS.players)))
+			const frames       = values.frames === 3 || values.frames === 10 ? values.frames : 6
+			const countdown    = readNumber('countdown', DEFAULTS.countdown)
+			const initialWait  = readNumber('initialWait', DEFAULTS.initialWait)
+			const moveToStart  = readNumber('moveToStart', DEFAULTS.moveToStart)
+			const moveBack     = readNumber('moveBack', DEFAULTS.moveBack)
+			const gapAfterBall = readNumber('gapAfterBall', DEFAULTS.gapAfterBall)
+			const replay       = readNumber('replay', DEFAULTS.replay)
+			const typicalAim   = readNumber('typicalAim', DEFAULTS.typicalAim)
+			const maxAim       = readNumber('maxAim', DEFAULTS.maxAim)
+
+			const ballsPerPlayer = (2 * frames) + 1
+			const turns          = players * frames
+			const balls          = players * ballsPerPlayer
+			const startSec       = countdown + initialWait
+
+			function total(aimSec) {
+				return startSec
+					+ (turns * moveToStart)
+					+ (turns * moveBack)
+					+ (balls * gapAfterBall)
+					+ (balls * replay)
+					+ (balls * aimSec)
+			}
+
+			return {
+				players,
+				frames,
+				ballsPerPlayer,
+				turns,
+				balls,
+				startSec,
+				moveToStartSec : turns * moveToStart,
+				moveBackSec    : turns * moveBack,
+				gapSec         : balls * gapAfterBall,
+				replaySec      : balls * replay,
+				aimShortSec    : balls * typicalAim,
+				aimLongSec     : balls * maxAim,
+				minSec         : total(typicalAim),
+				maxSec         : total(maxAim),
+			}
+		}
+
+		function formatClock(seconds) {
+			const whole = Math.max(0, Math.round(seconds))
+			const min   = Math.floor(whole / 60)
+			const sec   = whole % 60
+			return min + ' min ' + String(sec).padStart(2, '0') + ' sec'
+		}
+
+		function paint() {
+			const result = estimate()
+			document.getElementById('min-total').textContent = formatClock(result.minSec)
+			document.getElementById('max-total').textContent = formatClock(result.maxSec)
+
+			for (const field of FIELDS) {
+				const cells = controls[field.key]
+				cells.count.textContent = countFor(field.key, result)
+				cells.short.textContent = spentFor(field.key, result, 'short')
+				cells.long.textContent  = spentFor(field.key, result, 'long')
+			}
+
+			renderLegend()
+			renderSequences(result)
+			renderMatches(result)
+		}
+
+		function renderLegend() {
+			const legend = document.getElementById('legend')
+			legend.replaceChildren()
+			for (const phase of PHASES) {
+				const item = document.createElement('span')
+				const swatch = document.createElement('i')
+				swatch.className = 'swatch'
+				swatch.style.setProperty('--swatch', phase.color)
+				item.append(swatch, document.createTextNode(phase.name))
+				legend.append(item)
+			}
+		}
+
+		function phase(key, seconds) {
+			if (seconds <= 0) return null
+			return { key, sec: seconds, name: phaseByKey[key].name, color: phaseByKey[key].color }
+		}
+
+		function framePhases(aimSec, ballCount) {
+			const steps = []
+			const push = (key, seconds) => {
+				const step = phase(key, seconds)
+				if (step) steps.push(step)
+			}
+			push('moveToStart', readNumber('moveToStart', 0))
+			for (let ball = 0; ball < ballCount; ball++) {
+				push('aim', aimSec)
+				push('replay', readNumber('replay', 0))
+				push('gapAfterBall', readNumber('gapAfterBall', 0))
+			}
+			push('moveBack', readNumber('moveBack', 0))
+			return steps
+		}
+
+		function openingPhases() {
+			return [
+				phase('countdown', readNumber('countdown', 0)),
+				phase('initialWait', readNumber('initialWait', 0)),
+			].filter(Boolean)
+		}
+
+		function renderSequences(result) {
+			const root = document.getElementById('sequences')
+			root.replaceChildren()
+			const aimShort = readNumber('typicalAim', 0)
+			const aimLong  = readNumber('maxAim', 0)
+			root.append(
+				sequenceBlock('A normal frame, short game', framePhases(aimShort, 2)),
+				sequenceBlock('The same frame, long game', framePhases(aimLong, 2)),
+				sequenceBlock('The last frame adds a third ball', framePhases(aimShort, 3)),
+			)
+		}
+
+		function sequenceBlock(caption, steps) {
+			const block = document.createElement('div')
+			block.className = 'sequence'
+			const label = document.createElement('p')
+			label.textContent = caption
+			block.append(label, labeledBar(steps))
+			return block
+		}
+
+		function labeledBar(steps) {
+			const bar = document.createElement('div')
+			bar.className = 'labeled'
+			const total = steps.reduce((sum, step) => sum + step.sec, 0) || 1
+			for (const step of steps) {
+				bar.append(segment(step, step.sec / total >= 0.08))
+			}
+			return bar
+		}
+
+		function segment(step, withLabel) {
+			const el = document.createElement('div')
+			el.className = 'seg'
+			el.title = step.name + ', ' + formatBrief(step.sec)
+			el.style.flex = String(step.sec) + ' ' + String(step.sec) + ' 0'
+			el.style.setProperty('--swatch', step.color)
+			if (withLabel) el.textContent = step.name
+			return el
+		}
+
+		function renderMatches(result) {
+			const root = document.getElementById('matches')
+			root.replaceChildren()
+			const scale = Math.max(result.minSec, result.maxSec, 1)
+			const aimShort = readNumber('typicalAim', 0)
+			const aimLong  = readNumber('maxAim', 0)
+			root.append(
+				matchBlock('Whole short game', result.minSec, scale, gameGroups(result, aimShort)),
+				matchBlock('Whole long game', result.maxSec, scale, gameGroups(result, aimLong)),
+			)
+		}
+
+		function gameGroups(result, aimSec) {
+			const groups = []
+			const opening = openingPhases()
+			if (opening.length) groups.push(opening)
+			for (let frame = 1; frame <= result.frames; frame++) {
+				const balls = frame === result.frames ? 3 : 2
+				for (let player = 0; player < result.players; player++) {
+					groups.push(framePhases(aimSec, balls))
+				}
+			}
+			return groups
+		}
+
+		function matchBlock(caption, totalSec, scaleSec, groups) {
+			const block = document.createElement('div')
+			block.className = 'match'
+			const label = document.createElement('p')
+			label.className = 'chart-caption'
+			label.textContent = caption + ' · ' + formatClock(totalSec)
+
+			const track = document.createElement('div')
+			track.className = 'track'
+			const bar = document.createElement('div')
+			bar.className = 'bar'
+			bar.style.width = ((totalSec / scaleSec) * 100) + '%'
+			for (const group of groups) {
+				const frame = document.createElement('div')
+				frame.className = 'frame'
+				const groupSec = group.reduce((sum, step) => sum + step.sec, 0)
+				frame.style.flex = groupSec + ' ' + groupSec + ' 0'
+				for (const step of group) frame.append(segment(step, false))
+				bar.append(frame)
+			}
+			track.append(bar)
+
+			const axis = document.createElement('div')
+			axis.className = 'axis'
+			for (const mark of [0, 0.25, 0.5, 0.75, 1]) {
+				const tick = document.createElement('span')
+				tick.textContent = formatBrief(scaleSec * mark)
+				axis.append(tick)
+			}
+
+			block.append(label, track, axis)
+			return block
+		}
+
+		function formatBrief(seconds) {
+			const whole = Math.max(0, Math.round(seconds))
+			if (whole < 60) return whole + ' sec'
+			const min = Math.floor(whole / 60)
+			const sec = whole % 60
+			if (sec === 0) return min + ' min'
+			return min + ' min ' + String(sec).padStart(2, '0') + ' sec'
+		}
+
+		function buildRows() {
+			const body = document.getElementById('rows')
+
+			for (const field of FIELDS) {
+				const tr = document.createElement('tr')
+				const name = document.createElement('td')
+				name.textContent = field.label
+
+				const valueCell = document.createElement('td')
+				valueCell.className = 'num'
+				valueCell.append(controlFor(field))
+
+				const countCell = document.createElement('td')
+				countCell.className = 'num'
+
+				const shortCell = document.createElement('td')
+				shortCell.className = 'num'
+
+				const longCell = document.createElement('td')
+				longCell.className = 'num'
+
+				controls[field.key] = {
+					...controls[field.key],
+					count : countCell,
+					short : shortCell,
+					long  : longCell,
+				}
+				tr.append(name, valueCell, countCell, shortCell, longCell)
+				body.append(tr)
+			}
+		}
+
+		function controlFor(field) {
+			if (field.kind === 'frames') {
+				const select = document.createElement('select')
+				select.setAttribute('aria-label', field.label)
+				for (const count of [3, 6, 10]) {
+					const option = document.createElement('option')
+					option.value = String(count)
+					option.textContent = String(count)
+					if (count === values.frames) option.selected = true
+					select.append(option)
+				}
+				select.addEventListener('change', () => {
+					values.frames = Number(select.value)
+					paint()
+				})
+				controls[field.key] = { ...(controls[field.key] || {}), input: select }
+				return select
+			}
+
+			const input = document.createElement('input')
+			input.type = 'number'
+			input.min = String(field.min)
+			if (field.max !== undefined) input.max = String(field.max)
+			input.step = String(field.step)
+			input.value = String(values[field.key])
+			input.setAttribute('aria-label', field.label)
+			input.addEventListener('input', () => {
+				values[field.key] = input.value === '' ? 0 : Number(input.value)
+				paint()
+			})
+			controls[field.key] = { ...(controls[field.key] || {}), input: input }
+			return input
+		}
+
+		function countFor(key, result) {
+			if (key === 'players') return '—'
+			if (key === 'frames') return result.ballsPerPlayer + ' each'
+			if (key === 'countdown' || key === 'initialWait') return '1'
+			if (key === 'moveToStart' || key === 'moveBack') return String(result.turns)
+			return String(result.balls)
+		}
+
+		function spentFor(key, result, end) {
+			if (key === 'players' || key === 'frames') return '—'
+			if (key === 'countdown' || key === 'initialWait') {
+				const sec = key === 'countdown' ? readNumber('countdown', 0) : readNumber('initialWait', 0)
+				return formatClock(sec)
+			}
+			if (key === 'moveToStart') return formatClock(result.moveToStartSec)
+			if (key === 'moveBack') return formatClock(result.moveBackSec)
+			if (key === 'gapAfterBall') return formatClock(result.gapSec)
+			if (key === 'replay') return formatClock(result.replaySec)
+			if (key === 'typicalAim') return end === 'short' ? formatClock(result.aimShortSec) : '—'
+			if (key === 'maxAim') return end === 'long' ? formatClock(result.aimLongSec) : '—'
+			return '—'
+		}
+
+		document.getElementById('reset').addEventListener('click', () => {
+			values = { ...DEFAULTS }
+			for (const field of FIELDS) {
+				controls[field.key].input.value = String(DEFAULTS[field.key])
+			}
+			paint()
+		})
+
+		buildRows()
+		paint()
+	</script>
+</body>
+</html>

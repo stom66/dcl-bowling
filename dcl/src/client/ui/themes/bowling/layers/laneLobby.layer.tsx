@@ -4,6 +4,7 @@ import ReactEcs from '@dcl/sdk/react-ecs'
 import { AvatarIcon, ButtonImage, Column, getTheme, IconNumber, IconString, Layer, lighten, ProgressBarRadial, PropsController, Row, UiBox, ZoneType } from '@stom66/dcl-ui-component-kit'
 
 import { LanePhase } from 'src/shared/enums'
+import { estimateGameLengthMs, formatGameLengthLabel } from 'src/shared/gameLength'
 import { LaneStore } from 'src/shared/laneStore'
 import { GameFrameCount, GameSettings, normalizeFrameCount } from 'src/shared/settings'
 import { clockSync } from 'src/shared/utils/clockSync'
@@ -211,19 +212,22 @@ export class LaneLobbyLayer extends Layer {
 
 	// MARK: body
 	protected body() {
-		const theme       = getTheme()
-		const laneIndex   = this.lobbyProps.get('laneIndex')
-		const occupied    = this.lobbyProps.get('occupied')
-		const phase       = this.lobbyProps.get('phase')
-		const frameCount  = this.lobbyProps.get('frameCount')
-		const players     = this.lobbyProps.get('players')
-		const endTime     = this.lobbyProps.get('endTime')
-		const localUserId = clientStore.getUserId().toLowerCase()
-		const canEdit     = !occupied
-		const canStart    = !occupied && phase === LanePhase.LOBBY && players.length > 0
-		const starting    = phase === LanePhase.GAME_STARTING
-		const seconds     = endTime > 0 ? Math.max(0, Math.ceil((endTime - Date.now()) / 1000)) : 0
-		const progress   = endTime > 0
+		const theme         = getTheme()
+		const laneIndex     = this.lobbyProps.get('laneIndex')
+		const occupied      = this.lobbyProps.get('occupied')
+		const phase         = this.lobbyProps.get('phase')
+		const frameCount    = this.lobbyProps.get('frameCount')
+		const players       = this.lobbyProps.get('players')
+		const endTime       = this.lobbyProps.get('endTime')
+		const localUserId   = clientStore.getUserId().toLowerCase()
+		const canEdit       = !occupied
+		const canStart      = !occupied && phase === LanePhase.LOBBY && players.length > 0
+		const starting      = phase === LanePhase.GAME_STARTING
+		const durationLabel = players.length > 0
+			? formatGameLengthLabel(estimateGameLengthMs(players.length, frameCount))
+			: ''
+		const seconds       = endTime > 0 ? Math.max(0, Math.ceil((endTime - Date.now()) / 1000)) : 0
+		const progress      = endTime > 0
 			? Math.min(1, Math.max(0, endTime - Date.now()) / GameSettings.GAME_START_COUNTDOWN_DURATION)
 			: 0
 
@@ -304,6 +308,15 @@ export class LaneLobbyLayer extends Layer {
 							)
 						})}
 					</Row>
+
+					{durationLabel !== '' ? (
+						<IconString
+							value     = {durationLabel}
+							height    = {14}
+							iconColor = {theme.colors.tertiary}
+							atlases   = {stringAtlases}
+						/>
+					) : null}
 
 					{occupied ? (
 						<IconString
