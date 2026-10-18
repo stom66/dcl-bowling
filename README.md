@@ -160,7 +160,7 @@ This layout is not presented as perfect or prescriptive. It has worked well as a
 
 Deployments are handled by GitHub Actions under [`.github/workflows/`](.github/workflows/). Each workflow checks out the `dcl` scene, builds it, and deploys with the usual Decentraland CLI flow (production, testing, and world targets each have their own workflow).
 
-One small extra step runs before every deploy: the action writes [`dcl/src/client/data/version.ts`](dcl/src/client/data/version.ts) with a string like `v-202605271430-a1b2c3d` — build timestamp plus short commit hash. That value is shown in the bottom-right corner of the UI ([`VersionUI`](dcl/src/client/ui-screen/layers/version.tsx)), so when you visit the live scene you can tell at a glance whether you are on the build you expect. There is nothing to remember or bump by hand; each deploy refreshes it automatically.
+One small extra step runs before every deploy: the action writes [`dcl/src/shared/data/version.ts`](dcl/src/shared/data/version.ts) with a string like `v-202605271430-a1b2c3d` — build timestamp plus short commit hash. That value is shown in the bottom-right corner of the UI ([`VersionLayer`](dcl/src/client/ui/themes/bowling/layers/version.layer.tsx)), so when you visit the live scene you can tell at a glance whether you are on the build you expect. There is nothing to remember or bump by hand; each deploy refreshes it automatically.
 
 ---
 
