@@ -1,5 +1,5 @@
 import * as utils from "@dcl-sdk/utils"
-import { Animator, EasingFunction, engine, Entity, GltfContainer, GltfContainerLoadingState, LoadingState, ParticleSystem, Transform, Tween, TweenSequence, tweenSystem } from "@dcl/sdk/ecs"
+import { Animator, EasingFunction, engine, Entity, GltfContainer, ParticleSystem, removeEntityWithChildren, Transform, Tween } from "@dcl/sdk/ecs"
 import { Quaternion, Vector3 } from "@dcl/sdk/math"
 
 import { getBallModelSrc, getPinModelSrc } from "src/shared/data/unlocks"
@@ -15,6 +15,7 @@ import { ClientStore } from "src/client/clientStore"
 import { applyBallTrail, applyFollowSpotlight, stopBallTrail } from "src/client/cosmetics"
 import { getLanePosition } from "src/client/data/lanePositions"
 import { PlayRollResultEmote } from "src/client/emotes"
+import { whenGltfContainerFinished } from "src/client/gltfLoading"
 import { sfx, SoundManager } from "src/client/soundManager"
 
 
@@ -96,8 +97,14 @@ export class LaneVisuals {
 	private awaitingReplay: boolean = false
 	private replayWaitTimer?: number
 
-	/** Unsubs for roll-request countdown sources (local emit + server broadcast per lane). */
-	private rollRequestUnsubs: Array<() => void> = []
+	/** Unsubs for every eventBus listener this instance registered. */
+	private eventUnsubs: Array<() => void> = []
+
+	/** Countdown and score models. Removed with the game, or by their own hold timer. */
+	private transientEntities: Entity[] = []
+	private transientTimers  : number[] = []
+
+	private destroyed = false
 
 	private readonly rollOwnerUserId: string
 
@@ -116,30 +123,46 @@ export class LaneVisuals {
 
 		this.bindRollRequestCountdownHandlers()
 
-		eventBus.on(ClientEvents.ON_GROUP_GAME_END, (data) => {
-			if (data.laneIndex !== this.laneIndex) return
-			this.destroy()
-		})
-		eventBus.on(ClientEvents.ON_NON_GROUP_GAME_END, (data) => {
-			if (data.laneIndex !== this.laneIndex) return
-			this.destroy()
-		})
+		this.eventUnsubs.push(
+			eventBus.on(ClientEvents.ON_GROUP_GAME_END, (data) => {
+				if (data.laneIndex !== this.laneIndex) return
+				this.destroy()
+			}),
+		)
+		this.eventUnsubs.push(
+			eventBus.on(ClientEvents.ON_NON_GROUP_GAME_END, (data) => {
+				if (data.laneIndex !== this.laneIndex) return
+				this.destroy()
+			}),
+		)
 	}
 
 
 	// MARK: Destroy
-	destroy(): void {
-		this.clearReplayWaitTimer()
-		for (const unsub of this.rollRequestUnsubs) {
-			unsub()
-		}
-		this.rollRequestUnsubs.length = 0
-		this.awaitingReplay = false
-		this.queuedReplay = undefined
+	/**
+	 * Drops this roll's meshes, playback, and event subscriptions.
+	 * Pass `keepTimedModels` from the end of a replay so the score model can
+	 * finish its hold. A later `destroy()` (next roll, or game end) removes it.
+	 */
+	destroy(options?: { keepTimedModels?: boolean }): void {
+		if (!this.destroyed) {
+			this.destroyed = true
+			this.clearReplayWaitTimer()
+			for (const unsub of this.eventUnsubs) {
+				unsub()
+			}
+			this.eventUnsubs.length = 0
+			this.awaitingReplay = false
+			this.queuedReplay   = undefined
+			this.rollPayload    = undefined
 
-		this.detachReplayDriver()
-		this.removePins()
-		this.removeBall()
+			this.detachReplayDriver()
+			this.removePins()
+			this.removeBall()
+		}
+
+		if (options?.keepTimedModels) return
+		this.releaseAllTransients()
 	}
 
 
@@ -151,6 +174,65 @@ export class LaneVisuals {
 	}
 
 
+	// MARK: trackTransient
+	/**
+	 * Remembers a countdown or score model so a later {@link destroy} can drop it
+	 * even when its hold timer has not fired.
+	 */
+	private trackTransient(entity: Entity): void {
+		this.transientEntities.push(entity)
+	}
+
+
+	// MARK: scheduleTransientRelease
+	/**
+	 * Removes `entity` after `delayMs`. Cleared when {@link releaseAllTransients} runs.
+	 */
+	private scheduleTransientRelease(
+		entity : Entity,
+		delayMs: number,
+	): void {
+		let timer = 0
+		timer = utils.timers.setTimeout(() => {
+			const index = this.transientTimers.indexOf(timer)
+			if (index !== -1) this.transientTimers.splice(index, 1)
+			this.releaseTransient(entity)
+		}, delayMs)
+		this.transientTimers.push(timer)
+	}
+
+
+	// MARK: releaseTransient
+	/**
+	 * Drops one tracked model and its children. A stale id is left alone so a
+	 * recycled entity number is not deleted.
+	 */
+	private releaseTransient(entity: Entity): void {
+		const index = this.transientEntities.indexOf(entity)
+		if (index !== -1) this.transientEntities.splice(index, 1)
+		if (!Transform.has(entity)) return
+		removeEntityWithChildren(engine, entity)
+	}
+
+
+	// MARK: releaseAllTransients
+	/**
+	 * Cancels hold timers and removes every countdown and score model still in the scene.
+	 */
+	private releaseAllTransients(): void {
+		const timers = this.transientTimers.splice(0)
+		for (const timer of timers) {
+			utils.timers.clearTimeout(timer)
+		}
+
+		const entities = this.transientEntities.splice(0)
+		for (const entity of entities) {
+			if (!Transform.has(entity)) continue
+			removeEntityWithChildren(engine, entity)
+		}
+	}
+
+
 	// MARK: bindRollRequestCountdownHandlers
 	/**
 	 * Local bowler: {@link ClientEvents.ON_MY_ROLL_REQUEST}. Same-lane group members:
@@ -159,14 +241,14 @@ export class LaneVisuals {
 	 * `userId` matches this visuals' roller to avoid reacting on the wrong lane.
 	 */
 	private bindRollRequestCountdownHandlers(): void {
-		this.rollRequestUnsubs.push(
+		this.eventUnsubs.push(
 			eventBus.on(ClientEvents.ON_MY_ROLL_REQUEST, () => {
 				if (!userProfileCache.isLocalUser(this.rollOwnerUserId)) return
 				this.beginRollRequestCountdownPipeline()
 			})
 		)
 
-		this.rollRequestUnsubs.push(
+		this.eventUnsubs.push(
 			eventBus.on(ClientEvents.ON_GROUP_ROLL_REQUEST, (data: { userId: string }) => {
 				if (data.userId !== this.rollOwnerUserId) return
 				if (userProfileCache.isLocalUser(data.userId)) return
@@ -174,7 +256,7 @@ export class LaneVisuals {
 			})
 		)
 
-		this.rollRequestUnsubs.push(
+		this.eventUnsubs.push(
 			eventBus.on(ClientEvents.ON_NON_GROUP_ROLL_REQUEST, (data: { userId: string }) => {
 				if (data.userId !== this.rollOwnerUserId) return
 				this.beginRollRequestCountdownPipeline()
@@ -251,28 +333,15 @@ export class LaneVisuals {
 
 			GltfContainer.create(pinScale, { src })
 
-			// onChange does not replay a state already stored on the entity, so a cached
-			// pin can already be FINISHED before the listener exists. Both paths share
-			// beginIntro so the drop runs once.
-			let introStarted = false
-			const beginIntro = () => {
-				if (introStarted) return
-				introStarted = true
+			// Cached pin models are already FINISHED and never emit onChange.
+			// whenGltfContainerFinished reads the current state, then polls.
+			whenGltfContainerFinished(pinScale, () => {
 				utils.timers.setTimeout(() => {
+					if (!Transform.has(pinScale) || !Transform.has(pinPos)) return
 					Tween.setScale(pinScale, Vector3.Zero(), scaleEnd, tweenDurationMs, EasingFunction.EF_EASEBOUNCE)
 					Tween.setMove(pinPos, startPos, endPos, tweenDurationMs, EasingFunction.EF_EASEBOUNCE)
 				}, staggerMs * i)
-			}
-
-			GltfContainerLoadingState.onChange(pinScale, (state) => {
-				if (state?.currentState !== LoadingState.FINISHED) return
-				beginIntro()
 			})
-
-			const loadingState = GltfContainerLoadingState.getOrNull(pinScale)
-			if (loadingState?.currentState === LoadingState.FINISHED) {
-				beginIntro()
-			}
 
 			this.pinEntities[i] = pinPos
 		}
@@ -290,16 +359,16 @@ export class LaneVisuals {
 			const pin = this.pinEntities[i]
 			if (pin !== undefined) {
 				const delayMs = removedCount * staggerMs
-				setTimeout(() => {
+				utils.timers.setTimeout(() => {
 					if (!Transform.has(pin)) {
 						return
 					}
 					const start = Transform.get(pin).position
 					const end   = Vector3.add(start, Vector3.create(0, 5, 5))
 					Tween.setMove(pin, start, end, tweenDurationMs, EasingFunction.EF_EASEINCUBIC)
-					setTimeout(() => {
+					utils.timers.setTimeout(() => {
 						if (Transform.has(pin)) {
-							engine.removeEntity(pin)
+							removeEntityWithChildren(engine, pin)
 						}
 					}, tweenDurationMs)
 				}, delayMs)
@@ -330,14 +399,12 @@ export class LaneVisuals {
 				}
 			]
 		})
-		GltfContainerLoadingState.onChange(countdownEntity, (state) => {
-			if (state?.currentState !== LoadingState.FINISHED) return
+		this.trackTransient(countdownEntity)
+		this.scheduleTransientRelease(countdownEntity, 4000)
+		whenGltfContainerFinished(countdownEntity, () => {
+			if (!Transform.has(countdownEntity)) return
 			Tween.setScale(countdownEntity, Vector3.Zero(), COUNTDOWN_OBJECT_SCALE, 0.1, EasingFunction.EF_EASEINCUBIC)
-			
 			Animator.playSingleAnimation(countdownEntity, "Info_Countdown_3", true)
-			utils.timers.setTimeout(() => {
-				engine.removeEntity(countdownEntity)
-			}, 4000)
 		})
 	}
 
@@ -397,16 +464,12 @@ export class LaneVisuals {
 				}
 			]
 		})
-		GltfContainerLoadingState.onChange(scoreEntity, (state) => {
-			if (state?.currentState !== LoadingState.FINISHED) return
-
+		this.trackTransient(scoreEntity)
+		this.scheduleTransientRelease(scoreEntity, 5000)
+		whenGltfContainerFinished(scoreEntity, () => {
+			if (!Transform.has(scoreEntity)) return
 			Tween.setScale(scoreEntity, Vector3.Zero(), SCORE_OBJECT_SCALE, 0.1, EasingFunction.EF_EASEINCUBIC)
-
 			Animator.playSingleAnimation(scoreEntity, clipName, true)
-
-			utils.timers.setTimeout(() => {
-				engine.removeEntity(scoreEntity)
-			}, 5000)
 		})
 	}
 
@@ -437,7 +500,7 @@ export class LaneVisuals {
 		this.removeTrailEmitter()
 		if (this.ball === undefined) return
 		ParticleSystem.deleteFrom(this.ball)
-		engine.removeEntity(this.ball)
+		removeEntityWithChildren(engine, this.ball)
 		this.ball = undefined
 	}
 
@@ -453,7 +516,7 @@ export class LaneVisuals {
 	 */
 	private removeSpotlight(): void {
 		if (this.spotlight === undefined) return
-		engine.removeEntity(this.spotlight)
+		removeEntityWithChildren(engine, this.spotlight)
 		this.spotlight = undefined
 	}
 
@@ -521,7 +584,7 @@ export class LaneVisuals {
 	 */
 	private removeTrailEmitter(): void {
 		if (this.trailEmitter === undefined) return
-		engine.removeEntity(this.trailEmitter)
+		removeEntityWithChildren(engine, this.trailEmitter)
 		this.trailEmitter = undefined
 	}
 
@@ -567,7 +630,7 @@ export class LaneVisuals {
 			this.replayDriver = undefined
 			this.emitPlaybackEndByMembership()
 
-			this.destroy()
+			this.destroy({ keepTimedModels: true })
 		}, 2000)
 	}
 

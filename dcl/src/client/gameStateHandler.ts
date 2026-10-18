@@ -93,6 +93,11 @@ export namespace gameStateHandler {
 		
 		const lv = createLaneVisuals(data)
 
+		if (bowlingControls) {
+			bowlingControls.Destroy()
+			bowlingControls = undefined
+		}
+
 		const laneIndex = LaneStore.findLaneByUserId(data.userId)
 		if (laneIndex === undefined) {
 			console.error('gameStateHandler: onMyRollStart: laneIndex not found')

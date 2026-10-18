@@ -1,9 +1,10 @@
 import * as utils from "@dcl-sdk/utils"
-import { ColliderLayer, EasingFunction, engine, Entity, GltfContainer, GltfContainerLoadingState, InputAction, LoadingState, Material, MeshCollider, MeshRenderer, pointerEventsSystem, Transform, Tween } from "@dcl/sdk/ecs";
+import { ColliderLayer, EasingFunction, engine, Entity, GltfContainer, GltfContainerLoadingState, InputAction, LoadingState, Material, MeshCollider, MeshRenderer, pointerEventsSystem, removeEntityWithChildren, Transform, Tween } from "@dcl/sdk/ecs";
 import { Color4, Quaternion, Vector3 } from "@dcl/sdk/math";
 //import { CannonSim } from "src/shared/utils/cannon-sim";
 import { ComponentStore } from "src/shared/components/componentStore";
 import { PlayerPreferences } from "src/shared/components/definitions/shared.playerPreferences";
+import { GameSettings } from "src/shared/settings";
 import { LaneSnapshot } from "src/shared/types/shared-types";
 import { ClientEvents, eventBus } from "src/shared/utils/eventBus";
 
@@ -31,7 +32,7 @@ const DIRECTION_YAW_HALF_RANGE_DEG = 15
 const DIRECTION_OSCILLATION_SPEED = 0.9
 
 const STRENGTH_OSCILLATION_SPEED = 2.2
-const STRENGTH_MIN_SCALE = 0.2
+const STRENGTH_MIN_SCALE = GameSettings.MIN_ROLL_POWER
 
 /** Lane-local Y for the ball center (must clear the lane floor; see ballRadius property in server/physics/physics.settings.ts. */
 const BALL_SPAWN_LANE_LOCAL_Y = 0.065
@@ -141,6 +142,9 @@ export class BowlingControls {
 
 	private ball?: Entity
 
+	private eventUnsubs: Array<() => void> = []
+	private destroyed  = false
+
 	// MARK: Constructor
 	constructor(
 		laneIndex: number,
@@ -165,16 +169,19 @@ export class BowlingControls {
 		// Add the position animation system
 		engine.addSystem(this.sys_PositionAnimation)
 
-		
-		eventBus.on(ClientEvents.ON_GROUP_GAME_END, (data: LaneSnapshot) => {
-			if (this.laneIndex == data.laneIndex) {
-				this.Destroy()
-			}
-		})
+		this.eventUnsubs.push(
+			eventBus.on(ClientEvents.ON_GROUP_GAME_END, (data: LaneSnapshot) => {
+				if (this.laneIndex == data.laneIndex) {
+					this.Destroy()
+				}
+			}),
+		)
 
-		eventBus.on(ClientEvents.ON_MY_ROLL_CLICK_TO_SET, () => {
-			this.OnClickToSet()
-		})
+		this.eventUnsubs.push(
+			eventBus.on(ClientEvents.ON_MY_ROLL_CLICK_TO_SET, () => {
+				this.OnClickToSet()
+			}),
+		)
 
 		applyPreferredLaneBumpers()
 
@@ -260,12 +267,26 @@ export class BowlingControls {
 
 
 	// MARK: Destroy
+	/**
+	 * Stops the aim systems, drops the arrow, and unsubscribes this roll's events
+	 * so later clicks and game-end events do not reach it.
+	 */
 	Destroy() {
+		if (this.destroyed) return
+		this.destroyed = true
+
+		for (const unsub of this.eventUnsubs) {
+			unsub()
+		}
+		this.eventUnsubs.length = 0
+
 		engine.removeSystem(this.sys_PositionAnimation)
 		engine.removeSystem(this.sys_DirectionAnimation)
 		engine.removeSystem(this.sys_StrengthAnimation)
 
-		engine.removeEntity(this.arrow)
+		if (Transform.has(this.arrow)) {
+			removeEntityWithChildren(engine, this.arrow)
+		}
 
 		//this.cannonSim?.dispose()
 		//this.cannonSim = undefined

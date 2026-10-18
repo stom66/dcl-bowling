@@ -2,6 +2,8 @@ import { ColliderLayer, engine, Entity, executeTask, GltfContainer, GltfContaine
 import { Color3, Quaternion, Vector2 } from '@dcl/sdk/math'
 import { readFile } from '~system/Runtime'
 
+import { whenGltfContainerFinished } from 'src/client/gltfLoading'
+
 
 const SCENE_MODEL_SRC       = 'assets/models/scene-new.gltf'
 const NEON_GRADIENT_TEXTURE = 'assets/models/tex/neon-gradient.png'
@@ -51,10 +53,13 @@ export namespace GltfSpawner {
 			src: SCENE_MODEL_SRC,
 		})
 
-		GltfContainerLoadingState.onChange(entity, (loadingState) => {
-			noteLoadState(loadingState?.currentState)
-		})
-		noteLoadState(GltfContainerLoadingState.getOrNull(entity)?.currentState)
+		whenGltfContainerFinished(entity, () => {
+			noteLoadState(GltfContainerLoadingState.getOrNull(entity)?.currentState)
+		}, [
+			LoadingState.FINISHED,
+			LoadingState.FINISHED_WITH_ERROR,
+			LoadingState.NOT_FOUND,
+		])
 
 		executeTask(async () => {
 			const paths = await resolveNodePaths(NEON_GRADIENT_NODE_PATTERNS)

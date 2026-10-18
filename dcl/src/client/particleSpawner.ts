@@ -1,5 +1,5 @@
 import * as utils from '@dcl-sdk/utils'
-import { AssetLoad, engine, Entity, ParticleSystem, PBParticleSystem, PBParticleSystem_BlendMode, PBParticleSystem_PlaybackState, PBParticleSystem_SimulationSpace, Transform } from '@dcl/sdk/ecs'
+import { AssetLoad, engine, Entity, ParticleSystem, PBParticleSystem, PBParticleSystem_BlendMode, PBParticleSystem_PlaybackState, PBParticleSystem_SimulationSpace, removeEntityWithChildren, Transform } from '@dcl/sdk/ecs'
 import { Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { isMobile } from '@dcl/sdk/platform'
 import { getPlayer } from '@dcl/sdk/players'
@@ -337,8 +337,8 @@ export namespace ParticleSpawner {
 		}, UNLOCK_EMIT_MS)
 
 		utils.timers.setTimeout(() => {
-			for (const emitter of emitters) removeEmitter(emitter)
-			engine.removeEntity(root)
+			if (!Transform.has(root)) return
+			removeEntityWithChildren(engine, root)
 		}, UNLOCK_REMOVE_MS)
 	}
 
@@ -378,7 +378,8 @@ export namespace ParticleSpawner {
 	function removeEmitter(
 		entity : Entity,
 	): void {
+		if (!Transform.has(entity)) return
 		ParticleSystem.deleteFrom(entity)
-		engine.removeEntity(entity)
+		removeEntityWithChildren(engine, entity)
 	}
 }

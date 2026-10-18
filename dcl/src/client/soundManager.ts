@@ -1,5 +1,5 @@
 import * as utils from '@dcl-sdk/utils'
-import { AssetLoad, AudioSource, engine, Entity, Transform } from '@dcl/sdk/ecs'
+import { AssetLoad, AudioSource, audioEventsSystem, engine, Entity, MediaState, removeEntityWithChildren, Transform } from '@dcl/sdk/ecs'
 
 import { ComponentStore } from 'src/shared/components/componentStore'
 import { PlayerPreferences } from 'src/shared/components/definitions/shared.playerPreferences'
@@ -22,7 +22,8 @@ export namespace SoundManager {
 	const FADE_DURATION          = 3.0                                // Duration when fading music in/out
 	const BGM_VOLUME             = 0.35                               // Volume when music is fully faded in
 	const SFX_ENTITY_VOLUME      = 1.0                                // Volume on preloaded one-shot entities (retrigger uses this as baseline)
-	const COUNTDOWN_LAST_SECONDS = 5                                  // How many of the last seconds to play countdown sounds for
+	const COUNTDOWN_LAST_SECONDS  = 5                                 // How many of the last seconds to play countdown sounds for
+	const SPATIAL_SFX_FALLBACK_MS = 3000                              // Spatial one-shots are removed on playback end, or after this if the client never reports it
 
 
 	// MARK: state vars
@@ -35,6 +36,7 @@ export namespace SoundManager {
 	let fadeSegmentStartVolume   = 0                                  // volume at the start of the current fade segment - typically 0 or 1, unless a fade is started during another fade
 
 	const sfxCache               : Record<string, Entity> = {}        // preloaded sound effect entities
+	const spatialSfxLive         = new Set<Entity>()                  // spatial one-shots waiting to be removed
 	let lastPlayedSfx            : string | undefined     = undefined // last played sound effect - used to avoid playing the same sound effect twice in a row
 	let countdownTimerIds        : number[]               = []        // timer ids for the countdown sounds
 	let bgmMuted                 = false                              // user mute preference; startBgm no-ops while true
@@ -323,7 +325,8 @@ export namespace SoundManager {
 	 * Pass a single URL or an array; arrays pick a random clip and avoid repeating
 	 * the same pick as the previous call when multiple options exist. Retriggers
 	 * from the start if the same clip plays again. When `parentEntity` is set, a
-	 * spatial one-shot is spawned on that entity instead of using the global cache.
+	 * spatial one-shot is spawned on that entity and removed when playback ends.
+	 * Global clips stay in {@link sfxCache} and are retriggered.
 	 *
 	 * @param sound - One asset path, or an array of paths (same shape as values in {@link sfx}).
 	 */
@@ -358,6 +361,8 @@ export namespace SoundManager {
 			soundEntity = getOrCreateSfxEntity(randomSound)
 		}
 
+		if (parentEntity) armSpatialSfx(soundEntity)
+
 		const audioSrc = AudioSource.getMutableOrNull(soundEntity)
 		if (!audioSrc) {
 			console.error('SoundManager: playSound: AudioSource missing on preloaded entity for clip:', randomSound)
@@ -384,6 +389,49 @@ export namespace SoundManager {
 			const audio = AudioSource.getMutableOrNull(soundEntity)
 			if (audio) audio.playing = true
 		}, 50)
+	}
+
+
+	// MARK: armSpatialSfx
+	/**
+	 * Removes a spatial one-shot when playback ends. Global cached clips are not
+	 * passed here. Older clients never flip `playing` or emit a finish event, so
+	 * a fallback timer removes the entity anyway. {@link releaseSpatialSfx} ignores
+	 * an entity that is already gone, including one removed with its parent.
+	 */
+	function armSpatialSfx(entity: Entity): void {
+		spatialSfxLive.add(entity)
+		let sawPlaying = false
+
+		const fallback = utils.timers.setTimeout(() => {
+			releaseSpatialSfx(entity)
+		}, SPATIAL_SFX_FALLBACK_MS)
+
+		audioEventsSystem.registerAudioEventsEntity(entity, (event) => {
+			const state = event?.state
+			if (state === MediaState.MS_PLAYING) {
+				sawPlaying = true
+				return
+			}
+			if (!sawPlaying) return
+			if (state !== MediaState.MS_READY && state !== MediaState.MS_ERROR) return
+
+			utils.timers.clearTimeout(fallback)
+			releaseSpatialSfx(entity)
+		})
+	}
+
+
+	// MARK: releaseSpatialSfx
+	/**
+	 * Deletes one spatial one-shot. A second call, or a call after the parent
+	 * tree was already removed, does not touch a recycled entity id.
+	 */
+	function releaseSpatialSfx(entity: Entity): void {
+		if (!spatialSfxLive.delete(entity)) return
+		audioEventsSystem.removeAudioEventsEntity(entity)
+		if (!AudioSource.has(entity)) return
+		removeEntityWithChildren(engine, entity)
 	}
 
 
