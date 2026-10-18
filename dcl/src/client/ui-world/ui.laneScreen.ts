@@ -10,7 +10,7 @@ import { getLaneScreenPosition } from "src/client/data/lanePositions"
 
 
 const DISPLAY_NAME_MAX_LENGTH = 16
-const SCREEN_TEXT_WIDTH       = 1.15
+const SCREEN_TEXT_WIDTH       = 1.15 * 1.24
 const LANE_FONT_SIZE          = 1.45
 const STATUS_FONT_SIZE_IDLE   = 2.8
 const STATUS_FONT_SIZE_PLAY   = 1.65
@@ -20,6 +20,7 @@ const LANE_OFFSET_Y           = 0.42
 const STATUS_OFFSET_Y         = 0.14
 const STATUS_OFFSET_Y_IDLE    = -0.04
 const FRAME_OFFSET_Y          = -0.10
+const FRAME_OFFSET_Y_LOBBY    = -0.32
 const NAME_OFFSET_Y           = -0.36
 
 
@@ -106,23 +107,26 @@ export class UiLaneScreen {
 
 	// MARK: applyTextShape
 	private applyTextShape(): void {
-		const isIdle      = this.lanePhase === LanePhase.NONE || this.lanePhase === LanePhase.LOBBY
+		const isOpen      = this.lanePhase === LanePhase.NONE
+		const isLobby     = this.lanePhase === LanePhase.LOBBY
 		const laneShape   = TextShape.getMutable(this.laneEntity)
 		const statusShape = TextShape.getMutable(this.statusEntity)
 		const frameShape  = TextShape.getMutable(this.frameEntity)
 		const nameShape   = TextShape.getMutable(this.nameEntity)
 		const statusTx    = Transform.getMutable(this.statusEntity)
+		const frameTx     = Transform.getMutable(this.frameEntity)
 
 		laneShape.text      = this.getLaneText()
 		laneShape.textColor = Color4.White()
 
 		statusShape.text      = this.getStatusText()
-		statusShape.fontSize  = isIdle ? STATUS_FONT_SIZE_IDLE : STATUS_FONT_SIZE_PLAY
+		statusShape.fontSize  = (isOpen || isLobby) ? STATUS_FONT_SIZE_IDLE : STATUS_FONT_SIZE_PLAY
 		statusShape.textColor = this.getStatusColor()
-		statusTx.position     = Vector3.create(0, isIdle ? STATUS_OFFSET_Y_IDLE : STATUS_OFFSET_Y, 0)
+		statusTx.position     = Vector3.create(0, isOpen ? STATUS_OFFSET_Y_IDLE : STATUS_OFFSET_Y, 0)
 
 		frameShape.text      = this.getFrameText()
 		frameShape.textColor = Color4.White()
+		frameTx.position     = Vector3.create(0, isLobby ? FRAME_OFFSET_Y_LOBBY : FRAME_OFFSET_Y, 0)
 
 		nameShape.text      = this.getNameText()
 		nameShape.textColor = Color4.White()
