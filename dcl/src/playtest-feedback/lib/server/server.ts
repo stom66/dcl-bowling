@@ -35,6 +35,8 @@ const RATE_MAX_ROWS = 100
 const SEEN_KEEP_MS = 10 * 60_000
 // Storage down for long: past this, Responses go unacked (clients resend, then give up) instead of filling memory
 const MAX_PENDING_ROWS = 2000
+// LOCAL PATCH (bowling): set once a player submits a real answer. Later visits are not asked.
+const GIVEN_KEY = 'playtest-feedback-given'
 
 // acked, not yet in Storage
 const pending = new Map<string, string>()
@@ -42,6 +44,8 @@ const pending = new Map<string, string>()
 const seen = new Map<string, number>()
 // address → accepted-at times within RATE_WINDOW_MS
 const recentRows = new Map<string, number[]>()
+// LOCAL PATCH (bowling): addresses already stored as having given feedback.
+const givenFeedback = new Set<string>()
 
 let currentPart = 0 // 0 = not loaded yet: responses are not accepted
 let flushing = false
@@ -64,6 +68,9 @@ export async function startServer(introSpec: IntroSpec | null): Promise<void> {
 
   room.onMessage('feedbackSubmit', (data, context) => {
     if (context) receiveResponse(data, context.from)
+  })
+  room.onMessage('feedbackPriorQuery', (data, context) => {
+    if (context) void replyPrior(data.requestId, context.from)
   })
 
   // Not awaited: readiness must never hang on a runtime call that isn't Storage.
@@ -154,6 +161,7 @@ function receiveResponse(
   }
 
   accept(row)
+  if (rating !== null || comment !== '') rememberGiven(row.address)
   console.log(`[SERVER] ${question.id} rating=${rating ?? '-'} from ${row.address}, ${pending.size} pending`)
   ack(true)
 }
@@ -199,6 +207,29 @@ function baseRow(
     isGuest: findIsGuest(address),
     platform: data.platform.slice(0, 20)
   }
+}
+
+// LOCAL PATCH (bowling): one stored flag per address. A skipped or intro row does not set it.
+function rememberGiven(address: string): void {
+  if (givenFeedback.has(address)) return
+  givenFeedback.add(address)
+  void Storage.player.set(address, GIVEN_KEY, '1').then((ok) => {
+    if (ok) return console.log(`[SERVER] remembered feedback from ${address}`)
+    givenFeedback.delete(address)
+    console.log(`[SERVER] could not store feedback flag for ${address}`)
+  })
+}
+
+async function replyPrior(requestId: string, from: string): Promise<void> {
+  const address = from.toLowerCase()
+  let given = givenFeedback.has(address)
+  if (!given) {
+    const stored = await Storage.player.get<string>(address, GIVEN_KEY)
+    given = stored === '1'
+    if (given) givenFeedback.add(address)
+  }
+  console.log(`[SERVER] prior feedback for ${address}: ${given ? 'given' : 'new'}`)
+  void room.send('feedbackPrior', { requestId, given }, { to: [from] })
 }
 
 function accept(row: CsvRow): void {

@@ -639,6 +639,49 @@ function newRequestId(): string {
   return Date.now().toString(36) + Math.floor(Math.random() * 36 ** 6).toString(36).padStart(6, '0')
 }
 
+// LOCAL PATCH (bowling): loaded once this visit. Answering now does not change it.
+let priorGiven = false
+let priorSettled = false
+let priorRequestId = ''
+let priorSentAt = 0
+const PRIOR_RETRY_MS = 3000
+const PRIOR_GIVE_UP_MS = 15000
+const priorWaiters: Array<(given: boolean) => void> = []
+
+function settlePrior(given: boolean): void {
+  if (priorSettled) {
+    if (given) priorGiven = true
+    return
+  }
+  priorSettled = true
+  priorGiven = given
+  console.log(`[FEEDBACK] prior feedback ${given ? 'already given' : 'not yet'}`)
+  const waiters = priorWaiters.splice(0)
+  for (const waiter of waiters) waiter(given)
+}
+
+function requestPrior(now: number): void {
+  if (priorRequestId === '') priorRequestId = newRequestId()
+  priorSentAt = now
+  void room.send('feedbackPriorQuery', { requestId: priorRequestId })
+}
+
+// MARK: gaveFeedbackBeforeVisit
+/** True when this player submitted an answer on an earlier visit. */
+export function gaveFeedbackBeforeVisit(): boolean {
+  return priorGiven
+}
+
+// MARK: feedbackPrior
+/**
+ * Resolves once the server has said whether this player already gave feedback.
+ * Gives up as not-yet if the server stays quiet.
+ */
+export function feedbackPrior(): Promise<boolean> {
+  if (priorSettled) return Promise.resolve(priorGiven)
+  return new Promise((resolve) => priorWaiters.push(resolve))
+}
+
 export function setupFeedbackState(): void {
   if (intro && intro.avatar === undefined) void findSceneOwner().then((owner) => (sceneOwner = owner))
   if (previewMobileWanted)
@@ -650,11 +693,18 @@ export function setupFeedbackState(): void {
     console.log(`[FEEDBACK] ack ${data.requestId} ok=${data.ok}`)
     outbox.delete(data.requestId)
   })
+  room.onMessage('feedbackPrior', (data) => {
+    if (data.requestId !== priorRequestId) return
+    settlePrior(data.given)
+  })
 
+  const priorStartedAt = Date.now()
   engine.addSystem(() => {
     pollHeartbeat()
     const now = Date.now()
     const alive = isServerAlive()
+    if (!priorSettled && alive && now - priorSentAt > PRIOR_RETRY_MS) requestPrior(now)
+    if (!priorSettled && now - priorStartedAt > PRIOR_GIVE_UP_MS) settlePrior(false)
     for (const [id, row] of outbox) {
       // give-up clock runs only while the server is up, for example an Intro answered during a cold start
       if (!alive) row.firstSentAt = now

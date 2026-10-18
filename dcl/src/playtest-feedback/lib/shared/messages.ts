@@ -17,7 +17,11 @@ export const Messages = {
   }),
 
   // server → sender: ok once buffered for Storage
-  feedbackSaved: Schemas.Map({ requestId: Schemas.String, ok: Schemas.Boolean })
+  feedbackSaved: Schemas.Map({ requestId: Schemas.String, ok: Schemas.Boolean }),
+
+  // LOCAL PATCH (bowling): client asks once per visit. Server answers from player storage.
+  feedbackPriorQuery: Schemas.Map({ requestId: Schemas.String }),
+  feedbackPrior: Schemas.Map({ requestId: Schemas.String, given: Schemas.Boolean })
 }
 
 export const room = registerMessages(Messages)

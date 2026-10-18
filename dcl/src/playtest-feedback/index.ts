@@ -5,7 +5,7 @@ import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 import { timers } from 'src/shared/utils/timers'
 
 import { feedback } from 'src/playtest-feedback/lib'
-import { setIntroAccepted, setIntroDeclined, showToast } from 'src/playtest-feedback/lib/client/state'
+import { feedbackPrior, gaveFeedbackBeforeVisit, setIntroAccepted, setIntroDeclined, showToast } from 'src/playtest-feedback/lib/client/state'
 import { releaseFeedbackUi } from 'src/playtest-feedback/lib/client/ui'
 
 
@@ -54,8 +54,22 @@ setIntroDeclined(() => {
 function onFlyInEnd(): void {
 	releaseFeedbackUi()
 	timers.setTimeout(() => {
-		void feedback.intro('after-fly-in')
+		void openIntroIfNew()
 	}, INTRO_DELAY_MS)
+}
+
+
+// MARK: openIntroIfNew
+/**
+ * Shows the intro after the delay, unless this player already submitted feedback.
+ */
+async function openIntroIfNew(): Promise<void> {
+	const given = await feedbackPrior()
+	if (given) {
+		console.log('playtest-feedback: openIntroIfNew: already gave feedback, skipping')
+		return
+	}
+	void feedback.intro('after-fly-in')
 }
 
 
@@ -66,6 +80,7 @@ function onFlyInEnd(): void {
  */
 function onFirstTurnEnd(): void {
 	if (askedStartGame) return
+	if (gaveFeedbackBeforeVisit()) return
 	if (feedback.participation() !== 'in') return
 	askedStartGame = true
 	void feedback.ask(AFTER_FIRST_TURN, 'after-first-turn')
@@ -79,6 +94,7 @@ function onFirstTurnEnd(): void {
  */
 function onFirstGameComplete(): void {
 	if (askedFirstGame) return
+	if (gaveFeedbackBeforeVisit()) return
 	if (feedback.participation() !== 'in') return
 	askedFirstGame = true
 	void feedback.ask(AFTER_FIRST_GAME_HELLO, 'after-first-game-hello').then((results) => {
