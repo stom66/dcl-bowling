@@ -16,7 +16,8 @@ export namespace PlayAreaBounds {
 	 * Horizontal radius of the skybox sphere.
 	 * Taken from the `skybox.gltf` POSITION accessor X/Z extent.
 	 */
-	const SKYBOX_RADIUS = 126.36557
+	const SKYBOX_RADIUS = 124
+	
 
 	let isInitialized = false
 	let elapsed       = 0
