@@ -8,12 +8,12 @@ export const REWARD_ENDS_OPEN = Date.UTC(4000, 0, 1)
 
 export const DEFAULT_REWARD_BUTTON_LABEL = 'Thanks!'
 
-const STREAK_DAY_FIRST     = 2
-const STREAK_DAY_LAST      = 100
-const STREAK_REWARD_PREFIX = 'streak-day-'
+const STREAK_DAY_FIRST           = 2
+const STREAK_DAY_LAST            = 100
+const STREAK_REWARD_PREFIX       = 'streak-day-'
 const UPDATE_TICKETS             = 5
 const PLAYTESTER_SPECIAL_TICKETS = 10
-const SPECIAL_PLAYER_TICKETS     = 10
+const SPECIAL_PLAYER_TICKETS     = 25
 
 
 export type RewardPlayerContext = {
@@ -65,7 +65,7 @@ export type PlayerRewardsState = {
 
 export const REWARDS: RewardDefinition[] = [
 	{
-		id         : 'player-special',
+		id         : 'longterm-player-special',
 		title      : 'The {name} Special',
 		message    : '{Name}, you\'ve been here since the beginning. As a reward, you get bonus tickets!',
 		startsAt   : 0,
