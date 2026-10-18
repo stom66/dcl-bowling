@@ -22,6 +22,7 @@ export enum MessageType {
 	REQUEST_EQUIP_ITEM          = 'requestEquipItem',
 	REQUEST_TICKET              = 'requestTicket',
 	REQUEST_CLAIM_REWARD        = 'requestClaimReward',
+	REQUEST_RESET_REWARDS       = 'requestResetRewards',
 	REQUEST_SET_PREFERENCES     = 'requestSetPreferences',
 	REQUEST_SET_LANE_BUMPERS    = 'requestSetLaneBumpers',
 
@@ -122,6 +123,7 @@ const Messages = {
 	[MessageType.REQUEST_CLAIM_REWARD]       : Schemas.Map({
 		rewardId: Schemas.String,
 	}),
+	[MessageType.REQUEST_RESET_REWARDS]      : Schemas.Map({}),
 	[MessageType.REQUEST_SET_PREFERENCES]    : Schemas.Map({
 		bgmMuted       : Schemas.Optional(Schemas.Boolean),
 		bumpersEnabled : Schemas.Optional(Schemas.Boolean),

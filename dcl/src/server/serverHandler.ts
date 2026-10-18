@@ -1,7 +1,7 @@
 import * as utils from "@dcl-sdk/utils"
 
 import { MessageType, net } from 'src/shared/net'
-import { canUsePlaytestDebug, GameSettings } from 'src/shared/settings'
+import { canUsePlaytestDebug, GameSettings, isLocalDev } from 'src/shared/settings'
 import { RequestCatalogItemPayload, RequestClaimRewardPayload, RequestJoinLobbyPayload, RequestPlayRollPayload, RequestSetLaneBumpersPayload, RequestSetLaneFrameCountPayload, RequestSetPreferencesPayload, RequestTicketPayload } from 'src/shared/types/shared-types'
 
 import { gameManager } from 'src/server/gameManager'
@@ -30,6 +30,7 @@ export namespace serverHandler {
 		net.onMessage(MessageType.REQUEST_EQUIP_ITEM, (data, context) => handleRequestEquipItem(data, context))
 		net.onMessage(MessageType.REQUEST_TICKET, (data, context) => handleRequestTicket(data, context))
 		net.onMessage(MessageType.REQUEST_CLAIM_REWARD, (data, context) => handleRequestClaimReward(data, context))
+		net.onMessage(MessageType.REQUEST_RESET_REWARDS, (_data, context) => handleRequestResetRewards(context))
 		net.onMessage(MessageType.REQUEST_SET_PREFERENCES, (data, context) => handleRequestSetPreferences(data, context))
 		net.onMessage(MessageType.REQUEST_SET_LANE_BUMPERS, (data, context) => handleRequestSetLaneBumpers(data, context))
 	}
@@ -178,6 +179,21 @@ export namespace serverHandler {
 		console.log('serverHandler: handleRequestClaimReward: userId', userId, 'rewardId', data?.rewardId)
 		if (typeof data?.rewardId !== 'string' || data.rewardId === '') return
 		PlayerProfileManager.requestClaimReward(userId, data.rewardId)
+	}
+
+
+	// MARK: Reset Rewards
+	/**
+	 * Clears the sender's saved rewards. Local development only.
+	 */
+	export function handleRequestResetRewards(context: any) {
+		const userId = getUserId(context)
+		console.log('serverHandler: handleRequestResetRewards: userId', userId)
+		if (!isLocalDev()) {
+			console.log('serverHandler: handleRequestResetRewards: not local dev', userId)
+			return
+		}
+		PlayerProfileManager.requestResetRewards(userId)
 	}
 
 

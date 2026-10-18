@@ -66,8 +66,8 @@ export type PlayerRewardsState = {
 export const REWARDS: RewardDefinition[] = [
 	{
 		id         : 'player-special',
-		title      : '{name} Special',
-		message    : '{name}, you\'ve been here since the beginning. This one\'s yours: {tickets} tickets.',
+		title      : 'The {name} Special',
+		message    : '{Name}, you\'ve been here since the beginning. As a reward, you get bonus tickets!',
 		startsAt   : 0,
 		endsAt     : REWARD_ENDS_OPEN,
 		isEligible : (player) => getSpecialPlayerName(player.userId) !== undefined,
@@ -84,7 +84,7 @@ export const REWARDS: RewardDefinition[] = [
 	},
 	{
 		id         : `update-${VERSION}`,
-		title      : 'New Game Comtent',
+		title      : 'There\'s been an update!',
 		message    : 'Welcome back! The game has been updated since your last visit. To celebrate, you\'ve been gifted {tickets} tickets!',
 		startsAt   : 0,
 		endsAt     : REWARD_ENDS_OPEN,
@@ -148,7 +148,9 @@ export function isRewardInWindow(
 // MARK: resolveRewardOffer
 /**
  * Freezes a catalog reward into the offer stored on the player.
- * `{tickets}`, `{games}`, and `{name}` in the title and message are replaced here.
+ * `{tickets}`, `{games}`, `{name}`, `{Name}`, and `{NAME}` in the title and message are replaced here.
+ * `{name}` is lowercase, `{Name}` is PascalCase, `{NAME}` is uppercase.
+ * Stored names and profile display names are not changed.
  */
 export function resolveRewardOffer(
 	reward : RewardDefinition,
@@ -211,11 +213,18 @@ function fillRewardMessage(
 	games    : number,
 	name     : string,
 ): string {
+	const lower  = name.toLowerCase()
+	const pascal = name === '' ? '' : lower.charAt(0).toUpperCase() + lower.slice(1)
+	const upper  = name.toUpperCase()
 	return template
 		.split('{tickets}')
 		.join(String(tickets))
 		.split('{games}')
 		.join(String(games))
+		.split('{NAME}')
+		.join(upper)
+		.split('{Name}')
+		.join(pascal)
 		.split('{name}')
-		.join(name)
+		.join(lower)
 }

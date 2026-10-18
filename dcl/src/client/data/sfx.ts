@@ -69,6 +69,14 @@ export const sfx = {
 		"assets/sfx/ui-equip-02.mp3",
 		"assets/sfx/ui-equip-03.mp3",
 	],
+	ui_reward_popup: [
+		"assets/sfx/ui_reward_popup_01.mp3",
+		"assets/sfx/ui_reward_popup_02.mp3",
+		"assets/sfx/ui_reward_popup_03.mp3",
+		"assets/sfx/ui_reward_popup_04.mp3",
+		"assets/sfx/ui_reward_popup_05.mp3",
+		"assets/sfx/ui_reward_popup_06.mp3",
+	],
 
 	collisionPinHitPin: [
 		"assets/sfx/impactGeneric_light_000.mp3",

@@ -153,6 +153,17 @@ export namespace ClientMessaging {
 	}
 
 
+	// MARK: requestResetRewards
+	/**
+	 * Asks the server to clear this player's saved rewards and offer them again.
+	 * The server accepts this only in a local development build.
+	 */
+	export function requestResetRewards(): void {
+		console.log('ClientMessaging: requestResetRewards')
+		net.send(MessageType.REQUEST_RESET_REWARDS, {})
+	}
+
+
 	// MARK: requestSetPreferences
 	/**
 	 * Asks the server to persist player preferences such as background-music mute.

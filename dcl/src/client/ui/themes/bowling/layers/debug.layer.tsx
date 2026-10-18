@@ -336,6 +336,22 @@ export class DebugLayer extends Layer {
 				{this.sectionTitle('debug-title', 'Debug Menu')}
 
 				<ButtonText
+					id        = "debug_reset_rewards"
+					textLabel = "Reset Rewards"
+					width     = "100%"
+					height    = {18}
+					minHeight = {18}
+					fontSize  = {DEBUG_FONT_SIZE}
+					callback  = {() => {
+						ClientMessaging.requestResetRewards()
+					}}
+					uiTransform = {{
+						positionType: 'relative',
+						position    : { top: 0, left: 0 },
+					}}
+				/>
+
+				<ButtonText
 					id        = "debug_goto_lobby"
 					textLabel = "GoTo Lobby"
 					width     = "100%"

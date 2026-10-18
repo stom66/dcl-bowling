@@ -36,6 +36,10 @@ const ACTION_BTN_H     = 92
 const TICKET_ICON_SIZE = 72
 const PANEL_WIDTH      = 640
 const SLIDE_DURATION   = 0.2
+/** Extra wait after loading finishes before the first reward slides on. */
+const OPEN_DELAY_MS    = 3000
+/** Extra wait after a reward slides off before the next one slides on. */
+const BETWEEN_DELAY_MS = 500
 const COLOR_PANEL_FILL = Color4.fromHexString('#1d0231ff')
 
 const stringAtlases = {
@@ -52,8 +56,10 @@ const clientStore = ClientStore.getInstance()
  */
 export class RewardLayer extends Layer {
 	private loadFinished = false
+	private showAfterMs  = 0
 	private displayed    : PendingRewardOffer | undefined
 	private dismissingId : string | undefined
+	private replacing    = false
 
 	constructor() {
 		super({
@@ -72,6 +78,7 @@ export class RewardLayer extends Layer {
 
 		eventBus.on(ClientEvents.LOAD_COMPLETE, () => {
 			this.loadFinished = true
+			this.showAfterMs  = Date.now() + OPEN_DELAY_MS
 		})
 		engine.addSystem(() => { this.syncOffer() })
 	}
@@ -99,8 +106,8 @@ export class RewardLayer extends Layer {
 
 	// MARK: syncOffer
 	/**
-	 * Shows one offer after loading finishes.
-	 * A claim slides that window off before the next offer slides on.
+	 * Shows one offer after loading finishes, with a short pause before the
+	 * first window and between consecutive windows.
 	 */
 	private syncOffer() {
 		if (!this.loadFinished) return
@@ -111,6 +118,14 @@ export class RewardLayer extends Layer {
 			if (offer?.id === this.dismissingId) return
 			this.dismissingId = undefined
 			this.displayed    = undefined
+			this.showAfterMs  = Date.now() + BETWEEN_DELAY_MS
+		}
+
+		if (this.replacing) {
+			if (!this.visibility.isFullyHidden) return
+			this.replacing   = false
+			this.displayed   = undefined
+			this.showAfterMs = Date.now() + BETWEEN_DELAY_MS
 		}
 
 		if (!offer) {
@@ -119,17 +134,45 @@ export class RewardLayer extends Layer {
 			return
 		}
 
+		if (
+			this.displayed
+			&& !this.visibility.isHidden
+			&& !this.sameOffer(this.displayed, offer)
+		) {
+			this.replacing = true
+			this.hide(SLIDE_DURATION)
+			return
+		}
+
 		if (this.visibility.isHidden) {
+			if (Date.now() < this.showAfterMs) return
 			this.displayed = offer
+			SoundManager.playSound(sfx.ui_reward_popup)
 			this.show(SLIDE_DURATION)
 		}
+	}
+
+
+	// MARK: sameOffer
+	/** True when the stored offer and the one on screen are the same text and grant. */
+	private sameOffer(
+		shown  : PendingRewardOffer,
+		latest : PendingRewardOffer,
+	): boolean {
+		return shown.id === latest.id
+			&& shown.title === latest.title
+			&& shown.message === latest.message
+			&& shown.buttonLabel === latest.buttonLabel
+			&& shown.kind === latest.kind
+			&& shown.tickets === latest.tickets
+			&& shown.itemId === latest.itemId
 	}
 
 
 	// MARK: claim
 	/** Asks the server to grant the offer on screen, then slides the window off. */
 	private claim(offer: PendingRewardOffer) {
-		if (this.dismissingId) return
+		if (this.dismissingId || this.replacing) return
 		console.log('RewardLayer: claim: rewardId', offer.id)
 		SoundManager.playSound(sfx.claim_reward)
 		ClientMessaging.requestClaimReward(offer.id)

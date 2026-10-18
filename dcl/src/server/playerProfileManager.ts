@@ -30,7 +30,7 @@ import {
 	ScoringAnimationItem,
 } from "src/shared/data/unlocks/types"
 import { VERSION } from "src/shared/data/version"
-import { canUsePlaytestDebug, getPerfectScore, normalizeFrameCount } from "src/shared/settings"
+import { canUsePlaytestDebug, getPerfectScore, isLocalDev, normalizeFrameCount } from "src/shared/settings"
 import { PlayerBackedState } from "src/shared/storage/player.storageBackedState"
 import { eventBus, ServerEvents } from "src/shared/utils/eventBus"
 
@@ -498,6 +498,46 @@ export namespace PlayerProfileManager {
 	}
 
 
+	// MARK: requestResetRewards
+	/**
+	 * Clears this player's saved rewards and builds the current offers again.
+	 * Local development only. Also forgets the last played version so the
+	 * version reward can be offered again.
+	 */
+	export function requestResetRewards(userId: string): void {
+		if (!isLocalDev()) {
+			console.log('PlayerProfileManager: requestResetRewards: not local dev', userId)
+			return
+		}
+
+		const session = getSession(userId)
+		if (!session) {
+			console.log('PlayerProfileManager: requestResetRewards: no session', userId)
+			return
+		}
+
+		const activity: PlayerActivityState = {
+			...session.activity.get(),
+			lastPlayedVersion: '',
+		}
+		session.activity.update(() => activity)
+		session.rewards.update(() => createEmptyRewards())
+		offerRewards(session, {
+			userId  : session.userId,
+			now     : Date.now(),
+			activity,
+			visit   : activity,
+			stats   : session.stats.get(),
+			tickets : session.tickets.get(),
+			unlocks : session.unlocks.get(),
+			version : VERSION,
+		})
+		void session.activity.persist()
+		void session.rewards.persist()
+		console.log('PlayerProfileManager: requestResetRewards: reset rewards for', userId)
+	}
+
+
 	// MARK: createSession
 	function createSession(userId: string): PlayerSession {
 		return {
@@ -950,6 +990,18 @@ function offerRewards(
 			? state.redeemedIds.filter((id) => !isStreakRewardId(id))
 			: state.redeemedIds
 		const redeemed    = new Set(redeemedIds)
+
+		for (let i = 0; i < pending.length; i++) {
+			const reward = REWARDS.find((entry) => entry.id === pending[i].id)
+			if (!reward) continue
+			const fresh = resolveRewardOffer(reward, player)
+			pending[i] = {
+				...pending[i],
+				title       : fresh.title,
+				message     : fresh.message,
+				buttonLabel : fresh.buttonLabel,
+			}
+		}
 
 		for (const reward of REWARDS) {
 			if (redeemed.has(reward.id) || pendingIds.has(reward.id)) continue

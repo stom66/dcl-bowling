@@ -78,6 +78,16 @@ export function canUsePlaytestDebug(userId: string): boolean {
 }
 
 
+
+// MARK: isLocalDev
+/**
+ * True when the scene is running in the local development build.
+ */
+export function isLocalDev(): boolean {
+	return IS_DEBUG
+}
+
+
 // MARK: isGameFrameCount
 /**
  * True when `value` is a supported lobby-chosen game length.
