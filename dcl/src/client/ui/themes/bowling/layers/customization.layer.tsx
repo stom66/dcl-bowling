@@ -6,7 +6,7 @@ import { atlasIconsFontAwesome, ButtonText, Column, Divider, easingFunctions, ge
 import { ComponentStore } from 'src/shared/components/componentStore'
 import { PlayerTickets } from 'src/shared/components/definitions/shared.playerTickets'
 import { PlayerUnlocks } from 'src/shared/components/definitions/shared.playerUnlocks'
-import { getAllCatalogEntries, isItemOwned } from 'src/shared/data/unlocks'
+import { getAllCatalogEntries, isItemOwned, isPurchasableRarity } from 'src/shared/data/unlocks'
 import { resolvePlayerLoadout } from 'src/shared/data/unlocks/resolveLoadout'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 
@@ -78,8 +78,8 @@ const CATEGORIES = [
 	{ kind: 'ball',           label: 'Balls'      },
 	{ kind: 'pin',            label: 'Pins'       },
 	{ kind: 'lane',           label: 'Lanes'      },
-	{ kind: 'spotlight',      label: 'Spotlights' },
-	{ kind: 'spotlightColor', label: 'Colors'     },
+	{ kind: 'spotlight',      label: 'Light Shape' },
+	{ kind: 'spotlightColor', label: 'Light Color'     },
 	{ kind: 'trail',          label: 'Trails'     },
 ] as const
 
@@ -469,6 +469,13 @@ export class CustomizationLayer extends Layer {
 			return
 		}
 
+		if (!isPurchasableRarity(entry.item.rarity)) {
+			console.log('CustomizationLayer: requestItemAction: not purchasable rarity', entry.id, entry.item.rarity)
+			playOnce(PURCHASE_SHAKE_ID)
+			SoundManager.playSound(sfx.ui_purchase_error)
+			return
+		}
+
 		const cost    = entry.item.ticketCost
 		const balance = getLocalTicketBalance()
 		if (balance < cost) {
@@ -610,7 +617,7 @@ export class CustomizationLayer extends Layer {
 				key             = {`customization-category-${kind}`}
 				width           = "100%"
 				height          = {CATEGORY_BUTTON_HEIGHT}
-				padding         = {{ left: 12, right: 10 }}
+				padding         = {{ left: 3, right: 6 }}
 				backgroundColor = {fill}
 				borderColor     = {isSelected ? theme.colors.primary : getFrameOutline()}
 				borderWidth     = {2}
@@ -620,7 +627,7 @@ export class CustomizationLayer extends Layer {
 				onMouseLeave    = {() => { categoryHover[kind] = false }}
 				onMouseDown     = {() => { this.selectCategory(kind) }}
 			>
-				<Row height="100%">
+				<Row height="100%" spacing={0}>
 					<Icon
 						src       = {icon.src}
 						uvs       = {icon.uvs}
@@ -631,8 +638,9 @@ export class CustomizationLayer extends Layer {
 					<Text
 						value     = {label}
 						fontSize  = {theme.typography.size.h5}
-						textWrap  = "nowrap"
+						textWrap  = "wrap"
 						height    = "100%"
+
 					/>
 				</Row>
 			</UiBox>
@@ -645,12 +653,13 @@ export class CustomizationLayer extends Layer {
 	 * Purchase or Equip control at the bottom of the preview frame.
 	 */
 	private itemActionButton(entry: CatalogEntryRow) {
-		const theme    = getTheme()
-		const owned    = isLocalItemOwned(entry.id)
-		const equipped = isLocalItemEquipped(entry)
-		const fill     = equipped ? theme.colors.primary : owned ? theme.colors.secondary : theme.colors.primary
-		const outline  = equipped ? theme.colors.primary : owned ? getFrameOutline() : theme.colors.primary
-		const bg       = actionButtonHover ? lighten(fill, 0.1) : fill
+		const theme       = getTheme()
+		const owned       = isLocalItemOwned(entry.id)
+		const equipped    = isLocalItemEquipped(entry)
+		const purchasable = owned || isPurchasableRarity(entry.item.rarity)
+		const fill        = equipped ? theme.colors.primary : owned ? theme.colors.secondary : theme.colors.primary
+		const outline     = equipped ? theme.colors.primary : owned ? getFrameOutline() : theme.colors.primary
+		const bg          = actionButtonHover ? lighten(fill, 0.1) : fill
 
 		return (
 			<Pulse
@@ -692,7 +701,7 @@ export class CustomizationLayer extends Layer {
 								textWrap  = "nowrap"
 								height    = {ACTION_BUTTON_HEIGHT}
 							/>
-						) : (
+						) : purchasable ? (
 							<Row height="100%" justifyContent="center">
 								<Text
 									value     = "Purchase"
@@ -704,6 +713,14 @@ export class CustomizationLayer extends Layer {
 								/>
 								{ticketCostLabel(entry.item.ticketCost, theme.typography.size.h5, ACTION_BUTTON_HEIGHT, theme.colors.light)}
 							</Row>
+						) : (
+							<Text
+								value     = "Not unlocked"
+								fontSize  = {theme.typography.size.h5}
+								textAlign = "middle-center"
+								textWrap  = "nowrap"
+								height    = {ACTION_BUTTON_HEIGHT}
+							/>
 						)}
 					</UiBox>
 				</Shake>
@@ -725,6 +742,18 @@ export class CustomizationLayer extends Layer {
 					value     = "Owned"
 					fontSize  = {theme.typography.size.small}
 					fontColor = {theme.colors.info}
+					textAlign = "middle-center"
+					height    = {TICKET_ICON_SIZE}
+				/>
+			)
+		}
+
+		if (!isPurchasableRarity(entry.item.rarity)) {
+			return (
+				<Text
+					value     = "Locked"
+					fontSize  = {theme.typography.size.small}
+					fontColor = {theme.colors.light}
 					textAlign = "middle-center"
 					height    = {TICKET_ICON_SIZE}
 				/>

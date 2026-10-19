@@ -10,14 +10,17 @@ import { PlayerUnlocks } from "src/shared/components/definitions/shared.playerUn
 import { PLAYERS_GROUP_ID } from "src/shared/components/registry"
 import { normalizeEntityKey } from "src/shared/components/types"
 import { buildGameTicketLines, sumTicketLines } from "src/shared/data/gameTickets"
-import { isRewardInWindow, isStreakRewardId, PendingRewardOffer, PlayerRewardsState, REWARDS, resolveRewardOffer, RewardPlayerContext } from "src/shared/data/rewards"
+import { DEFAULT_REWARD_BUTTON_LABEL, isRewardInWindow, isStreakRewardId, PendingRewardOffer, PlayerRewardsState, REWARDS, resolveRewardOffer, RewardPlayerContext } from "src/shared/data/rewards"
 import {
 	type CatalogKind,
 	getCatalogEntry,
 	getDefaultLoadout,
 	getDefaultScoringAnimIds,
 	getDefaultUnlockedIds,
+	isClawTicketCost,
 	isItemOwned,
+	isPurchasableRarity,
+	pickClawReward,
 } from "src/shared/data/unlocks"
 import {
 	PlayerActivityState,
@@ -311,6 +314,11 @@ export namespace PlayerProfileManager {
 			return
 		}
 
+		if (!isPurchasableRarity(entry.item.rarity)) {
+			console.log('PlayerProfileManager: requestUnlockItem: rarity not purchasable', itemId, entry.item.rarity)
+			return
+		}
+
 		const unlocks = session.unlocks.get()
 		if (isItemOwned(itemId, unlocks.unlockedItemIds)) {
 			console.log('PlayerProfileManager: requestUnlockItem: already owned', itemId)
@@ -345,6 +353,76 @@ export namespace PlayerProfileManager {
 		void session.unlocks.persist()
 		void session.loadout.persist()
 		console.log('PlayerProfileManager: requestUnlockItem: unlocked and equipped', itemId, 'for', userId)
+	}
+
+
+	// MARK: requestClawPlay
+	/**
+	 * Spends claw-machine tickets, rolls a weighted unowned unlock, and queues a reward popup.
+	 * Refunds when the player already owns every claw-pool item.
+	 */
+	export function requestClawPlay(
+		userId     : string,
+		ticketCost : number,
+	): { ok: boolean, ticketCost: number, itemId?: string, refunded?: boolean } {
+		const session = getSession(userId)
+		if (!session) {
+			console.log('PlayerProfileManager: requestClawPlay: no session', userId)
+			return { ok: false, ticketCost }
+		}
+
+		if (!isClawTicketCost(ticketCost)) {
+			console.log('PlayerProfileManager: requestClawPlay: invalid ticketCost', ticketCost)
+			return { ok: false, ticketCost }
+		}
+
+		const balance = session.tickets.get().balance
+		if (balance < ticketCost) {
+			console.log('PlayerProfileManager: requestClawPlay: not enough tickets', balance, ticketCost)
+			return { ok: false, ticketCost }
+		}
+
+		session.tickets.update((state) => ({
+			...state,
+			balance: state.balance - ticketCost,
+		}))
+
+		const owned = session.unlocks.get().unlockedItemIds
+		const pick  = pickClawReward(owned, ticketCost)
+		if ('refund' in pick) {
+			session.tickets.update((state) => ({
+				...state,
+				balance: state.balance + ticketCost,
+			}))
+			void session.tickets.persist()
+			console.log('PlayerProfileManager: requestClawPlay: pool empty, refunded', userId, ticketCost)
+			return { ok: true, ticketCost, refunded: true }
+		}
+
+		grantRewardUnlock(session, pick.itemId)
+
+		const entry = getCatalogEntry(pick.itemId)
+		const name  = entry?.item.name ?? pick.itemId
+		const offer: PendingRewardOffer = {
+			id          : `claw-${Date.now()}-${pick.itemId}`,
+			title       : 'Claw Machine!',
+			message     : `You won ${name}!`,
+			buttonLabel : DEFAULT_REWARD_BUTTON_LABEL,
+			kind        : 'unlock',
+			tickets     : 0,
+			itemId      : pick.itemId,
+		}
+
+		session.rewards.update((state) => ({
+			...state,
+			pending: [...state.pending, offer],
+		}))
+
+		void session.tickets.persist()
+		void session.unlocks.persist()
+		void session.rewards.persist()
+		console.log('PlayerProfileManager: requestClawPlay: won', pick.itemId, 'for', userId, 'cost', ticketCost)
+		return { ok: true, ticketCost, itemId: pick.itemId }
 	}
 
 

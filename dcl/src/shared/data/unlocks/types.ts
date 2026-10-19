@@ -1,13 +1,19 @@
+/** Item rarity for store gating and claw odds. Higher is rarer. */
+export type ItemRarity = 0 | 1 | 2 | 3
+
+
 /**
  * Shared catalog meta. The object key in each catalog file is the item id.
  * `defaultUnlocked` grants the item at start. `defaultEquipped` puts it on
  * the starting loadout (one per kind, except scoring which uses one per slot).
  * `disabled` hides the item from customization and blocks new unlocks/equips.
+ * `rarity` drives store purchase eligibility and claw-machine drop weights.
  */
 export type UnlockMeta = {
 	name            : string
 	description     : string
 	ticketCost      : number
+	rarity          : ItemRarity
 	defaultUnlocked : boolean
 	defaultEquipped : boolean
 	disabled?       : boolean

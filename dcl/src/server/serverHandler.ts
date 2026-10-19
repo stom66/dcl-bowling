@@ -2,11 +2,11 @@ import * as utils from "@dcl-sdk/utils"
 
 import { MessageType, net } from 'src/shared/net'
 import { canUsePlaytestDebug, GameSettings, isLocalDev } from 'src/shared/settings'
-import { RequestCatalogItemPayload, RequestClaimRewardPayload, RequestJoinLobbyPayload, RequestPlayRollPayload, RequestSetLaneBumpersPayload, RequestSetLaneFrameCountPayload, RequestSetPreferencesPayload, RequestTicketPayload } from 'src/shared/types/shared-types'
+import { RequestCatalogItemPayload, RequestClaimRewardPayload, RequestClawPlayPayload, RequestJoinLobbyPayload, RequestPlayRollPayload, RequestSetLaneBumpersPayload, RequestSetLaneFrameCountPayload, RequestSetPreferencesPayload, RequestTicketPayload } from 'src/shared/types/shared-types'
 
 import { gameManager } from 'src/server/gameManager'
 import { PlayerProfileManager } from 'src/server/playerProfileManager'
-import { notifyPlayerRollRequestReceived } from './serverMessaging'
+import { notifyClawResult, notifyPlayerRollRequestReceived } from './serverMessaging'
 
 
 export namespace serverHandler {
@@ -33,6 +33,7 @@ export namespace serverHandler {
 		net.onMessage(MessageType.REQUEST_RESET_REWARDS, (_data, context) => handleRequestResetRewards(context))
 		net.onMessage(MessageType.REQUEST_SET_PREFERENCES, (data, context) => handleRequestSetPreferences(data, context))
 		net.onMessage(MessageType.REQUEST_SET_LANE_BUMPERS, (data, context) => handleRequestSetLaneBumpers(data, context))
+		net.onMessage(MessageType.REQUEST_CLAW_PLAY, (data, context) => handleRequestClawPlay(data, context))
 	}
 
 
@@ -124,6 +125,23 @@ export namespace serverHandler {
 		console.log('serverHandler: handleRequestUnlockItem: userId', userId, 'itemId', data?.itemId)
 		if (!data?.itemId) return
 		await PlayerProfileManager.requestUnlockItem(userId, data.itemId)
+	}
+
+
+	// MARK: Claw Play
+	/**
+	 * Spends tickets on a claw machine and notifies the sender of the roll result.
+	 */
+	export function handleRequestClawPlay(
+		data    : RequestClawPlayPayload | undefined,
+		context : any,
+	) {
+		const userId = getUserId(context)
+		console.log('serverHandler: handleRequestClawPlay: userId', userId, 'ticketCost', data?.ticketCost)
+		if (data === undefined || typeof data.ticketCost !== 'number') return
+
+		const result = PlayerProfileManager.requestClawPlay(userId, data.ticketCost)
+		notifyClawResult(userId, result)
 	}
 
 

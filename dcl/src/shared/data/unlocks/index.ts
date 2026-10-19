@@ -9,6 +9,16 @@ import { CatalogEntry, PlayerLoadoutState, ScoreKind, ScoringAnimationItem, Unlo
 
 
 export { balls } from "src/shared/data/unlocks/balls"
+export {
+	CLAW_RARITY_WEIGHTS,
+	CLAW_TICKET_COSTS,
+	isClawTicketCost,
+	isPurchasableRarity,
+	pickClawReward,
+	RARITY_TICKET_COST,
+	ticketCostForItem,
+} from "src/shared/data/unlocks/clawRewards"
+export type { ClawPickResult, ClawTicketCost } from "src/shared/data/unlocks/clawRewards"
 export { lanes } from "src/shared/data/unlocks/lanes"
 export { pins } from "src/shared/data/unlocks/pins"
 export { scoringAnimations } from "src/shared/data/unlocks/scoringAnimations"
@@ -20,6 +30,7 @@ export type {
 	CatalogEntry,
 	CatalogKind,
 	GameTicketLine,
+	ItemRarity,
 	LaneItem,
 	PinItem,
 	PlayerActivityState,

@@ -25,6 +25,7 @@ export enum MessageType {
 	REQUEST_RESET_REWARDS       = 'requestResetRewards',
 	REQUEST_SET_PREFERENCES     = 'requestSetPreferences',
 	REQUEST_SET_LANE_BUMPERS    = 'requestSetLaneBumpers',
+	REQUEST_CLAW_PLAY           = 'requestClawPlay',
 
 	NOTIFY_SERVER_TIME          = 'notifyServerTime',
 
@@ -32,6 +33,7 @@ export enum MessageType {
 	NOTIFY_PLAYER_ROLL_START    = 'notifyPlayerRollStart',
 	NOTIFY_PLAYER_ROLL_PLAYBACK = 'notifyPlayerRollPlayback',
 	NOTIFY_PLAYER_ROLL_REQUEST_RECEIVED = 'notifyPlayerRollRequestReceived',
+	NOTIFY_CLAW_RESULT          = 'notifyClawResult',
 }
 
 // MARK: Message schemas
@@ -131,8 +133,18 @@ const Messages = {
 	[MessageType.REQUEST_SET_LANE_BUMPERS]   : Schemas.Map({
 		enabled: Schemas.Boolean,
 	}),
+	[MessageType.REQUEST_CLAW_PLAY]          : Schemas.Map({
+		ticketCost: Schemas.Int,
+	}),
 
 	[MessageType.NOTIFY_SERVER_TIME]         : Schemas.Int64,
+
+	[MessageType.NOTIFY_CLAW_RESULT]         : Schemas.Map({
+		ok         : Schemas.Boolean,
+		ticketCost : Schemas.Int,
+		itemId     : Schemas.Optional(Schemas.String),
+		refunded   : Schemas.Optional(Schemas.Boolean),
+	}),
 
 	[MessageType.NOTIFY_JOIN_GAME]           : notifyJoinGameSchema,
 

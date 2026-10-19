@@ -14,6 +14,15 @@ import {
 } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 
+import { ComponentStore } from 'src/shared/components/componentStore'
+import { PlayerTickets } from 'src/shared/components/definitions/shared.playerTickets'
+import { MessageType, net } from 'src/shared/net'
+import { NotifyClawResultPayload } from 'src/shared/types/shared-types'
+
+import { ClientMessaging } from 'src/client/clientMessaging'
+import { ClientStore } from 'src/client/clientStore'
+import { sfx, SoundManager } from 'src/client/soundManager'
+
 
 /** Tag → ticket value and matching top-sign suffix (`claw-machine-top.0N.gltf`). */
 const PRIZE_TAGS: { tag: string, ticketValue: number, topSuffix: string }[] = [
@@ -32,6 +41,9 @@ const SPIN_CLIP   = 'spin'
 /** Seconds to crossfade the finished action → idle. */
 const BLEND_DURATION = 0.4
 
+/** Extra hold after the action finishes before the reward popup may show. */
+const REWARD_HOLD_AFTER_ACTION_MS = 1200
+
 /** Max ms to wait before starting a looping clip, so machines do not animate in lockstep. */
 const LOOP_START_DELAY_MAX_MS = 4000
 
@@ -40,7 +52,7 @@ const MAX_INTERACT_DISTANCE = 8
 
 type ActionClip = typeof ACTION_CLIPS[number]
 
-type MachinePhase = 'idle' | 'action' | 'blend'
+type MachinePhase = 'idle' | 'waiting' | 'action' | 'blend'
 
 
 type MachineState = {
@@ -60,6 +72,21 @@ export namespace ClawMachine {
 
 	const machines: MachineState[] = []
 
+	/** Machine waiting on `NOTIFY_CLAW_RESULT`. */
+	let pendingMachine: MachineState | undefined
+
+	/** RewardLayer holds claw offers until this timestamp. */
+	let suppressRewardUntilMs = 0
+
+
+	// MARK: isRewardSuppressed
+	/**
+	 * True while a claw presentation is in progress so the reward popup waits.
+	 */
+	export function isRewardSuppressed(): boolean {
+		return Date.now() < suppressRewardUntilMs
+	}
+
 
 	// MARK: init
 	/**
@@ -77,6 +104,10 @@ export namespace ClawMachine {
 				setupMachine(entity, ticketValue, topSuffix)
 			}
 		}
+
+		net.onMessage(MessageType.NOTIFY_CLAW_RESULT, (data) => {
+			onClawResult(data as NotifyClawResultPayload)
+		})
 
 		if (machines.length === 0) {
 			console.log('ClawMachine: init: no claw machines found')
@@ -229,17 +260,67 @@ export namespace ClawMachine {
 	}
 
 
+	// MARK: getLocalTicketBalance
+	/** Synced ticket balance for the local player. */
+	function getLocalTicketBalance(): number {
+		const userId = ClientStore.getInstance().getUserId()
+		if (!userId) return 0
+		return ComponentStore.getOrNull(PlayerTickets, { key: userId })?.balance ?? 0
+	}
+
+
 	// MARK: onInteract
 	/**
-	 * Handles a player pointer interaction: stubs the prize trigger and plays a random action clip.
+	 * Spends tickets via the server when the player uses a claw machine.
 	 */
 	function onInteract(state: MachineState): void {
-		if (state.phase !== 'idle') {
+		if (state.phase !== 'idle' || pendingMachine) {
 			console.log('ClawMachine: onInteract: busy, ignoring', state.ticketValue)
 			return
 		}
 
-		triggerPrizeStub(state.ticketValue)
+		const balance = getLocalTicketBalance()
+		if (balance < state.ticketValue) {
+			console.log('ClawMachine: onInteract: not enough tickets', balance, state.ticketValue)
+			SoundManager.playSound(sfx.ui_purchase_error)
+			return
+		}
+
+		pendingMachine = state
+		state.phase    = 'waiting'
+		console.log('ClawMachine: onInteract: requesting play', state.ticketValue)
+		ClientMessaging.requestClawPlay(state.ticketValue)
+	}
+
+
+	// MARK: onClawResult
+	/**
+	 * Plays the claw action on a win, or clears busy state on refund / failure.
+	 */
+	function onClawResult(data: NotifyClawResultPayload): void {
+		const state = pendingMachine
+		pendingMachine = undefined
+
+		if (!state) {
+			console.log('ClawMachine: onClawResult: no pending machine', data)
+			return
+		}
+
+		if (!data.ok) {
+			console.log('ClawMachine: onClawResult: rejected', data)
+			state.phase = 'idle'
+			SoundManager.playSound(sfx.ui_purchase_error)
+			return
+		}
+
+		if (data.refunded) {
+			console.log('ClawMachine: onClawResult: refunded, pool empty')
+			state.phase = 'idle'
+			SoundManager.playSound(sfx.ui_purchase_error)
+			return
+		}
+
+		suppressRewardUntilMs = Date.now() + 15_000
 		playAction(state, pickActionClip())
 	}
 
@@ -249,16 +330,6 @@ export namespace ClawMachine {
 	function pickActionClip(): ActionClip {
 		const index = Math.floor(Math.random() * ACTION_CLIPS.length)
 		return ACTION_CLIPS[index]
-	}
-
-
-	// MARK: triggerPrizeStub
-	/**
-	 * Placeholder for the future prize system. Passes the machine's ticket value.
-	 */
-	function triggerPrizeStub(ticketValue: number): void {
-		console.log('ClawMachine: triggerPrizeStub: ticketValue', ticketValue)
-		// Future: call into the prize / ticket spend system with `ticketValue`.
 	}
 
 
@@ -391,6 +462,7 @@ export namespace ClawMachine {
 				const isPlaying = action?.playing ?? false
 
 				if (state.wasActionPlaying && !isPlaying) {
+					suppressRewardUntilMs = Date.now() + REWARD_HOLD_AFTER_ACTION_MS
 					startBlendToIdle(state)
 					continue
 				}

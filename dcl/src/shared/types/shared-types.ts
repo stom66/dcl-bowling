@@ -174,6 +174,19 @@ export type RequestClaimRewardPayload = {
 	rewardId: string
 }
 
+/** Client → server: spend tickets on a claw machine roll. */
+export type RequestClawPlayPayload = {
+	ticketCost: number
+}
+
+/** Server → client: claw roll outcome for the requesting player. */
+export type NotifyClawResultPayload = {
+	ok         : boolean
+	ticketCost : number
+	itemId?    : string
+	refunded?  : boolean
+}
+
 /** Client → server: persist player preferences. Unknown fields are ignored. */
 export type RequestSetPreferencesPayload = {
 	bgmMuted?       : boolean

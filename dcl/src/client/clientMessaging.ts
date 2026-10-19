@@ -110,6 +110,16 @@ export namespace ClientMessaging {
 	}
 
 
+	// MARK: requestClawPlay
+	/**
+	 * Asks the server to spend `ticketCost` on a claw-machine roll.
+	 */
+	export function requestClawPlay(ticketCost: number): void {
+		console.log('ClientMessaging: requestClawPlay: ticketCost', ticketCost)
+		net.send(MessageType.REQUEST_CLAW_PLAY, { ticketCost })
+	}
+
+
 	// MARK: requestEquipItem
 	/**
 	 * Asks the server to equip an owned catalog item.

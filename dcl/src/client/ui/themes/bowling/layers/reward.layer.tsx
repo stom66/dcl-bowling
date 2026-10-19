@@ -9,6 +9,7 @@ import {
 	Icon,
 	IconString,
 	Layer,
+	Spinner,
 	Text,
 	UiBox,
 	ZoneType,
@@ -21,6 +22,7 @@ import { getCatalogEntry } from 'src/shared/data/unlocks'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 
 import { CameraController } from 'src/client/cameraController'
+import { ClawMachine } from 'src/client/clawMachine'
 import { ClientMessaging } from 'src/client/clientMessaging'
 import { ClientStore } from 'src/client/clientStore'
 import { PlayConfettiEmote } from 'src/client/emotes'
@@ -36,6 +38,8 @@ import {
 const ACTION_BTN_W     = 240
 const ACTION_BTN_H     = 92
 const TICKET_ICON_SIZE = 72
+const UNLOCK_THUMB_SIZE = 160
+const UNLOCK_SPIN_SIZE  = 220
 const PANEL_WIDTH      = 640
 const SLIDE_DURATION   = 0.2
 /** Extra wait after loading finishes before the first reward slides on. */
@@ -43,6 +47,7 @@ const OPEN_DELAY_MS    = 3000
 /** Extra wait after a reward slides off before the next one slides on. */
 const BETWEEN_DELAY_MS = 500
 const COLOR_PANEL_FILL = Color4.fromHexString('#1d0231ff')
+const SPINNER_BEAMS_SRC = 'assets/images/ui-component-kit/spinner-beams-varied.png'
 
 const stringAtlases = {
 	characters: bowlingRussoOneAlphaNumericAtlas,
@@ -139,6 +144,10 @@ export class RewardLayer extends Layer {
 			return
 		}
 
+		if (offer.id.startsWith('claw-') && ClawMachine.isRewardSuppressed()) {
+			return
+		}
+
 		if (
 			this.displayed
 			&& !this.visibility.isHidden
@@ -194,10 +203,12 @@ export class RewardLayer extends Layer {
 		const offer = this.displayed
 		if (!offer) return []
 
-		const theme = getTheme()
-		const grant = offer.kind === 'unlock'
-			? (getCatalogEntry(offer.itemId)?.item.name ?? offer.itemId)
+		const theme    = getTheme()
+		const unlock   = offer.kind === 'unlock' ? getCatalogEntry(offer.itemId) : undefined
+		const grant    = offer.kind === 'unlock'
+			? (unlock?.item.name ?? offer.itemId)
 			: `+${offer.tickets}`
+		const thumbSrc = unlock?.item.thumbSrc
 
 		return [
 			<UiBox
@@ -233,9 +244,46 @@ export class RewardLayer extends Layer {
 					fontColor = {theme.colors.light}
 					textAlign = "middle-center"
 					width     = "100%"
-					height    = {150}
+					height    = {offer.kind === 'unlock' ? 72 : 150}
 					margin    = {{ top: 4, bottom: 0 }}
 				/>
+				{offer.kind === 'unlock' && thumbSrc ? (
+					<UiBox
+						key            = "reward-unlock-art"
+						width          = {UNLOCK_SPIN_SIZE}
+						height         = {UNLOCK_SPIN_SIZE}
+						alignItems     = "center"
+						justifyContent = "center"
+						margin         = {{ top: 8, bottom: 12 }}
+						borderWidth    = {0}
+					>
+						<Spinner
+							key      = "reward-unlock-spinner"
+							id       = {`reward-unlock-spinner-${offer.id}`}
+							playing  = {true}
+							looping  = {true}
+							duration = {4}
+							degrees  = {360}
+							width    = {UNLOCK_SPIN_SIZE}
+							height   = {UNLOCK_SPIN_SIZE}
+							positionType = "absolute"
+							position = {{ top: 0, left: 0 }}
+						>
+							<Icon
+								src       = {SPINNER_BEAMS_SRC}
+								width     = {UNLOCK_SPIN_SIZE}
+								height    = {UNLOCK_SPIN_SIZE}
+								iconColor = {theme.colors.primary}
+							/>
+						</Spinner>
+						<Icon
+							src           = {thumbSrc}
+							width         = {UNLOCK_THUMB_SIZE}
+							height        = {UNLOCK_THUMB_SIZE}
+							pointerFilter = "none"
+						/>
+					</UiBox>
+				) : null}
 				<UiBox
 					key            = "reward-grant"
 					width          = "auto"

@@ -1,7 +1,7 @@
 import { LaneStore } from "src/shared/laneStore"
 import { getMessagePayloadSizeBytes, MessageType, net } from "src/shared/net"
 import { GameSettings } from "src/shared/settings"
-import { NotifyPlayerRollPayload } from "src/shared/types/shared-types"
+import { NotifyClawResultPayload, NotifyPlayerRollPayload } from "src/shared/types/shared-types"
 
 
 // MARK: notifyJoinGame
@@ -86,4 +86,14 @@ export function notifyPlayerRollPlayback(
 /** Broadcasts current server time to every connected client for `clockSync`. */
 export function notifyServerTime(): void {
 	net.send(MessageType.NOTIFY_SERVER_TIME, Date.now())
+}
+
+
+// MARK: notifyClawResult
+/** Tells one player the outcome of their claw-machine play. */
+export function notifyClawResult(
+	userId  : string,
+	payload : NotifyClawResultPayload,
+): void {
+	net.send(MessageType.NOTIFY_CLAW_RESULT, payload, { to: [userId] })
 }
