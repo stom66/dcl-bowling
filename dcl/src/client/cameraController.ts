@@ -1,4 +1,4 @@
-import { EasingFunction, engine, Entity, MainCamera, Transform, Tween, VirtualCamera } from "@dcl/sdk/ecs";
+import { AvatarModifierArea, AvatarModifierType, EasingFunction, engine, Entity, MainCamera, Transform, Tween, VirtualCamera } from "@dcl/sdk/ecs";
 import { Vector3 } from "@dcl/sdk/math";
 import * as utils from "@dcl-sdk/utils"
 
@@ -46,6 +46,17 @@ export namespace CameraController {
 	var holdResetForSummary             = false
 	var flyInActive                     = false
 	var flyInMotion                     : FlyInMotion | undefined
+	var rewardOrbit                     : RewardOrbitMotion | undefined
+	var rewardHideArea                  : Entity | undefined
+
+	/** Soft orbit used while a login reward popup is on screen. */
+	const rewardOrbitRadius             = 3.4
+	const rewardOrbitHeight             = 1.85
+	const rewardOrbitLookHeight         = 1.35
+	const rewardOrbitSpeed              = 0.4
+	const rewardOrbitTransition         = 0.8
+	/** Large enough to cover nearby players standing on the same spawn. */
+	const rewardHideAreaSize            = Vector3.create(80, 40, 80)
 
 	type FlyInMotion = {
 		camera      : Entity
@@ -59,6 +70,12 @@ export namespace CameraController {
 		endHeight   : number
 		durationSec : number
 		elapsed     : number
+	}
+
+	type RewardOrbitMotion = {
+		camera : Entity
+		target : Entity
+		angle  : number
 	}
 
 
@@ -192,6 +209,53 @@ export namespace CameraController {
 		if (!flyInMotion) return
 		engine.removeSystem(flyInSystem)
 		flyInMotion = undefined
+	}
+
+
+	// MARK: clearRewardHideArea
+	/** Removes the other-avatar hide volume used during the reward cinematic. */
+	function clearRewardHideArea() {
+		if (!rewardHideArea) return
+		engine.removeEntity(rewardHideArea)
+		rewardHideArea = undefined
+	}
+
+
+	// MARK: showRewardHideArea
+	/**
+	 * Hides every other avatar around the local player for the reward cinematic.
+	 * The local wallet stays visible via {@link AvatarModifierArea.excludeIds}.
+	 */
+	function showRewardHideArea() {
+		clearRewardHideArea()
+
+		const userId = clientStore.getUserId()
+		if (!userId) {
+			console.log('CameraController: showRewardHideArea: missing userId')
+			return
+		}
+
+		rewardHideArea = engine.addEntity()
+		Transform.create(rewardHideArea, {
+			parent   : engine.PlayerEntity,
+			position : Vector3.create(0, 1.5, 0),
+			scale    : rewardHideAreaSize,
+		})
+		AvatarModifierArea.create(rewardHideArea, {
+			area       : rewardHideAreaSize,
+			modifiers  : [AvatarModifierType.AMT_HIDE_AVATARS],
+			excludeIds : [userId],
+		})
+	}
+
+
+	// MARK: stopRewardOrbitMotion
+	/** Stops the per-frame reward orbit system and restores other avatars. */
+	function stopRewardOrbitMotion() {
+		clearRewardHideArea()
+		if (!rewardOrbit) return
+		engine.removeSystem(rewardOrbitSystem)
+		rewardOrbit = undefined
 	}
 
 
@@ -386,6 +450,91 @@ export namespace CameraController {
 	}
 
 
+	// MARK: rewardOrbitSystem
+	/**
+	 * Keeps the reward camera orbiting the local player and looking at them.
+	 */
+	function rewardOrbitSystem(dt: number) {
+		if (!rewardOrbit) return
+
+		const playerTransform = Transform.getOrNull(engine.PlayerEntity)
+		if (!playerTransform) return
+
+		rewardOrbit.angle += dt * rewardOrbitSpeed
+		const playerPosition = playerTransform.position
+		const lookTransform  = Transform.getMutableOrNull(rewardOrbit.target)
+		if (lookTransform) {
+			lookTransform.position = Vector3.create(
+				playerPosition.x,
+				playerPosition.y + rewardOrbitLookHeight,
+				playerPosition.z,
+			)
+		}
+
+		const cameraTransform = Transform.getMutableOrNull(rewardOrbit.camera)
+		if (!cameraTransform) return
+		cameraTransform.position = Vector3.create(
+			playerPosition.x + Math.sin(rewardOrbit.angle) * rewardOrbitRadius,
+			playerPosition.y + rewardOrbitHeight,
+			playerPosition.z + Math.cos(rewardOrbit.angle) * rewardOrbitRadius,
+		)
+	}
+
+
+	// MARK: triggerRewardOrbitCamera
+	/**
+	 * Soft orbit around the local player for the login reward popup.
+	 * Starts in front of the avatar facing direction, looks at the player,
+	 * and keeps circling until {@link resetCamera}.
+	 */
+	export function triggerRewardOrbitCamera() {
+		console.log('CameraController: triggerRewardOrbitCamera')
+		if (flyInActive || camera || rewardOrbit) {
+			resetCamera()
+		}
+
+		const playerTransform = Transform.getOrNull(engine.PlayerEntity)
+		if (!playerTransform) {
+			console.log('CameraController: triggerRewardOrbitCamera: player transform not found')
+			return
+		}
+
+		const playerPosition = playerTransform.position
+		const forward        = Vector3.rotate(Vector3.Forward(), playerTransform.rotation)
+		const startAngle     = Math.atan2(forward.x, forward.z)
+		const startPosition  = Vector3.create(
+			playerPosition.x + Math.sin(startAngle) * rewardOrbitRadius,
+			playerPosition.y + rewardOrbitHeight,
+			playerPosition.z + Math.cos(startAngle) * rewardOrbitRadius,
+		)
+		const lookPosition = Vector3.create(
+			playerPosition.x,
+			playerPosition.y + rewardOrbitLookHeight,
+			playerPosition.z,
+		)
+
+		if (!setCameraView(startPosition, lookPosition, rewardOrbitTransition)) {
+			console.log('CameraController: triggerRewardOrbitCamera: failed to activate camera')
+			return
+		}
+
+		const activeCamera = camera
+		const activeTarget = cameraTarget
+		if (!activeCamera || !activeTarget) {
+			console.log('CameraController: triggerRewardOrbitCamera: camera not found after activation')
+			return
+		}
+
+		rewardOrbit = {
+			camera : activeCamera,
+			target : activeTarget,
+			angle  : startAngle,
+		}
+		showRewardHideArea()
+		engine.addSystem(rewardOrbitSystem)
+	}
+
+
 	// MARK: triggerSummaryCamera
 	/**
 	 * Dolly from behind the group spot down the lane. Holds until {@link resetCamera}.
@@ -417,6 +566,7 @@ export namespace CameraController {
 	 */
 	export function resetCamera() {
 		stopFlyInMotion()
+		stopRewardOrbitMotion()
 		if (flyInActive) {
 			flyInActive = false
 			UnFreezePlayer()

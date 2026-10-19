@@ -20,8 +20,10 @@ import { PendingRewardOffer } from 'src/shared/data/rewards'
 import { getCatalogEntry } from 'src/shared/data/unlocks'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 
+import { CameraController } from 'src/client/cameraController'
 import { ClientMessaging } from 'src/client/clientMessaging'
 import { ClientStore } from 'src/client/clientStore'
+import { PlayConfettiEmote } from 'src/client/emotes'
 import { sfx, SoundManager } from 'src/client/soundManager'
 import {
 	bowlingRussoOneAlphaNumericAtlas,
@@ -130,7 +132,10 @@ export class RewardLayer extends Layer {
 
 		if (!offer) {
 			this.displayed = undefined
-			if (!this.visibility.isHidden) this.hide(SLIDE_DURATION)
+			if (!this.visibility.isHidden) {
+				this.hide(SLIDE_DURATION)
+				CameraController.resetCamera()
+			}
 			return
 		}
 
@@ -148,6 +153,8 @@ export class RewardLayer extends Layer {
 			if (Date.now() < this.showAfterMs) return
 			this.displayed = offer
 			SoundManager.playSound(sfx.ui_reward_popup)
+			PlayConfettiEmote()
+			CameraController.triggerRewardOrbitCamera()
 			this.show(SLIDE_DURATION)
 		}
 	}
@@ -177,6 +184,7 @@ export class RewardLayer extends Layer {
 		SoundManager.playSound(sfx.claim_reward)
 		ClientMessaging.requestClaimReward(offer.id)
 		this.dismissingId = offer.id
+		CameraController.resetCamera()
 		this.hide(SLIDE_DURATION)
 	}
 

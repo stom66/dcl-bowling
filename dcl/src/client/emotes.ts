@@ -69,6 +69,17 @@ function pickEmote(emotes: readonly string[]): string {
 }
 
 
+// MARK: PlayConfettiEmote
+/**
+ * Plays the built-in confetti popper emote on the local player.
+ */
+export function PlayConfettiEmote(): void {
+	console.log('emotes: PlayConfettiEmote')
+	resultEmoteActive = true
+	void triggerEmote({ predefinedEmote: 'confettipopper' })
+}
+
+
 // MARK: PlayRollResultEmote
 /**
  * Plays a built-in emote on the local player for the roll that just finished.
