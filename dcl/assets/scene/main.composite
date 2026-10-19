@@ -141,6 +141,111 @@
             },
             "parent": 0
           }
+        },
+        "518": {
+          "json": {
+            "position": {
+              "x": 0,
+              "y": 129,
+              "z": 0
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "w": 1
+            },
+            "scale": {
+              "x": 1,
+              "y": 1,
+              "z": 1
+            },
+            "parent": 0
+          }
+        },
+        "525": {
+          "json": {
+            "position": {
+              "x": 8.75,
+              "y": 0,
+              "z": 18.75
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0.6087614297866821,
+              "z": 0,
+              "w": -0.7933533191680908
+            },
+            "scale": {
+              "x": 1.5,
+              "y": 1.5,
+              "z": 1.5
+            },
+            "parent": 518
+          }
+        },
+        "526": {
+          "json": {
+            "position": {
+              "x": 8.130000114440918,
+              "y": 0,
+              "z": 16.139999389648438
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0.6087614297866821,
+              "z": 0,
+              "w": -0.7933533191680908
+            },
+            "scale": {
+              "x": 1.5,
+              "y": 1.5,
+              "z": 1.5
+            },
+            "parent": 518
+          }
+        },
+        "527": {
+          "json": {
+            "position": {
+              "x": 7.5,
+              "y": 0,
+              "z": 13.5
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0.6087614297866821,
+              "z": 0,
+              "w": -0.7933533191680908
+            },
+            "scale": {
+              "x": 1.5,
+              "y": 1.5,
+              "z": 1.5
+            },
+            "parent": 518
+          }
+        },
+        "528": {
+          "json": {
+            "position": {
+              "x": 6.5,
+              "y": 0,
+              "z": 10.75
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0.6087614297866821,
+              "z": 0,
+              "w": -0.7933533191680908
+            },
+            "scale": {
+              "x": 1.5,
+              "y": 1.5,
+              "z": 1.5
+            },
+            "parent": 518
+          }
         }
       }
     },
@@ -169,7 +274,192 @@
         },
         "513": {
           "json": {
-            "states": []
+            "states": [
+              {
+                "clip": "ArmatureAction",
+                "playing": false,
+                "weight": 1,
+                "speed": 1,
+                "loop": false,
+                "shouldReset": false
+              },
+              {
+                "clip": "BushSmall.001Action",
+                "playing": false,
+                "weight": 1,
+                "speed": 1,
+                "loop": false,
+                "shouldReset": false
+              },
+              {
+                "clip": "BushSmall.002Action",
+                "playing": false,
+                "weight": 1,
+                "speed": 1,
+                "loop": false,
+                "shouldReset": false
+              },
+              {
+                "clip": "BushSmall.003Action",
+                "playing": false,
+                "weight": 1,
+                "speed": 1,
+                "loop": false,
+                "shouldReset": false
+              },
+              {
+                "clip": "BushSmall.004Action",
+                "playing": false,
+                "weight": 1,
+                "speed": 1,
+                "loop": false,
+                "shouldReset": false
+              },
+              {
+                "clip": "BushSmall.005Action",
+                "playing": false,
+                "weight": 1,
+                "speed": 1,
+                "loop": false,
+                "shouldReset": false
+              },
+              {
+                "clip": "BushSmall.006Action",
+                "playing": false,
+                "weight": 1,
+                "speed": 1,
+                "loop": false,
+                "shouldReset": false
+              },
+              {
+                "clip": "BushSmall.007Action",
+                "playing": false,
+                "weight": 1,
+                "speed": 1,
+                "loop": false,
+                "shouldReset": false
+              },
+              {
+                "clip": "BushSmall.008Action",
+                "playing": false,
+                "weight": 1,
+                "speed": 1,
+                "loop": false,
+                "shouldReset": false
+              },
+              {
+                "clip": "BushSmall.009Action",
+                "playing": false,
+                "weight": 1,
+                "speed": 1,
+                "loop": false,
+                "shouldReset": false
+              },
+              {
+                "clip": "BushSmall.010Action",
+                "playing": false,
+                "weight": 1,
+                "speed": 1,
+                "loop": false,
+                "shouldReset": false
+              },
+              {
+                "clip": "BushSmall.011Action",
+                "playing": false,
+                "weight": 1,
+                "speed": 1,
+                "loop": false,
+                "shouldReset": false
+              },
+              {
+                "clip": "BushSmall.012Action",
+                "playing": false,
+                "weight": 1,
+                "speed": 1,
+                "loop": false,
+                "shouldReset": false
+              },
+              {
+                "clip": "BushSmall.013Action",
+                "playing": false,
+                "weight": 1,
+                "speed": 1,
+                "loop": false,
+                "shouldReset": false
+              },
+              {
+                "clip": "BushSmall.014Action",
+                "playing": false,
+                "weight": 1,
+                "speed": 1,
+                "loop": false,
+                "shouldReset": false
+              },
+              {
+                "clip": "BushSmall.015Action",
+                "playing": false,
+                "weight": 1,
+                "speed": 1,
+                "loop": false,
+                "shouldReset": false
+              },
+              {
+                "clip": "BushSmall.016Action",
+                "playing": false,
+                "weight": 1,
+                "speed": 1,
+                "loop": false,
+                "shouldReset": false
+              },
+              {
+                "clip": "BushSmall.012Action.001",
+                "playing": false,
+                "weight": 1,
+                "speed": 1,
+                "loop": false,
+                "shouldReset": false
+              },
+              {
+                "clip": "BushSmall.012Action.002",
+                "playing": false,
+                "weight": 1,
+                "speed": 1,
+                "loop": false,
+                "shouldReset": false
+              },
+              {
+                "clip": "BushSmall.012Action.003",
+                "playing": false,
+                "weight": 1,
+                "speed": 1,
+                "loop": false,
+                "shouldReset": false
+              },
+              {
+                "clip": "BushSmall.012Action.004",
+                "playing": false,
+                "weight": 1,
+                "speed": 1,
+                "loop": false,
+                "shouldReset": false
+              },
+              {
+                "clip": "BushSmall.012Action.005",
+                "playing": false,
+                "weight": 1,
+                "speed": 1,
+                "loop": false,
+                "shouldReset": false
+              },
+              {
+                "clip": "BushSmall.012Action.006",
+                "playing": false,
+                "weight": 1,
+                "speed": 1,
+                "loop": false,
+                "shouldReset": false
+              }
+            ]
           }
         }
       }
@@ -224,6 +514,46 @@
       "data": {
         "514": {
           "json": {}
+        },
+        "525": {
+          "json": {
+            "mesh": {
+              "$case": "box",
+              "box": {
+                "uvs": []
+              }
+            }
+          }
+        },
+        "526": {
+          "json": {
+            "mesh": {
+              "$case": "box",
+              "box": {
+                "uvs": []
+              }
+            }
+          }
+        },
+        "527": {
+          "json": {
+            "mesh": {
+              "$case": "box",
+              "box": {
+                "uvs": []
+              }
+            }
+          }
+        },
+        "528": {
+          "json": {
+            "mesh": {
+              "$case": "box",
+              "box": {
+                "uvs": []
+              }
+            }
+          }
         }
       }
     },
@@ -258,6 +588,31 @@
         "515": {
           "json": {
             "value": "gameViper"
+          }
+        },
+        "518": {
+          "json": {
+            "value": "ClawMachines"
+          }
+        },
+        "525": {
+          "json": {
+            "value": "Prize-100"
+          }
+        },
+        "526": {
+          "json": {
+            "value": "Prize-25"
+          }
+        },
+        "527": {
+          "json": {
+            "value": "Prize-10"
+          }
+        },
+        "528": {
+          "json": {
+            "value": "Prize-5"
           }
         }
       }
@@ -303,7 +658,11 @@
               "Tag Group 3",
               "Tag Group 4",
               "gameJelly",
-              "gameViper"
+              "gameViper",
+              "prizes5",
+              "prizes10",
+              "prizes25",
+              "prizes100"
             ]
           }
         },
@@ -318,6 +677,34 @@
           "json": {
             "tags": [
               "gameViper"
+            ]
+          }
+        },
+        "525": {
+          "json": {
+            "tags": [
+              "prizes100"
+            ]
+          }
+        },
+        "526": {
+          "json": {
+            "tags": [
+              "prizes25"
+            ]
+          }
+        },
+        "527": {
+          "json": {
+            "tags": [
+              "prizes10"
+            ]
+          }
+        },
+        "528": {
+          "json": {
+            "tags": [
+              "prizes5"
             ]
           }
         }
@@ -372,7 +759,8 @@
                   512,
                   513,
                   514,
-                  515
+                  515,
+                  518
                 ]
               },
               {
@@ -397,6 +785,32 @@
               },
               {
                 "entity": 515,
+                "children": []
+              },
+              {
+                "entity": 518,
+                "open": true,
+                "children": [
+                  525,
+                  526,
+                  527,
+                  528
+                ]
+              },
+              {
+                "entity": 525,
+                "children": []
+              },
+              {
+                "entity": 526,
+                "children": []
+              },
+              {
+                "entity": 527,
+                "children": []
+              },
+              {
+                "entity": 528,
                 "children": []
               }
             ]
@@ -431,6 +845,24 @@
           "json": {}
         },
         "515": {
+          "json": {}
+        },
+        "518": {
+          "json": {}
+        },
+        "525": {
+          "json": {}
+        },
+        "526": {
+          "json": {}
+        },
+        "527": {
+          "json": {}
+        },
+        "528": {
+          "json": {}
+        },
+        "529": {
           "json": {}
         }
       }
