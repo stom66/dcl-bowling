@@ -12,6 +12,7 @@ import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 import { FreezePlayer } from 'src/shared/utils/inputModifiers'
 
 import { CameraController } from 'src/client/cameraController'
+import { ClawMachine } from 'src/client/clawMachine'
 import { ClientHandler } from 'src/client/clientHandler'
 import { ClientStore } from 'src/client/clientStore'
 import { init as initResultEmotes } from 'src/client/emotes'
@@ -26,12 +27,12 @@ import { setLoadingStage } from 'src/client/loadingState'
 import { ParticleSpawner } from 'src/client/particleSpawner'
 import { PlayAreaBounds } from 'src/client/playAreaBounds'
 import { playerMover } from 'src/client/playerMover'
+import { RespawnTrigger } from 'src/client/respawnTrigger'
 import { SkyboxObjects } from 'src/client/skyboxObjects'
 import { SoundManager } from 'src/client/soundManager'
+import { TouchscreenControls } from 'src/client/touchscreenControls'
 import { SetupUI } from 'src/client/ui'
 import { UiWorld } from 'src/client/ui-world'
-import { TouchscreenControls } from './touchscreenControls'
-import { RespawnTrigger } from './respawnTrigger'
 
 
 function infiniteCount() {
@@ -185,6 +186,7 @@ export async function initClient() {
 	TouchscreenControls.init()
 	RespawnTrigger.init()
 	PlayAreaBounds.init()
+	ClawMachine.init()
 
 	setupLaneLobbies()
 	LightingGaffer.init()
