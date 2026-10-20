@@ -13,7 +13,8 @@ export { sfx } from 'src/client/data/sfx'
 export namespace SoundManager {
 
 	// MARK: settings
-	const FADE_DURATION          = 3.0                                // Duration when fading music in/out
+	const FADE_DURATION          = 3.0                                // Duration when fading music in/out on game join/leave
+	const MUTE_FADE_DURATION     = 0.25                               // Duration when the mute button fades music in/out
 	const BGM_VOLUME             = 0.35                               // Volume when music is fully faded in
 	const SFX_ENTITY_VOLUME      = 1.0                                // Volume on preloaded one-shot entities (retrigger uses this as baseline)
 	const COUNTDOWN_LAST_SECONDS  = 5                                 // How many of the last seconds to play countdown sounds for
@@ -28,6 +29,7 @@ export namespace SoundManager {
 	let bgmEntity                : Entity                             // background music entity
 	let fadeElapsed              = 0                                  // elapsed time since last fade change (used by systemUpdateSound)
 	let fadeSegmentStartVolume   = 0                                  // volume at the start of the current fade segment - typically 0 or 1, unless a fade is started during another fade
+	let activeFadeDuration       = FADE_DURATION                      // duration for the fade currently in progress
 
 	const sfxCache               : Record<string, Entity> = {}        // preloaded sound effect entities
 	const spatialSfxLive         = new Set<Entity>()                  // spatial one-shots waiting to be removed
@@ -124,8 +126,10 @@ export namespace SoundManager {
 	 * from zero. No-op while {@link isBgmMuted} is true. If music is already playing
 	 * (idle or fading in), does nothing. If a fade-out is in progress, interrupts it
 	 * and starts a fresh fade-in.
+	 *
+	 * @param duration - Optional fade-in length in seconds. Defaults to {@link FADE_DURATION}.
 	 */
-	export function startBgm(): void {
+	export function startBgm(duration: number = FADE_DURATION): void {
 		if (!bgmEntity || bgmMuted) return
 
 		const audio = AudioSource.getMutableOrNull(bgmEntity)
@@ -136,6 +140,7 @@ export namespace SoundManager {
 		bgmFadePhase           = 'fadingIn'
 		fadeElapsed            = 0
 		fadeSegmentStartVolume = 0
+		activeFadeDuration     = duration
 		audio.audioClipUrl     = sfx.music[Math.floor(Math.random() * sfx.music.length)]
 		audio.volume           = 0
 		audio.playing          = true
@@ -146,8 +151,10 @@ export namespace SoundManager {
 	/**
 	 * Fades background music to silence then stops playback. No-op if already silent. If
 	 * called mid-fade-in, fades out from the current volume (no jump to full level).
+	 *
+	 * @param duration - Optional fade-out length in seconds. Defaults to {@link FADE_DURATION}.
 	 */
-	export function stopBgm(): void {
+	export function stopBgm(duration: number = FADE_DURATION): void {
 		if (!bgmEntity) return
 
 		const audio = AudioSource.getMutableOrNull(bgmEntity)
@@ -158,6 +165,7 @@ export namespace SoundManager {
 		bgmFadePhase           = 'fadingOut'
 		fadeElapsed            = 0
 		fadeSegmentStartVolume = audio.volume ?? BGM_VOLUME
+		activeFadeDuration     = duration
 	}
 
 
@@ -241,9 +249,9 @@ export namespace SoundManager {
 		bgmMuted = muted
 		console.log('SoundManager: applyBgmMuted: muted', bgmMuted)
 		if (bgmMuted) {
-			if (isBgmPlaying()) stopBgm()
+			if (isBgmPlaying()) stopBgm(MUTE_FADE_DURATION)
 		} else if (bgmRequested) {
-			startBgm()
+			startBgm(MUTE_FADE_DURATION)
 		}
 	}
 
@@ -431,7 +439,7 @@ export namespace SoundManager {
 
 	// MARK: systemUpdateSound
 	/**
-	 * Engine system: advances BGM fade-in / fade-out using {@link FADE_DURATION} and
+	 * Engine system: advances BGM fade-in / fade-out using {@link activeFadeDuration} and
 	 * {@link fadeSegmentStartVolume}. Runs every frame after {@link init}.
 	 *
 	 * @param dt - Delta time in seconds since the last frame.
@@ -445,7 +453,7 @@ export namespace SoundManager {
 		fadeElapsed += dt
 
 		// Are we finished? Set final volume
-		if (fadeElapsed >= FADE_DURATION) {
+		if (fadeElapsed >= activeFadeDuration) {
 			if (bgmFadePhase === 'fadingOut') {
 				audio.volume  = 0
 				audio.playing = false
@@ -457,7 +465,7 @@ export namespace SoundManager {
 		}
 
 		// Not finished, update volume
-		const t = fadeElapsed / FADE_DURATION
+		const t = fadeElapsed / activeFadeDuration
 		if (bgmFadePhase === 'fadingOut') {
 			const volume = Math.max(0, fadeSegmentStartVolume * (1 - t))
 			audio.volume = volume
