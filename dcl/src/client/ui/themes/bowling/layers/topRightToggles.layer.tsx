@@ -6,6 +6,7 @@ import { alpha, atlasIconsFontAwesome, ButtonText, getTheme, Icon, IconString, L
 import { SoundManager } from 'src/client/soundManager'
 import { bowlingRussoOneAlphaNumericAtlas, bowlingRussoOneSymbolsAtlas } from 'src/client/ui/themes/bowling/atlases'
 import { customizationLayer } from 'src/client/ui/themes/bowling/layers/customization.layer'
+import { debugLayer } from 'src/client/ui/themes/bowling/layers/debug.layer'
 import { leaderboardLayer } from 'src/client/ui/themes/bowling/layers/leaderboard.layer'
 import { statsLayer } from 'src/client/ui/themes/bowling/layers/stats.layer'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
@@ -30,6 +31,7 @@ const MUTE_SPIN_DEGREES          = 360
 const MUTE_SPIN_DURATION         = 0.15
 const TOGGLE_PULSE_DURATION      = 0.2
 const TOGGLE_PULSE_SCALE         = 1.4
+const DEBUG_PULSE_ID             = 'bowling-debug-pulse'
 const STATS_PULSE_ID             = 'bowling-stats-pulse'
 const LEADERBOARD_PULSE_ID       = 'bowling-leaderboard-pulse'
 const CUSTOMIZE_PULSE_ID         = 'bowling-customize-pulse'
@@ -177,6 +179,7 @@ function toggleButton(
 // MARK: TopRightTogglesLayer
 /**
  * Mute, stats, leaderboard, and customize, in one top-right row.
+ * In local debug the leftmost button toggles the left-top debug panel.
  * The zone lays the buttons out; local dev insets the row 152px from
  * the right, otherwise the zone default of 8px is used.
  */
@@ -221,6 +224,27 @@ export class TopRightTogglesLayer extends Layer {
 		const muted = SoundManager.isBgmMuted()
 
 		return [
+			...(IS_DEV ? [
+				toggleButton(
+					'btn_debug_toggle',
+					'Debug',
+					() => {
+						debugLayer.toggle()
+						playOnce(DEBUG_PULSE_ID)
+					},
+					pulseGlyph(
+						DEBUG_PULSE_ID,
+						<Icon
+							uvs         = {atlasIconsFontAwesome.uv.bug}
+							width       = {ICON_SIZE}
+							height      = {ICON_SIZE}
+							aspectRatio = {1}
+							iconColor   = {theme.colors.primary}
+						/>,
+					),
+					0,
+				),
+			] : []),
 			toggleButton(
 				'btn_mute_toggle',
 				muted ? 'Unmute' : 'Mute',
@@ -246,7 +270,7 @@ export class TopRightTogglesLayer extends Layer {
 						iconColor   = {theme.colors.primary}
 					/>
 				</Spinner>,
-				0,
+				IS_DEV ? TOGGLE_GAP : 0,
 			),
 			toggleButton(
 				'btn_stats_toggle',

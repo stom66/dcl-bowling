@@ -45,13 +45,16 @@ const DEBUG_ROW_HEIGHT = 14
 // MARK: DebugLayer
 /**
  * Development-only left-top inspector for lane and client state.
+ * Registered only while `NODE_ENV === 'development'`. Visibility is
+ * toggled from the top-right debug button.
  */
 export class DebugLayer extends Layer {
 	constructor() {
 		super({
 			id         : 'bowling-debug',
 			zone       : ZoneType.LeftTop,
-			canBeHidden: false,
+			canBeHidden: true,
+			startHidden: false,
 			uiTransform: {
 				width   : 280,
 				padding : 6,
