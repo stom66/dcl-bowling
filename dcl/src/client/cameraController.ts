@@ -48,6 +48,8 @@ export namespace CameraController {
 	var flyInMotion                     : FlyInMotion | undefined
 	var rewardOrbit                     : RewardOrbitMotion | undefined
 	var rewardHideArea                  : Entity | undefined
+	/** True between claw win start and reward-close / claw cancel. */
+	var clawCinematicActive             = false
 
 	/** Soft orbit used while a login reward popup is on screen. */
 	const rewardOrbitRadius             = 3.4
@@ -55,6 +57,11 @@ export namespace CameraController {
 	const rewardOrbitLookHeight         = 1.35
 	const rewardOrbitSpeed              = 0.4
 	const rewardOrbitTransition         = 0.8
+	/** Distance / height for the claw-machine hero shot. */
+	const clawCameraDistance            = 4.2
+	const clawCameraHeight              = 2.4
+	const clawLookHeight                = 1.35
+	const clawCameraTransition          = 0.7
 	/** Large enough to cover nearby players standing on the same spawn. */
 	const rewardHideAreaSize            = Vector3.create(80, 40, 80)
 
@@ -98,6 +105,23 @@ export namespace CameraController {
 		})
 		eventBus.on(ClientEvents.ON_GROUP_FRAME_END,           () => { resetCamera() })
 		eventBus.on(ClientEvents.ON_MY_FRAME_END,              () => { resetCamera() })
+		eventBus.on(ClientEvents.ON_REWARD_OPEN,               () => { triggerRewardOrbitCamera() })
+		eventBus.on(ClientEvents.ON_REWARD_CLOSE,              () => { onRewardClose() })
+	}
+
+
+	// MARK: onRewardClose
+	/**
+	 * Releases the reward orbit. If a claw cinematic was still open, finishes that too.
+	 */
+	function onRewardClose() {
+		const wasClaw = clawCinematicActive
+		clawCinematicActive = false
+		resetCamera()
+		if (!wasClaw) return
+
+		UnFreezePlayer()
+		eventBus.emit(ClientEvents.ON_CLAW_CINEMATIC_END, {})
 	}
 
 	function onMyRollStart() {
@@ -250,9 +274,13 @@ export namespace CameraController {
 
 
 	// MARK: stopRewardOrbitMotion
-	/** Stops the per-frame reward orbit system and restores other avatars. */
-	function stopRewardOrbitMotion() {
-		clearRewardHideArea()
+	/**
+	 * Stops the per-frame reward orbit system.
+	 * Pass `keepHideArea: true` when handing the virtual camera to another shot
+	 * so other avatars stay hidden across the cut.
+	 */
+	function stopRewardOrbitMotion(options?: { keepHideArea?: boolean }) {
+		if (!options?.keepHideArea) clearRewardHideArea()
 		if (!rewardOrbit) return
 		engine.removeSystem(rewardOrbitSystem)
 		rewardOrbit = undefined
@@ -481,16 +509,139 @@ export namespace CameraController {
 	}
 
 
+	// MARK: getApproxWorldPosition
+	/**
+	 * Walks the parent chain and sums local translations.
+	 * Good enough for Creator Hub anchors that are mostly positioned, not heavily rotated.
+	 */
+	function getApproxWorldPosition(entity: Entity): Vector3 | undefined {
+		let current: Entity | undefined = entity
+		let x = 0
+		let y = 0
+		let z = 0
+		let found = false
+
+		while (current !== undefined) {
+			const transform = Transform.getOrNull(current)
+			if (!transform) break
+			found = true
+			x += transform.position.x
+			y += transform.position.y
+			z += transform.position.z
+			current = transform.parent
+		}
+
+		if (!found) return undefined
+		return Vector3.create(x, y, z)
+	}
+
+
+	// MARK: clearActiveVirtualCamera
+	/**
+	 * Drops the current virtual camera without unfreezing or ending claw cinematic state.
+	 */
+	function clearActiveVirtualCamera(options?: { keepHideArea?: boolean }) {
+		stopFlyInMotion()
+		stopRewardOrbitMotion({ keepHideArea: options?.keepHideArea })
+		if (!camera || !cameraTarget) return
+
+		const oldCamera = camera
+		const oldTarget = cameraTarget
+		camera       = undefined
+		cameraTarget = undefined
+
+		const mainCamera = MainCamera.getMutableOrNull(engine.CameraEntity)
+		if (mainCamera && mainCamera.virtualCameraEntity === oldCamera) {
+			mainCamera.virtualCameraEntity = undefined
+		}
+		scheduleCameraDestroy(oldCamera, oldTarget)
+	}
+
+
+	// MARK: triggerClawCamera
+	/**
+	 * Locks the player, hides other avatars, and frames the activated claw machine.
+	 * Stays active until {@link endClawCinematic} or reward-close hand-off.
+	 */
+	export function triggerClawCamera(focusEntity: Entity) {
+		console.log('CameraController: triggerClawCamera', focusEntity)
+
+		if (flyInActive || rewardOrbit || camera) {
+			flyInActive = false
+			clearActiveVirtualCamera({ keepHideArea: false })
+		}
+
+		const focusPos = getApproxWorldPosition(focusEntity)
+		const playerTransform = Transform.getOrNull(engine.PlayerEntity)
+		if (!focusPos || !playerTransform) {
+			console.log('CameraController: triggerClawCamera: missing focus or player transform')
+			return
+		}
+
+		FreezePlayer()
+		clawCinematicActive = true
+		eventBus.emit(ClientEvents.ON_CLAW_CINEMATIC_START, {})
+
+		const playerPos = playerTransform.position
+		let   dx        = playerPos.x - focusPos.x
+		let   dz        = playerPos.z - focusPos.z
+		const length    = Math.hypot(dx, dz) || 1
+		dx /= length
+		dz /= length
+
+		const startPosition = Vector3.create(
+			focusPos.x + dx * clawCameraDistance,
+			focusPos.y + clawCameraHeight,
+			focusPos.z + dz * clawCameraDistance,
+		)
+		const lookPosition = Vector3.create(
+			focusPos.x,
+			focusPos.y + clawLookHeight,
+			focusPos.z,
+		)
+
+		if (!setCameraView(startPosition, lookPosition, clawCameraTransition)) {
+			console.log('CameraController: triggerClawCamera: failed to activate camera')
+			return
+		}
+
+		showRewardHideArea()
+	}
+
+
+	// MARK: endClawCinematic
+	/**
+	 * Ends a claw presentation that did not hand off to the reward popup.
+	 */
+	export function endClawCinematic() {
+		if (!clawCinematicActive) return
+		console.log('CameraController: endClawCinematic')
+		clawCinematicActive = false
+		resetCamera()
+		UnFreezePlayer()
+		eventBus.emit(ClientEvents.ON_CLAW_CINEMATIC_END, {})
+	}
+
+
 	// MARK: triggerRewardOrbitCamera
 	/**
 	 * Soft orbit around the local player for the login reward popup.
 	 * Starts in front of the avatar facing direction, looks at the player,
 	 * and keeps circling until {@link resetCamera}.
+	 * When a claw cinematic is active, this replaces the claw camera without unfreezing.
 	 */
 	export function triggerRewardOrbitCamera() {
 		console.log('CameraController: triggerRewardOrbitCamera')
-		if (flyInActive || camera || rewardOrbit) {
-			resetCamera()
+		if (rewardOrbit) {
+			console.log('CameraController: triggerRewardOrbitCamera: orbit already running')
+			return
+		}
+		if (flyInActive || camera) {
+			if (clawCinematicActive) {
+				clearActiveVirtualCamera({ keepHideArea: true })
+			} else {
+				resetCamera()
+			}
 		}
 
 		const playerTransform = Transform.getOrNull(engine.PlayerEntity)

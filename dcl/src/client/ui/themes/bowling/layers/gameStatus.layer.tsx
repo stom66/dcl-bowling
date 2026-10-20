@@ -69,6 +69,7 @@ export const GAME_STATUS_PANEL_HEIGHT =
  */
 export class GameStatusLayer extends Layer {
 	private statusProps: PropsController<GameStatusProps>
+	private rewardHidden = false
 
 	constructor() {
 		super({
@@ -112,6 +113,15 @@ export class GameStatusLayer extends Layer {
 		})
 
 		eventBus.on(ClientEvents.ON_LOAD_FLY_IN_END, () => {
+			if (this.rewardHidden) return
+			this.show()
+		})
+		eventBus.on(ClientEvents.ON_REWARD_OPEN, () => {
+			this.rewardHidden = true
+			this.hide()
+		})
+		eventBus.on(ClientEvents.ON_REWARD_CLOSE, () => {
+			this.rewardHidden = false
 			this.show()
 		})
 	}

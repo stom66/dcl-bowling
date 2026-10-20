@@ -47,6 +47,12 @@ export enum ClientEvents {
 	SHOW_UI_CUSTOMIZE                   = "showUiCustomize",                // When the customize window opens
 	HIDE_UI_CUSTOMIZE                   = "hideUiCustomize",                // When the customize window closes
 
+	ON_REWARD_OPEN                      = "onRewardOpen",                   // A login reward popup is sliding on
+	ON_REWARD_CLOSE                     = "onRewardClose",                  // The login reward queue is clear
+
+	ON_CLAW_CINEMATIC_START             = "onClawCinematicStart",           // Claw-machine win presentation began
+	ON_CLAW_CINEMATIC_END               = "onClawCinematicEnd",             // Claw-machine presentation fully finished
+
 
 	//ON_GROUP_TURN_START    =  "onGroupTurnStart", // When someone else in the group starts their turn
 	//ON_GROUP_TURN_END      =  "onGroupTurnEnd",   // When someone else in the group ends their turn

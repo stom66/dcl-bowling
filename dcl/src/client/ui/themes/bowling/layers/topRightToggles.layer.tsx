@@ -181,6 +181,8 @@ function toggleButton(
  * the right, otherwise the zone default of 8px is used.
  */
 export class TopRightTogglesLayer extends Layer {
+	private rewardHidden = false
+
 	constructor() {
 		super({
 			id         : 'bowling-top-right-toggles',
@@ -199,6 +201,15 @@ export class TopRightTogglesLayer extends Layer {
 		})
 
 		eventBus.on(ClientEvents.ON_LOAD_FLY_IN_END, () => {
+			if (this.rewardHidden) return
+			this.show()
+		})
+		eventBus.on(ClientEvents.ON_REWARD_OPEN, () => {
+			this.rewardHidden = true
+			this.hide()
+		})
+		eventBus.on(ClientEvents.ON_REWARD_CLOSE, () => {
+			this.rewardHidden = false
 			this.show()
 		})
 	}

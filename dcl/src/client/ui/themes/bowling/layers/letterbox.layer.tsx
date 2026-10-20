@@ -106,17 +106,26 @@ export class LetterboxLayer extends Layer {
 		eventBus.on(ClientEvents.ON_MY_FRAME_END,              () => { this.hideBars() })
 		eventBus.on(ClientEvents.ON_MY_ROLL_END,               () => { this.hideBars() })
 		eventBus.on(ClientEvents.REQUEST_LEAVE_GAME,           () => { this.hideBars() })
+		eventBus.on(ClientEvents.ON_CLAW_CINEMATIC_START,      () => { this.showBars({ keepTickets: true }) })
+		eventBus.on(ClientEvents.ON_CLAW_CINEMATIC_END,        () => { this.hideBars() })
 	}
 
 
 	// MARK: showBars
-	/** Tweens both letterbox bars on-screen and slides the top HUD away. */
-	showBars() {
+	/**
+	 * Tweens both letterbox bars on-screen and slides the top HUD away.
+	 * Pass `keepTickets: true` to leave the ticket balance visible (claw cinematics).
+	 */
+	showBars(options?: { keepTickets?: boolean }) {
+		const keepTickets = options?.keepTickets === true
 		this.tweenOffset(OFFSET_VISIBLE_VH)
-		if (barsVisible) return
+		if (barsVisible) {
+			if (keepTickets) ticketBalanceLayer.show(LETTERBOX_HUD_DURATION)
+			return
+		}
 
 		barsVisible = true
-		this.suppressTopHud()
+		this.suppressTopHud({ keepTickets })
 		for (const listener of shownListeners) listener()
 	}
 
@@ -135,10 +144,12 @@ export class LetterboxLayer extends Layer {
 
 	// MARK: suppressTopHud
 	/** Slides the top HUD off with the bars. */
-	private suppressTopHud() {
+	private suppressTopHud(options?: { keepTickets?: boolean }) {
 		gameStatusLayer.hide(LETTERBOX_HUD_DURATION)
 		topRightTogglesLayer.hide(LETTERBOX_HUD_DURATION)
-		ticketBalanceLayer.hide(LETTERBOX_HUD_DURATION)
+		if (!options?.keepTickets) {
+			ticketBalanceLayer.hide(LETTERBOX_HUD_DURATION)
+		}
 		playtestDebugLayer.suppressForLetterbox(LETTERBOX_HUD_DURATION)
 	}
 

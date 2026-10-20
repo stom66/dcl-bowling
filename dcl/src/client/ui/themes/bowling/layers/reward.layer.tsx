@@ -21,12 +21,11 @@ import { PendingRewardOffer } from 'src/shared/data/rewards'
 import { getCatalogEntry } from 'src/shared/data/unlocks'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 
-import { CameraController } from 'src/client/cameraController'
 import { ClawMachine } from 'src/client/clawMachine'
 import { ClientMessaging } from 'src/client/clientMessaging'
 import { ClientStore } from 'src/client/clientStore'
-import { PlayConfettiEmote } from 'src/client/emotes'
 import { sfx, SoundManager } from 'src/client/soundManager'
+import { UiParticles } from 'src/client/ui/particles/uiParticleLayer'
 import {
 	bowlingRussoOneAlphaNumericAtlas,
 	bowlingRussoOneSymbolsAtlas,
@@ -45,7 +44,7 @@ const SLIDE_DURATION   = 0.2
 /** Extra wait after loading finishes before the first reward slides on. */
 const OPEN_DELAY_MS    = 3000
 /** Extra wait after a reward slides off before the next one slides on. */
-const BETWEEN_DELAY_MS = 500
+const BETWEEN_DELAY_MS = 1000
 const COLOR_PANEL_FILL = Color4.fromHexString('#1d0231ff')
 const SPINNER_BEAMS_SRC = 'assets/images/ui-component-kit/spinner-beams-varied.png'
 
@@ -67,6 +66,7 @@ export class RewardLayer extends Layer {
 	private displayed    : PendingRewardOffer | undefined
 	private dismissingId : string | undefined
 	private replacing    = false
+	private sessionOpen  = false
 
 	constructor() {
 		super({
@@ -137,10 +137,8 @@ export class RewardLayer extends Layer {
 
 		if (!offer) {
 			this.displayed = undefined
-			if (!this.visibility.isHidden) {
-				this.hide(SLIDE_DURATION)
-				CameraController.resetCamera()
-			}
+			if (!this.visibility.isHidden) this.hide(SLIDE_DURATION)
+			this.closeSession()
 			return
 		}
 
@@ -162,10 +160,33 @@ export class RewardLayer extends Layer {
 			if (Date.now() < this.showAfterMs) return
 			this.displayed = offer
 			SoundManager.playSound(sfx.ui_reward_popup)
-			PlayConfettiEmote()
-			CameraController.triggerRewardOrbitCamera()
+			UiParticles.burst()
+			this.openSession()
 			this.show(SLIDE_DURATION)
 		}
+	}
+
+
+	// MARK: openSession
+	/**
+	 * Emits {@link ClientEvents.ON_REWARD_OPEN} for each popup so listeners
+	 * can start the cinematic and keep the rest of the HUD tucked away.
+	 */
+	private openSession() {
+		this.sessionOpen = true
+		eventBus.emit(ClientEvents.ON_REWARD_OPEN, {})
+	}
+
+
+	// MARK: closeSession
+	/**
+	 * Emits {@link ClientEvents.ON_REWARD_CLOSE} once when the reward queue
+	 * is empty so listeners can restore the normal HUD and camera.
+	 */
+	private closeSession() {
+		if (!this.sessionOpen) return
+		this.sessionOpen = false
+		eventBus.emit(ClientEvents.ON_REWARD_CLOSE, {})
 	}
 
 
@@ -192,8 +213,10 @@ export class RewardLayer extends Layer {
 		console.log('RewardLayer: claim: rewardId', offer.id)
 		SoundManager.playSound(sfx.claim_reward)
 		ClientMessaging.requestClaimReward(offer.id)
+		if (offer.kind === 'tickets') {
+			UiParticles.stream()
+		}
 		this.dismissingId = offer.id
-		CameraController.resetCamera()
 		this.hide(SLIDE_DURATION)
 	}
 

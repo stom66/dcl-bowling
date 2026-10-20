@@ -128,4 +128,7 @@ export function init(): void {
 	eventBus.on(ClientEvents.ON_MY_ROLL_START, () => {
 		StopRollResultEmote()
 	})
+	eventBus.on(ClientEvents.ON_REWARD_OPEN, () => {
+		PlayConfettiEmote()
+	})
 }

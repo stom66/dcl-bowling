@@ -19,6 +19,7 @@ import { PlayerTickets } from 'src/shared/components/definitions/shared.playerTi
 import { MessageType, net } from 'src/shared/net'
 import { NotifyClawResultPayload } from 'src/shared/types/shared-types'
 
+import { CameraController } from 'src/client/cameraController'
 import { ClientMessaging } from 'src/client/clientMessaging'
 import { ClientStore } from 'src/client/clientStore'
 import { sfx, SoundManager } from 'src/client/soundManager'
@@ -38,11 +39,15 @@ const IDLE_CLIP   = 'idle'
 const ACTION_CLIPS = ['action01', 'action02', 'action03'] as const
 const SPIN_CLIP   = 'spin'
 
+/** Clip lengths for timing the return to idle and the reward popup. */
+const ACTION_DURATION_MS: Record<ActionClip, number> = {
+	action01: 10_000,
+	action02: 6_500,
+	action03: 6_500,
+}
+
 /** Seconds to crossfade the finished action → idle. */
 const BLEND_DURATION = 0.4
-
-/** Extra hold after the action finishes before the reward popup may show. */
-const REWARD_HOLD_AFTER_ACTION_MS = 1200
 
 /** Max ms to wait before starting a looping clip, so machines do not animate in lockstep. */
 const LOOP_START_DELAY_MAX_MS = 4000
@@ -62,7 +67,7 @@ type MachineState = {
 	phase            : MachinePhase
 	activeAction     : ActionClip | undefined
 	blendElapsed     : number
-	wasActionPlaying : boolean
+	actionEndsAtMs   : number
 }
 
 
@@ -137,10 +142,10 @@ export namespace ClawMachine {
 			anchor,
 			body,
 			ticketValue,
-			phase           : 'idle',
-			activeAction    : undefined,
-			blendElapsed    : 0,
-			wasActionPlaying: false,
+			phase         : 'idle',
+			activeAction  : undefined,
+			blendElapsed  : 0,
+			actionEndsAtMs: 0,
 		}
 		machines.push(state)
 
@@ -149,7 +154,7 @@ export namespace ClawMachine {
 				entity: body,
 				opts  : {
 					button       : InputAction.IA_PRIMARY,
-					hoverText    : 'Play',
+					hoverText    : `${ticketValue} tickets`,
 					maxDistance  : MAX_INTERACT_DISTANCE,
 					showFeedback : true,
 					showHighlight: true,
@@ -183,6 +188,7 @@ export namespace ClawMachine {
 	// MARK: scheduleLoopStart
 	/**
 	 * Holds `clip` on its first frame, then starts looping playback after a random delay.
+	 * Skips the start if this body is mid-claw so a late idle kick-off cannot override the action.
 	 */
 	function scheduleLoopStart(
 		entity: Entity,
@@ -190,17 +196,20 @@ export namespace ClawMachine {
 	): void {
 		const delayMs = randomLoopStartDelayMs()
 		utils.timers.setTimeout(() => {
+			const machine = machines.find((m) => m.body === entity)
+			if (machine && machine.phase !== 'idle') return
+
 			const animator = Animator.getMutableOrNull(entity)
 			if (!animator) return
 
-			const state = animator.states.find((s) => s.clip === clip)
-			if (!state) return
+			const clipState = animator.states.find((s) => s.clip === clip)
+			if (!clipState) return
 
-			state.playing     = true
-			state.loop        = true
-			state.speed       = 1
-			state.shouldReset = true
-			state.weight      = 1
+			clipState.playing     = true
+			clipState.loop        = true
+			clipState.speed       = 1
+			clipState.shouldReset = true
+			clipState.weight      = 1
 		}, delayMs)
 	}
 
@@ -320,7 +329,6 @@ export namespace ClawMachine {
 			return
 		}
 
-		suppressRewardUntilMs = Date.now() + 15_000
 		playAction(state, pickActionClip())
 	}
 
@@ -335,45 +343,31 @@ export namespace ClawMachine {
 
 	// MARK: playAction
 	/**
-	 * Starts the chosen action at full weight with idle underneath at zero weight.
+	 * Plays the chosen action alone (pauses idle), then blends back after the clip's known length.
 	 */
 	function playAction(
 		state : MachineState,
 		clip  : ActionClip,
 	): void {
-		const animator = Animator.getMutableOrNull(state.body)
-		if (!animator) {
-			console.error('ClawMachine: playAction: missing Animator', state.body)
+		const durationMs = ACTION_DURATION_MS[clip]
+		const started    = Animator.playSingleAnimation(state.body, clip, true)
+		if (!started) {
+			console.error('ClawMachine: playAction: playSingleAnimation failed', clip, state.body)
+			state.phase = 'idle'
+			suppressRewardUntilMs = 0
+			CameraController.endClawCinematic()
 			return
 		}
 
-		const idle = animator.states.find((s) => s.clip === IDLE_CLIP)
-		if (!idle) {
-			console.error('ClawMachine: playAction: missing idle clip')
-			return
-		}
+		CameraController.triggerClawCamera(state.body)
 
-		for (const stateClip of animator.states) {
-			if (stateClip.clip === IDLE_CLIP) continue
-			const isActive         = stateClip.clip === clip
-			stateClip.playing      = isActive
-			stateClip.loop         = false
-			stateClip.shouldReset  = isActive
-			stateClip.weight       = isActive ? 1 : 0
-			stateClip.speed        = 1
-		}
+		state.phase          = 'action'
+		state.activeAction   = clip
+		state.blendElapsed   = 0
+		state.actionEndsAtMs = Date.now() + durationMs
+		suppressRewardUntilMs = state.actionEndsAtMs
 
-		idle.playing = true
-		idle.loop    = true
-		idle.weight  = 0
-		idle.speed   = 1
-
-		state.phase            = 'action'
-		state.activeAction     = clip
-		state.blendElapsed     = 0
-		state.wasActionPlaying = false
-
-		console.log('ClawMachine: playAction: started', clip, 'tickets', state.ticketValue)
+		console.log('ClawMachine: playAction: started', clip, 'durationMs', durationMs, 'tickets', state.ticketValue)
 	}
 
 
@@ -437,37 +431,26 @@ export namespace ClawMachine {
 			}
 		}
 
-		state.phase            = 'idle'
-		state.activeAction     = undefined
-		state.blendElapsed     = 0
-		state.wasActionPlaying = false
+		state.phase          = 'idle'
+		state.activeAction   = undefined
+		state.blendElapsed   = 0
+		state.actionEndsAtMs = 0
 	}
 
 
 	// MARK: sys_update
 	/**
-	 * Detects action completion and drives the weight blend back to idle.
+	 * Ends actions on their known clip length, then drives the weight blend back to idle.
 	 */
 	function sys_update(dt: number): void {
 		for (const state of machines) {
 			if (state.phase === 'action') {
-				const clip = state.activeAction
-				if (!clip) {
+				if (!state.activeAction) {
 					state.phase = 'idle'
 					continue
 				}
-
-				const animator  = Animator.get(state.body)
-				const action    = animator.states.find((s) => s.clip === clip)
-				const isPlaying = action?.playing ?? false
-
-				if (state.wasActionPlaying && !isPlaying) {
-					suppressRewardUntilMs = Date.now() + REWARD_HOLD_AFTER_ACTION_MS
-					startBlendToIdle(state)
-					continue
-				}
-
-				state.wasActionPlaying = isPlaying
+				if (Date.now() < state.actionEndsAtMs) continue
+				startBlendToIdle(state)
 				continue
 			}
 
@@ -490,8 +473,18 @@ export namespace ClawMachine {
 
 			const idle   = animator.states.find((s) => s.clip === IDLE_CLIP)
 			const action = animator.states.find((s) => s.clip === clip)
-			if (action) action.weight = 1 - t
-			if (idle) idle.weight = t
+			if (action) {
+				action.playing = true
+				action.loop    = false
+				action.speed   = 0
+				action.weight  = 1 - t
+			}
+			if (idle) {
+				idle.playing = true
+				idle.loop    = true
+				idle.speed   = 1
+				idle.weight  = t
+			}
 
 			if (t >= 1) finishBlend(state)
 		}
