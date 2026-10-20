@@ -51,18 +51,6 @@ const STATUS_LABEL_MAX_WIDTH =
 		- 8                  * 2
 	) * 6 / 12)
 
-/**
- * Layout height of the status panel (ball column plus inner/outer padding
- * and borders). Leave-game uses this to sit below the HUD.
- */
-export const GAME_STATUS_PANEL_HEIGHT =
-	BALL_SIZE
-	+ (INNER_PADDING.left + INNER_PADDING.right)
-	+ INNER_BORDER_WIDTH * 2
-	+ OUTER_PADDING * 2
-	+ OUTER_BORDER_WIDTH * 2
-
-
 // MARK: GameStatusLayer
 /**
  * Top-center HUD showing the current turn, player, phase, and countdown.

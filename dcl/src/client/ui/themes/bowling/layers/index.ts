@@ -34,12 +34,12 @@ const IS_DEV = process.env.NODE_ENV === 'development'
 // MARK: layers
 /**
  * Bowling layer list.
- * Leave sits under game status in paint order. The position/direction/strength
- * bar lives in bowling controls. The bumper toggle is its own layer: beside
- * the bar on desktop, bottom-left on mobile. Click-to-set is the square
- * bottom-right button (click on desktop, tap on mobile). Customization sits
- * above gameplay HUD; records and stats sit with it. The top-right toggles paint after
- * those windows. Ticket balance sits in the top of the right zone.
+ * Leave sits in the left-top zone. The position/direction/strength bar lives
+ * in bowling controls. The bumper toggle is its own layer: beside the bar on
+ * desktop, bottom-left on mobile. Click-to-set is the square bottom-right
+ * button (click on desktop, tap on mobile). Customization sits above gameplay
+ * HUD; records and stats sit with it. The top-right toggles paint after those
+ * windows. Ticket balance sits in the top of the right zone.
  * The playtest panel sits in that same zone, below the ticket balance, while
  * `GameSettings.PLAYTEST_DEBUG_PANEL` is on. It stays hidden until ten seconds
  * after loading completes. Bowl-o-tron 3000 is stacked under it and only

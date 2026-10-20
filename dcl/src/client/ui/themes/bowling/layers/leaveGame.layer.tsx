@@ -14,14 +14,12 @@ import { UnFreezePlayer } from 'src/shared/utils/inputModifiers'
 import { ClientMessaging } from 'src/client/clientMessaging'
 import { ClientStore } from 'src/client/clientStore'
 import { uiStringsAtlas, primaryButtonAtlas } from 'src/client/ui/themes/bowling/atlases'
-import { GAME_STATUS_PANEL_HEIGHT } from 'src/client/ui/themes/bowling/layers/gameStatus.layer'
 import { LETTERBOX_HUD_DURATION, onLetterboxHidden, onLetterboxShown } from 'src/client/ui/themes/bowling/layers/letterbox.layer'
 
 
 const clientStore = ClientStore.getInstance()
 
 const LEAVE_BUTTON_HEIGHT = 64
-const LEAVE_BUTTON_GAP    = 12
 
 
 // MARK: requestLeaveGame
@@ -46,8 +44,7 @@ function isMatchStarted(): boolean {
 
 // MARK: LeaveGameLayer
 /**
- * Top-center leave button, shown once a match has started.
- * Offset by the status-panel height plus a gap so it sits below that HUD.
+ * Left-top leave button, shown once a match has started.
  */
 export class LeaveGameLayer extends Layer {
 	private wasMatchStarted       = false
@@ -56,12 +53,11 @@ export class LeaveGameLayer extends Layer {
 	constructor() {
 		super({
 			id         : 'bowling-leave-game',
-			zone       : ZoneType.TopCenter,
+			zone       : ZoneType.LeftTop,
 			canBeHidden: true,
 			startHidden: true,
 			uiTransform: {
 				height: LEAVE_BUTTON_HEIGHT,
-				margin: { top: GAME_STATUS_PANEL_HEIGHT + LEAVE_BUTTON_GAP },
 			},
 		})
 
