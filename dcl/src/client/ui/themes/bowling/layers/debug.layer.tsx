@@ -31,6 +31,7 @@ import { CameraController } from 'src/client/cameraController'
 import { ClientMessaging } from 'src/client/clientMessaging'
 import { ClientStore } from 'src/client/clientStore'
 import { playerMover } from 'src/client/playerMover'
+import { UiParticles } from 'src/client/ui/particles/uiParticleLayer'
 
 
 const clientStore = ClientStore.getInstance()
@@ -334,6 +335,62 @@ export class DebugLayer extends Layer {
 				uiTransform     = {{ flexDirection: 'column' }}
 			>
 				{this.sectionTitle('debug-title', 'Debug Menu')}
+
+				{this.sectionTitle('debug-particles', 'Particles')}
+				<ButtonText
+					id        = "debug_particles_snow"
+					textLabel = "Snow"
+					width     = "100%"
+					height    = {18}
+					minHeight = {18}
+					fontSize  = {DEBUG_FONT_SIZE}
+					callback  = {() => { UiParticles.snow() }}
+					uiTransform = {{
+						positionType: 'relative',
+						position    : { top: 0, left: 0 },
+					}}
+				/>
+				<ButtonText
+					id        = "debug_particles_burst"
+					textLabel = "Starburst"
+					width     = "100%"
+					height    = {18}
+					minHeight = {18}
+					fontSize  = {DEBUG_FONT_SIZE}
+					callback  = {() => { UiParticles.burst() }}
+					uiTransform = {{
+						positionType: 'relative',
+						position    : { top: 0, left: 0 },
+					}}
+				/>
+				<ButtonText
+					id        = "debug_particles_firework"
+					textLabel = "Firework"
+					width     = "100%"
+					height    = {18}
+					minHeight = {18}
+					fontSize  = {DEBUG_FONT_SIZE}
+					callback  = {() => { UiParticles.firework() }}
+					uiTransform = {{
+						positionType: 'relative',
+						position    : { top: 0, left: 0 },
+					}}
+				/>
+				<ButtonText
+					id        = "debug_particles_stream"
+					textLabel = "Ticket Stream"
+					width     = "100%"
+					height    = {18}
+					minHeight = {18}
+					fontSize  = {DEBUG_FONT_SIZE}
+					callback  = {() => { UiParticles.stream() }}
+					uiTransform = {{
+						positionType: 'relative',
+						position    : { top: 0, left: 0 },
+					}}
+				/>
+
+				<Divider margin={{ top: 2, bottom: 2 }} thickness={1} />
 
 				<ButtonText
 					id        = "debug_reset_rewards"

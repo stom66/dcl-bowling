@@ -2,6 +2,7 @@ import type { Layer } from '@stom66/dcl-ui-component-kit'
 
 import { GameSettings } from 'src/shared/settings'
 
+import { uiParticleLayer } from 'src/client/ui/particles/uiParticleLayer'
 import { bowlingControlsLayer, bumperToggleLayer, clickToSetLayer } from 'src/client/ui/themes/bowling/layers/bowlingControls.layer'
 import { customizationLayer } from 'src/client/ui/themes/bowling/layers/customization.layer'
 import { debugLayer } from 'src/client/ui/themes/bowling/layers/debug.layer'
@@ -46,7 +47,8 @@ const IS_DEV = process.env.NODE_ENV === 'development'
  * Letterbox hides that top HUD (status, leave, toolbar, tickets, playtest,
  * and Bowl-o-tron) for the duration of a group roll replay.
  * The end-of-game summary sits above the letterbox. Login rewards sit above
- * that summary and under the loading screen.
+ * that summary and under the loading screen. UI particles sit above rewards
+ * (starburst / streams) and under loading.
  * Loading is near the end so
  * it covers gameplay until dismissed.
  * Version is last with the highest z-index.
@@ -69,6 +71,7 @@ export const layers: Layer[] = [
 	...(GameSettings.PLAYTEST_DEBUG_PANEL ? [playtestDebugLayer] : []),
 	...(IS_DEV ? [debugLayer] : []),
 	rewardLayer,
+	uiParticleLayer,
 	loadingLayer,
 	versionLayer,
 ]
