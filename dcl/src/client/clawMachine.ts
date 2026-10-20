@@ -1,18 +1,22 @@
 import * as utils from '@dcl-sdk/utils'
 import {
 	Animator,
+	Billboard,
+	BillboardMode,
 	ColliderLayer,
 	engine,
 	Entity,
 	GltfContainer,
+	GltfNodeModifiers,
 	InputAction,
 	Material,
 	MeshCollider,
 	MeshRenderer,
 	pointerEventsSystem,
+	TextureWrapMode,
 	Transform,
 } from '@dcl/sdk/ecs'
-import { Vector3 } from '@dcl/sdk/math'
+import { Color3, Vector2, Vector3 } from '@dcl/sdk/math'
 
 import { ComponentStore } from 'src/shared/components/componentStore'
 import { PlayerTickets } from 'src/shared/components/definitions/shared.playerTickets'
@@ -25,34 +29,62 @@ import { ClientStore } from 'src/client/clientStore'
 import { sfx, SoundManager } from 'src/client/soundManager'
 
 
-/** Tag → ticket value and matching top-sign suffix (`claw-machine-top.0N.gltf`). */
-const PRIZE_TAGS: { tag: string, ticketValue: number, topSuffix: string }[] = [
-	{ tag: 'prizes5',   ticketValue: 5,   topSuffix: '01' },
-	{ tag: 'prizes10',  ticketValue: 10,  topSuffix: '02' },
-	{ tag: 'prizes25',  ticketValue: 25,  topSuffix: '03' },
-	{ tag: 'prizes100', ticketValue: 100, topSuffix: '04' },
+/** Tag → ticket value and matching body/top suffix (`claw-machine.0N` / `claw-machine-top.0N`). */
+const PRIZE_TAGS: { tag: string, ticketValue: number, variant: string }[] = [
+	{ tag: 'prizes5',   ticketValue: 5,   variant: '01' },
+	{ tag: 'prizes10',  ticketValue: 10,  variant: '02' },
+	{ tag: 'prizes25',  ticketValue: 25,  variant: '03' },
+	{ tag: 'prizes100', ticketValue: 100, variant: '04' },
 ]
 
-const BODY_MODEL_SRC = 'assets/models/claw-machine.gltf'
+const IDLE_CLIP    = 'idle'
+const ACTION_CLIPS = ['action01', 'action02', 'action03', 'action04'] as const
+const SPIN_CLIP    = 'spin'
 
-const IDLE_CLIP   = 'idle'
-const ACTION_CLIPS = ['action01', 'action02', 'action03'] as const
-const SPIN_CLIP   = 'spin'
-
-/** Clip lengths for timing the return to idle and the reward popup. */
+/**
+ * Presentation lengths — may end before the full GLTF clip so the reward
+ * hand-off can start once the ball is out of the chute.
+ */
 const ACTION_DURATION_MS: Record<ActionClip, number> = {
 	action01: 10_000,
-	action02: 6_500,
-	action03: 6_500,
+	action02: 6_750,
+	action03: 6_750,
+	action04: 6_750,
 }
 
 /** Seconds to crossfade the finished action → idle. */
 const BLEND_DURATION = 0.4
 
-/** Max ms to wait before starting a looping clip, so machines do not animate in lockstep. */
-const LOOP_START_DELAY_MAX_MS = 4000
+/**
+ * Idle / spin loop length in the exported GLTFs (~12.98s).
+ * Start delays are shuffled across this window so machines stay out of phase.
+ */
+const LOOP_DURATION_MS = 13_000
 
 const MAX_INTERACT_DISTANCE = 8
+
+const NEON_GRADIENT_TEXTURE = 'assets/models/tex/neon-gradient.png'
+
+/** UV units per second. Positive values slide neon-gradient sideways along X. */
+const NEON_UV_SCROLL_SPEED = 0.1
+
+/**
+ * Full GLTF node paths for the split neon meshes (armature / bone / mesh).
+ * Tops: neons.001–004. Bodies: neons.005–008 (one neon object per variant file).
+ */
+const TOP_NEON_NODE_BY_VARIANT: Record<string, string> = {
+	'01': 'claw-machine-top.armature/Bone.001/neons.001',
+	'02': 'claw-machine-top.armature.001/Bone.001/neons.002',
+	'03': 'claw-machine-top.armature.003/Bone.001/neons.003',
+	'04': 'claw-machine-top.armature.002/Bone.001/neons.004',
+}
+
+const BODY_NEON_NODE_BY_VARIANT: Record<string, string> = {
+	'01': 'Armature.claw-machine/neons.005',
+	'02': 'Armature.claw-machine/neons.006',
+	'03': 'Armature.claw-machine/neons.007',
+	'04': 'Armature.claw-machine/neons.008',
+}
 
 
 type ActionClip = typeof ACTION_CLIPS[number]
@@ -60,14 +92,22 @@ type ActionClip = typeof ACTION_CLIPS[number]
 type MachinePhase = 'idle' | 'waiting' | 'action' | 'blend'
 
 
+type NeonScrollTarget = {
+	entity : Entity
+	offsetX: number
+}
+
+
 type MachineState = {
-	anchor           : Entity
-	body             : Entity
-	ticketValue      : number
-	phase            : MachinePhase
-	activeAction     : ActionClip | undefined
-	blendElapsed     : number
-	actionEndsAtMs   : number
+	anchor         : Entity
+	body           : Entity
+	top            : Entity
+	ticketValue    : number
+	phase          : MachinePhase
+	activeAction   : ActionClip | undefined
+	blendElapsed   : number
+	actionEndsAtMs : number
+	pointerEnabled : boolean
 }
 
 
@@ -76,6 +116,9 @@ export namespace ClawMachine {
 	let isInitialized = false
 
 	const machines: MachineState[] = []
+
+	/** Body + top entities whose neon mesh UVs are scrolled each frame. */
+	const neonTargets: NeonScrollTarget[] = []
 
 	/** Machine waiting on `NOTIFY_CLAW_RESULT`. */
 	let pendingMachine: MachineState | undefined
@@ -102,11 +145,11 @@ export namespace ClawMachine {
 		if (isInitialized) return
 		isInitialized = true
 
-		for (const { tag, ticketValue, topSuffix } of PRIZE_TAGS) {
+		for (const { tag, ticketValue, variant } of PRIZE_TAGS) {
 			const entities = engine.getEntitiesByTag(tag)
 			for (const entity of entities) {
 				if (machines.some((m) => m.anchor === entity)) continue
-				setupMachine(entity, ticketValue, topSuffix)
+				setupMachine(entity, ticketValue, variant)
 			}
 		}
 
@@ -119,8 +162,11 @@ export namespace ClawMachine {
 			return
 		}
 
-		console.log('ClawMachine: init: registered', machines.length, 'machine(s)')
+		scheduleStaggeredLoopStarts()
 		engine.addSystem(sys_update)
+		engine.addSystem(sys_scrollNeonGradient)
+
+		console.log('ClawMachine: init: registered', machines.length, 'machine(s)')
 	}
 
 
@@ -131,39 +177,79 @@ export namespace ClawMachine {
 	function setupMachine(
 		anchor     : Entity,
 		ticketValue: number,
-		topSuffix  : string,
+		variant    : string,
 	): void {
 		stripPlaceholder(anchor)
 
-		const body = createBody(anchor)
-		createTop(anchor, topSuffix)
+		const body = createBody(anchor, variant)
+		const top  = createTop(anchor, variant)
 
 		const state: MachineState = {
 			anchor,
 			body,
+			top,
 			ticketValue,
 			phase         : 'idle',
 			activeAction  : undefined,
 			blendElapsed  : 0,
 			actionEndsAtMs: 0,
+			pointerEnabled: false,
 		}
 		machines.push(state)
+		setPointerEnabled(state, true)
+	}
 
-		pointerEventsSystem.onPointerDown(
-			{
-				entity: body,
-				opts  : {
-					button       : InputAction.IA_PRIMARY,
-					hoverText    : `${ticketValue} tickets`,
-					maxDistance  : MAX_INTERACT_DISTANCE,
-					showFeedback : true,
-					showHighlight: true,
+
+	// MARK: hoverTextFor
+	/** Pointer hover label for a prize-tier ticket cost. */
+	function hoverTextFor(ticketValue: number): string {
+		return `Claim Prize - ${ticketValue} tickets`
+	}
+
+
+	// MARK: setPointerEnabled
+	/**
+	 * Registers or removes the body's pointer-down handler.
+	 * Must not be called from inside that handler — defer via timer when disabling on interact.
+	 */
+	function setPointerEnabled(
+		state  : MachineState,
+		enabled: boolean,
+	): void {
+		if (state.pointerEnabled === enabled) return
+		state.pointerEnabled = enabled
+
+		if (enabled) {
+			pointerEventsSystem.onPointerDown(
+				{
+					entity: state.body,
+					opts  : {
+						button       : InputAction.IA_PRIMARY,
+						hoverText    : hoverTextFor(state.ticketValue),
+						maxDistance  : MAX_INTERACT_DISTANCE,
+						showFeedback : true,
+						showHighlight: true,
+					},
 				},
-			},
-			() => {
-				onInteract(state)
-			},
-		)
+				() => {
+					onInteract(state)
+				},
+			)
+			return
+		}
+
+		pointerEventsSystem.removeOnPointerDown(state.body)
+	}
+
+
+	// MARK: returnToIdle
+	/** Clears busy presentation state and restores the interact prompt. */
+	function returnToIdle(state: MachineState): void {
+		state.phase          = 'idle'
+		state.activeAction   = undefined
+		state.blendElapsed   = 0
+		state.actionEndsAtMs = 0
+		setPointerEnabled(state, true)
 	}
 
 
@@ -178,23 +264,42 @@ export namespace ClawMachine {
 	}
 
 
-	// MARK: randomLoopStartDelayMs
-	/** Random delay in `[0, LOOP_START_DELAY_MAX_MS]` so looping clips start out of phase. */
-	function randomLoopStartDelayMs(): number {
-		return Math.floor(Math.random() * (LOOP_START_DELAY_MAX_MS + 1))
+	// MARK: shuffledDelaysMs
+	/**
+	 * Evenly spaced delays across {@link LOOP_DURATION_MS}, then shuffled, so
+	 * N machines do not cluster on the same start time.
+	 */
+	function shuffledDelaysMs(count: number): number[] {
+		if (count <= 0) return []
+
+		const delays: number[] = []
+		for (let i = 0; i < count; i++) {
+			const slot   = (i / count) * LOOP_DURATION_MS
+			const jitter = Math.floor(Math.random() * (LOOP_DURATION_MS / count))
+			delays.push(Math.floor(slot + jitter))
+		}
+
+		for (let i = delays.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1))
+			const tmp = delays[i]
+			delays[i] = delays[j]
+			delays[j] = tmp
+		}
+
+		return delays
 	}
 
 
 	// MARK: scheduleLoopStart
 	/**
-	 * Holds `clip` on its first frame, then starts looping playback after a random delay.
+	 * Holds `clip` on its first frame, then starts looping playback after `delayMs`.
 	 * Skips the start if this body is mid-claw so a late idle kick-off cannot override the action.
 	 */
 	function scheduleLoopStart(
-		entity: Entity,
-		clip  : string,
+		entity : Entity,
+		clip   : string,
+		delayMs: number,
 	): void {
-		const delayMs = randomLoopStartDelayMs()
 		utils.timers.setTimeout(() => {
 			const machine = machines.find((m) => m.body === entity)
 			if (machine && machine.phase !== 'idle') return
@@ -214,42 +319,109 @@ export namespace ClawMachine {
 	}
 
 
+	// MARK: scheduleStaggeredLoopStarts
+	/** Assigns unique start delays to every body idle and top spin clip. */
+	function scheduleStaggeredLoopStarts(): void {
+		const bodyDelays = shuffledDelaysMs(machines.length)
+		const topDelays  = shuffledDelaysMs(machines.length)
+
+		for (let i = 0; i < machines.length; i++) {
+			const state = machines[i]
+			scheduleLoopStart(state.body, IDLE_CLIP, bodyDelays[i] ?? 0)
+			scheduleLoopStart(state.top,  SPIN_CLIP, topDelays[i] ?? 0)
+		}
+	}
+
+
+	// MARK: neonGradientMaterial
+	function neonGradientMaterial(offsetX: number) {
+		return {
+			material: {
+				$case: 'pbr' as const,
+				pbr  : {
+					texture: Material.Texture.Common({
+						src     : NEON_GRADIENT_TEXTURE,
+						wrapMode: TextureWrapMode.TWM_REPEAT,
+						offset  : Vector2.create(offsetX, 0),
+					}),
+					emissiveTexture: Material.Texture.Common({
+						src     : NEON_GRADIENT_TEXTURE,
+						wrapMode: TextureWrapMode.TWM_REPEAT,
+						offset  : Vector2.create(offsetX, 0),
+					}),
+					emissiveColor    : Color3.create(0.5, 0.5, 0.5),
+					emissiveIntensity: 1,
+					metallic         : 0,
+				},
+			},
+		}
+	}
+
+
+	// MARK: attachNeonScroll
+	/**
+	 * Overrides the split neon mesh material and registers the entity for UV scrolling.
+	 * Each entity gets its own random phase in `[0, 1)`.
+	 */
+	function attachNeonScroll(
+		entity  : Entity,
+		nodePath: string,
+	): void {
+		const offsetX = Math.random()
+		GltfNodeModifiers.create(entity, {
+			modifiers: [{
+				path    : nodePath,
+				material: neonGradientMaterial(offsetX),
+			}],
+		})
+		neonTargets.push({ entity, offsetX })
+	}
+
+
 	// MARK: createBody
 	/**
-	 * Spawns `claw-machine.gltf` under the anchor. Idle starts after a random delay; action clips stay ready.
+	 * Spawns `claw-machine.0N.gltf` under the anchor. Idle starts after a staggered
+	 * delay; action clips stay ready.
 	 */
-	function createBody(anchor: Entity): Entity {
+	function createBody(
+		anchor : Entity,
+		variant: string,
+	): Entity {
 		const body = engine.addEntity()
 		Transform.create(body, {
 			parent  : anchor,
 			position: Vector3.Zero(),
 		})
 		GltfContainer.create(body, {
-			src                          : BODY_MODEL_SRC,
+			src                          : `assets/models/claw-machine.${variant}.gltf`,
 			visibleMeshesCollisionMask   : 0,
 			invisibleMeshesCollisionMask : ColliderLayer.CL_POINTER | ColliderLayer.CL_PHYSICS,
 		})
 		// Hold idle on frame 0 until the staggered start kicks in.
 		Animator.create(body, {
 			states: [
-				{ clip: IDLE_CLIP, playing: true,  loop: false, weight: 1, speed: 0, shouldReset: false },
+				{ clip: IDLE_CLIP,  playing: true,  loop: false, weight: 1, speed: 0, shouldReset: false },
 				{ clip: 'action01', playing: false, loop: false, weight: 0, speed: 1, shouldReset: false },
 				{ clip: 'action02', playing: false, loop: false, weight: 0, speed: 1, shouldReset: false },
 				{ clip: 'action03', playing: false, loop: false, weight: 0, speed: 1, shouldReset: false },
+				{ clip: 'action04', playing: false, loop: false, weight: 0, speed: 1, shouldReset: false },
 			],
 		})
-		scheduleLoopStart(body, IDLE_CLIP)
+
+		const neonPath = BODY_NEON_NODE_BY_VARIANT[variant]
+		if (neonPath) attachNeonScroll(body, neonPath)
+
 		return body
 	}
 
 
 	// MARK: createTop
 	/**
-	 * Spawns the prize-tier top sign. `spin` starts after a random delay.
+	 * Spawns the prize-tier top sign with a Y-axis billboard. `spin` starts after a staggered delay.
 	 */
 	function createTop(
-		anchor   : Entity,
-		topSuffix: string,
+		anchor : Entity,
+		variant: string,
 	): Entity {
 		const top = engine.addEntity()
 		Transform.create(top, {
@@ -257,14 +429,20 @@ export namespace ClawMachine {
 			position: Vector3.Zero(),
 		})
 		GltfContainer.create(top, {
-			src: `assets/models/claw-machine-top.${topSuffix}.gltf`,
+			src: `assets/models/claw-machine-top.${variant}.gltf`,
+		})
+		Billboard.create(top, {
+			billboardMode: BillboardMode.BM_Y,
 		})
 		Animator.create(top, {
 			states: [
 				{ clip: SPIN_CLIP, playing: true, loop: false, weight: 1, speed: 0, shouldReset: false },
 			],
 		})
-		scheduleLoopStart(top, SPIN_CLIP)
+
+		const neonPath = TOP_NEON_NODE_BY_VARIANT[variant]
+		if (neonPath) attachNeonScroll(top, neonPath)
+
 		return top
 	}
 
@@ -299,6 +477,11 @@ export namespace ClawMachine {
 		state.phase    = 'waiting'
 		console.log('ClawMachine: onInteract: requesting play', state.ticketValue)
 		ClientMessaging.requestClawPlay(state.ticketValue)
+
+		// Defer removal — mutating pointer handlers inside this callback re-fires the click.
+		utils.timers.setTimeout(() => {
+			if (state.phase !== 'idle') setPointerEnabled(state, false)
+		}, 0)
 	}
 
 
@@ -317,14 +500,14 @@ export namespace ClawMachine {
 
 		if (!data.ok) {
 			console.log('ClawMachine: onClawResult: rejected', data)
-			state.phase = 'idle'
+			returnToIdle(state)
 			SoundManager.playSound(sfx.ui_purchase_error)
 			return
 		}
 
 		if (data.refunded) {
 			console.log('ClawMachine: onClawResult: refunded, pool empty')
-			state.phase = 'idle'
+			returnToIdle(state)
 			SoundManager.playSound(sfx.ui_purchase_error)
 			return
 		}
@@ -334,7 +517,7 @@ export namespace ClawMachine {
 
 
 	// MARK: pickActionClip
-	/** Picks one of the three claw action clips at random. */
+	/** Picks one of the four claw action clips at random. */
 	function pickActionClip(): ActionClip {
 		const index = Math.floor(Math.random() * ACTION_CLIPS.length)
 		return ACTION_CLIPS[index]
@@ -353,19 +536,20 @@ export namespace ClawMachine {
 		const started    = Animator.playSingleAnimation(state.body, clip, true)
 		if (!started) {
 			console.error('ClawMachine: playAction: playSingleAnimation failed', clip, state.body)
-			state.phase = 'idle'
 			suppressRewardUntilMs = 0
 			CameraController.endClawCinematic()
+			returnToIdle(state)
 			return
 		}
 
 		CameraController.triggerClawCamera(state.body)
 
-		state.phase          = 'action'
-		state.activeAction   = clip
-		state.blendElapsed   = 0
-		state.actionEndsAtMs = Date.now() + durationMs
+		state.phase           = 'action'
+		state.activeAction    = clip
+		state.blendElapsed    = 0
+		state.actionEndsAtMs  = Date.now() + durationMs
 		suppressRewardUntilMs = state.actionEndsAtMs
+		setPointerEnabled(state, false)
 
 		console.log('ClawMachine: playAction: started', clip, 'durationMs', durationMs, 'tickets', state.ticketValue)
 	}
@@ -378,7 +562,7 @@ export namespace ClawMachine {
 	function startBlendToIdle(state: MachineState): void {
 		const clip = state.activeAction
 		if (!clip) {
-			state.phase = 'idle'
+			returnToIdle(state)
 			return
 		}
 
@@ -414,8 +598,7 @@ export namespace ClawMachine {
 	function finishBlend(state: MachineState): void {
 		const animator = Animator.getMutableOrNull(state.body)
 		if (!animator) {
-			state.phase        = 'idle'
-			state.activeAction = undefined
+			returnToIdle(state)
 			return
 		}
 
@@ -431,10 +614,39 @@ export namespace ClawMachine {
 			}
 		}
 
-		state.phase          = 'idle'
-		state.activeAction   = undefined
-		state.blendElapsed   = 0
-		state.actionEndsAtMs = 0
+		returnToIdle(state)
+	}
+
+
+	// MARK: wrapUnit
+	function wrapUnit(value: number): number {
+		return ((value % 1) + 1) % 1
+	}
+
+
+	// MARK: sys_scrollNeonGradient
+	/** Advances each neon target's UV offset and writes it onto the node modifiers. */
+	function sys_scrollNeonGradient(dt: number): void {
+		for (const target of neonTargets) {
+			target.offsetX = wrapUnit(target.offsetX + NEON_UV_SCROLL_SPEED * dt)
+
+			const modifiers = GltfNodeModifiers.getMutableOrNull(target.entity)
+			if (!modifiers) continue
+
+			for (const modifier of modifiers.modifiers) {
+				const material = modifier.material?.material
+				if (material?.$case !== 'pbr') continue
+
+				const albedo   = material.pbr.texture
+				const emissive = material.pbr.emissiveTexture
+				if (albedo?.tex?.$case === 'texture') {
+					albedo.tex.texture.offset = Vector2.create(target.offsetX, 0)
+				}
+				if (emissive?.tex?.$case === 'texture') {
+					emissive.tex.texture.offset = Vector2.create(target.offsetX, 0)
+				}
+			}
+		}
 	}
 
 
@@ -446,7 +658,7 @@ export namespace ClawMachine {
 		for (const state of machines) {
 			if (state.phase === 'action') {
 				if (!state.activeAction) {
-					state.phase = 'idle'
+					returnToIdle(state)
 					continue
 				}
 				if (Date.now() < state.actionEndsAtMs) continue
@@ -458,7 +670,7 @@ export namespace ClawMachine {
 
 			const clip = state.activeAction
 			if (!clip) {
-				state.phase = 'idle'
+				returnToIdle(state)
 				continue
 			}
 
@@ -467,7 +679,7 @@ export namespace ClawMachine {
 
 			const animator = Animator.getMutableOrNull(state.body)
 			if (!animator) {
-				state.phase = 'idle'
+				returnToIdle(state)
 				continue
 			}
 
