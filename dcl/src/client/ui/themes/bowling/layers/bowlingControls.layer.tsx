@@ -67,6 +67,9 @@ const CLICK_ONCE_REST         = `${100 / CLICK_PULSE_SCALE}%`
 const CLICK_ONCE_ORIGIN       = `${((1 - CLICK_PULSE_SCALE) / 2) * 100}%`
 const CLICK_BORDER            = 2
 const CLICK_RADIUS            = 12
+// Half of the resting button. Mobile ignores percent radius (fills square); pixels
+// stay circular at rest and only look slightly rounded-square at pulse peak.
+const CLICK_CIRCLE_RADIUS     = CLICK_SIZE / 2
 const BUMPER_SIZE             = 107
 const BUMPER_ICON             = 48
 const BUMPER_LABEL_HEIGHT     = 16
@@ -87,7 +90,7 @@ type BowlingControlsProps = {
 }
 
 type ClickToSetProps = {
-	clickColor: Color4
+	backgroundColor: Color4
 }
 
 
@@ -454,7 +457,7 @@ export class ClickToSetLayer extends Layer {
 
 		const theme = getTheme()
 		this.clickProps = new PropsController<ClickToSetProps>({
-			clickColor: theme.colors.light,
+			backgroundColor: theme.colors.secondary,
 		})
 
 		eventBus.on(ClientEvents.ON_MY_ROLL_START, () => {
@@ -485,18 +488,19 @@ export class ClickToSetLayer extends Layer {
 
 
 	// MARK: onClickToSetHover
-	/** Pauses the periodic double-pulse and lightens the label. */
+	/** Pauses the periodic double-pulse and lightens the fill, matching ButtonText. */
 	private onClickToSetHover() {
 		this.periodicPulsePaused = true
-		tweenColor(this.clickProps, 'clickColor', lighten(getTheme().colors.primary, 0.75), 0.1)
+		const fill = getTheme().colors.secondary
+		tweenColor(this.clickProps, 'backgroundColor', lighten(fill, 0.1), 0.2)
 	}
 
 
 	// MARK: onClickToSetLeave
-	/** Resumes the periodic double-pulse and restores the label. */
+	/** Resumes the periodic double-pulse and restores the fill. */
 	private onClickToSetLeave() {
 		this.periodicPulsePaused = false
-		tweenColor(this.clickProps, 'clickColor', getTheme().colors.light, 0.1)
+		tweenColor(this.clickProps, 'backgroundColor', getTheme().colors.secondary, 0.2)
 	}
 
 
@@ -504,7 +508,7 @@ export class ClickToSetLayer extends Layer {
 	protected body() {
 		const theme      = getTheme()
 		const props      = this.clickProps
-		const clickColor = props.get('clickColor')
+		const fillColor  = props.get('backgroundColor')
 		const labelUv    = isMobile()
 			? gameIconsAtlas.uv.tapToSet
 			: gameIconsAtlas.uv.clickToSet
@@ -601,13 +605,14 @@ export class ClickToSetLayer extends Layer {
 							key             = "btn_click_to_set_box"
 							width           = {CLICK_ONCE_REST}
 							height          = {CLICK_ONCE_REST}
-							backgroundColor = {theme.colors.secondary}
+							backgroundColor = {fillColor}
 							borderColor     = {theme.colors.primary}
 							borderWidth     = {CLICK_BORDER}
-							borderRadius    = {CLICK_PULSE_BOX}
+							borderRadius    = {CLICK_CIRCLE_RADIUS}
 							overflow        = "hidden"
 							justifyContent  = "center"
 							alignItems      = "center"
+							pointerFilter   = "block"
 							onMouseDown     = {() => { this.onClickToSet() }}
 							onMouseEnter    = {() => { this.onClickToSetHover() }}
 							onMouseLeave    = {() => { this.onClickToSetLeave() }}
@@ -629,7 +634,7 @@ export class ClickToSetLayer extends Layer {
 									uvs       = {labelUv}
 									width     = "100%"
 									height    = "100%"
-									iconColor = {clickColor}
+									iconColor = {theme.colors.light}
 								/>
 							</FlashColor>
 						</UiBox>
