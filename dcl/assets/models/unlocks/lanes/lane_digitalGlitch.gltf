@@ -8,6 +8,7 @@
 		{
 			"name":"lane_digitalGlitch",
 			"nodes":[
+				4,
 				5
 			]
 		}
@@ -47,15 +48,6 @@
 		},
 		{
 			"mesh":3,
-			"name":"lane_default.playerArea.004",
-			"translation":[
-				0,
-				-0.25,
-				-1
-			]
-		},
-		{
-			"mesh":4,
 			"name":"lane_default.walls.004",
 			"translation":[
 				0.25,
@@ -68,10 +60,18 @@
 				0,
 				1,
 				2,
-				3,
-				4
+				3
 			],
 			"name":"lane_default.root.004"
+		},
+		{
+			"mesh":4,
+			"name":"lane_default.playerArea.003",
+			"translation":[
+				0,
+				-0.25,
+				-1
+			]
 		}
 	],
 	"materials":[
@@ -162,7 +162,7 @@
 			]
 		},
 		{
-			"name":"Cube.023",
+			"name":"Cube.021",
 			"primitives":[
 				{
 					"attributes":{
@@ -176,7 +176,7 @@
 			]
 		},
 		{
-			"name":"Cube.021",
+			"name":"Cube.028",
 			"primitives":[
 				{
 					"attributes":{
@@ -185,7 +185,7 @@
 						"TEXCOORD_0":24
 					},
 					"indices":25,
-					"material":0
+					"material":1
 				}
 			]
 		}
@@ -373,40 +373,6 @@
 		{
 			"bufferView":18,
 			"componentType":5126,
-			"count":46,
-			"max":[
-				1.5,
-				0.25,
-				2.5
-			],
-			"min":[
-				-1.5,
-				0.125,
-				1
-			],
-			"type":"VEC3"
-		},
-		{
-			"bufferView":19,
-			"componentType":5126,
-			"count":46,
-			"type":"VEC3"
-		},
-		{
-			"bufferView":20,
-			"componentType":5126,
-			"count":46,
-			"type":"VEC2"
-		},
-		{
-			"bufferView":21,
-			"componentType":5123,
-			"count":96,
-			"type":"SCALAR"
-		},
-		{
-			"bufferView":22,
-			"componentType":5126,
 			"count":884,
 			"max":[
 				1,
@@ -421,21 +387,55 @@
 			"type":"VEC3"
 		},
 		{
-			"bufferView":23,
+			"bufferView":19,
 			"componentType":5126,
 			"count":884,
 			"type":"VEC3"
 		},
 		{
-			"bufferView":24,
+			"bufferView":20,
 			"componentType":5126,
 			"count":884,
 			"type":"VEC2"
 		},
 		{
-			"bufferView":25,
+			"bufferView":21,
 			"componentType":5123,
 			"count":4344,
+			"type":"SCALAR"
+		},
+		{
+			"bufferView":22,
+			"componentType":5126,
+			"count":138,
+			"max":[
+				1.5,
+				0.25,
+				2.5
+			],
+			"min":[
+				-1.5,
+				0.125,
+				1
+			],
+			"type":"VEC3"
+		},
+		{
+			"bufferView":23,
+			"componentType":5126,
+			"count":138,
+			"type":"VEC3"
+		},
+		{
+			"bufferView":24,
+			"componentType":5126,
+			"count":138,
+			"type":"VEC2"
+		},
+		{
+			"bufferView":25,
+			"componentType":5123,
+			"count":708,
 			"type":"SCALAR"
 		}
 	],
@@ -550,50 +550,50 @@
 		},
 		{
 			"buffer":0,
-			"byteLength":552,
+			"byteLength":10608,
 			"byteOffset":44756,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":552,
-			"byteOffset":45308,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":368,
-			"byteOffset":45860,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":192,
-			"byteOffset":46228,
-			"target":34963
-		},
-		{
-			"buffer":0,
 			"byteLength":10608,
-			"byteOffset":46420,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":10608,
-			"byteOffset":57028,
+			"byteOffset":55364,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteLength":7072,
-			"byteOffset":67636,
+			"byteOffset":65972,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteLength":8688,
-			"byteOffset":74708,
+			"byteOffset":73044,
+			"target":34963
+		},
+		{
+			"buffer":0,
+			"byteLength":1656,
+			"byteOffset":81732,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":1656,
+			"byteOffset":83388,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":1104,
+			"byteOffset":85044,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":1416,
+			"byteOffset":86148,
 			"target":34963
 		}
 	],
@@ -605,7 +605,7 @@
 	],
 	"buffers":[
 		{
-			"byteLength":83396,
+			"byteLength":87564,
 			"uri":"lane_digitalGlitch.bin"
 		}
 	]

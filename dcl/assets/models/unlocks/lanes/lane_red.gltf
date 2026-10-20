@@ -8,6 +8,7 @@
 		{
 			"name":"lane_red",
 			"nodes":[
+				4,
 				5
 			]
 		}
@@ -47,15 +48,6 @@
 		},
 		{
 			"mesh":3,
-			"name":"lane_default.playerArea.002",
-			"translation":[
-				0,
-				-0.25,
-				-1
-			]
-		},
-		{
-			"mesh":4,
 			"name":"lane_default.walls.002",
 			"translation":[
 				0.25,
@@ -68,10 +60,18 @@
 				0,
 				1,
 				2,
-				3,
-				4
+				3
 			],
 			"name":"lane_default.root.002"
+		},
+		{
+			"mesh":4,
+			"name":"lane_default.playerArea.001",
+			"translation":[
+				0,
+				-0.25,
+				-1
+			]
 		}
 	],
 	"materials":[
@@ -130,7 +130,7 @@
 			]
 		},
 		{
-			"name":"Cube.015",
+			"name":"Cube.013",
 			"primitives":[
 				{
 					"attributes":{
@@ -144,7 +144,7 @@
 			]
 		},
 		{
-			"name":"Cube.013",
+			"name":"Cube.025",
 			"primitives":[
 				{
 					"attributes":{
@@ -277,40 +277,6 @@
 		{
 			"bufferView":12,
 			"componentType":5126,
-			"count":46,
-			"max":[
-				1.5,
-				0.25,
-				2.5
-			],
-			"min":[
-				-1.5,
-				0.125,
-				1
-			],
-			"type":"VEC3"
-		},
-		{
-			"bufferView":13,
-			"componentType":5126,
-			"count":46,
-			"type":"VEC3"
-		},
-		{
-			"bufferView":14,
-			"componentType":5126,
-			"count":46,
-			"type":"VEC2"
-		},
-		{
-			"bufferView":15,
-			"componentType":5123,
-			"count":96,
-			"type":"SCALAR"
-		},
-		{
-			"bufferView":16,
-			"componentType":5126,
 			"count":884,
 			"max":[
 				1,
@@ -325,21 +291,55 @@
 			"type":"VEC3"
 		},
 		{
-			"bufferView":17,
+			"bufferView":13,
 			"componentType":5126,
 			"count":884,
 			"type":"VEC3"
 		},
 		{
-			"bufferView":18,
+			"bufferView":14,
 			"componentType":5126,
 			"count":884,
 			"type":"VEC2"
 		},
 		{
-			"bufferView":19,
+			"bufferView":15,
 			"componentType":5123,
 			"count":4344,
+			"type":"SCALAR"
+		},
+		{
+			"bufferView":16,
+			"componentType":5126,
+			"count":165,
+			"max":[
+				1.5,
+				0.25,
+				2.5
+			],
+			"min":[
+				-1.5,
+				0.125,
+				1
+			],
+			"type":"VEC3"
+		},
+		{
+			"bufferView":17,
+			"componentType":5126,
+			"count":165,
+			"type":"VEC3"
+		},
+		{
+			"bufferView":18,
+			"componentType":5126,
+			"count":165,
+			"type":"VEC2"
+		},
+		{
+			"bufferView":19,
+			"componentType":5123,
+			"count":708,
 			"type":"SCALAR"
 		}
 	],
@@ -418,50 +418,50 @@
 		},
 		{
 			"buffer":0,
-			"byteLength":552,
+			"byteLength":10608,
 			"byteOffset":34124,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":552,
-			"byteOffset":34676,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":368,
-			"byteOffset":35228,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":192,
-			"byteOffset":35596,
-			"target":34963
-		},
-		{
-			"buffer":0,
 			"byteLength":10608,
-			"byteOffset":35788,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":10608,
-			"byteOffset":46396,
+			"byteOffset":44732,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteLength":7072,
-			"byteOffset":57004,
+			"byteOffset":55340,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteLength":8688,
-			"byteOffset":64076,
+			"byteOffset":62412,
+			"target":34963
+		},
+		{
+			"buffer":0,
+			"byteLength":1980,
+			"byteOffset":71100,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":1980,
+			"byteOffset":73080,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":1320,
+			"byteOffset":75060,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteLength":1416,
+			"byteOffset":76380,
 			"target":34963
 		}
 	],
@@ -473,7 +473,7 @@
 	],
 	"buffers":[
 		{
-			"byteLength":72764,
+			"byteLength":77796,
 			"uri":"lane_red.bin"
 		}
 	]
