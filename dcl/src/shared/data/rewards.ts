@@ -6,7 +6,7 @@ import { VERSION } from "src/shared/data/version"
 /** Open-ended rewards use this end date. Year 4000. */
 export const REWARD_ENDS_OPEN = Date.UTC(4000, 0, 1)
 
-export const DEFAULT_REWARD_BUTTON_LABEL = 'Yay I won!'
+export const DEFAULT_REWARD_BUTTON_LABEL = 'Yes! I won!'
 
 const STREAK_DAY_FIRST           = 2
 const STREAK_DAY_LAST            = 100
