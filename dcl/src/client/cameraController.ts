@@ -57,8 +57,9 @@ export namespace CameraController {
 	const rewardOrbitLookHeight         = 1.35
 	const rewardOrbitSpeed              = 0.4
 	const rewardOrbitTransition         = 0.8
-	/** Distance / height for the claw-machine hero shot. */
-	const clawCameraDistance            = 4.2
+	/** Claw hero shot: left of the player, looking at the machine. */
+	const clawCameraSideOffset          = 2.8
+	const clawCameraForwardBias         = 0.6
 	const clawCameraHeight              = 2.4
 	const clawLookHeight                = 1.35
 	const clawCameraTransition          = 0.7
@@ -561,6 +562,8 @@ export namespace CameraController {
 	// MARK: triggerClawCamera
 	/**
 	 * Locks the player, hides other avatars, and frames the activated claw machine.
+	 * Places the virtual camera to the player's left (relative to facing the
+	 * machine) so a third-person interact does not start behind their head.
 	 * Stays active until {@link endClawCinematic} or reward-close hand-off.
 	 */
 	export function triggerClawCamera(focusEntity: Entity) {
@@ -583,16 +586,19 @@ export namespace CameraController {
 		eventBus.emit(ClientEvents.ON_CLAW_CINEMATIC_START, {})
 
 		const playerPos = playerTransform.position
-		let   dx        = playerPos.x - focusPos.x
-		let   dz        = playerPos.z - focusPos.z
-		const length    = Math.hypot(dx, dz) || 1
-		dx /= length
-		dz /= length
+		let   fwdX      = focusPos.x - playerPos.x
+		let   fwdZ      = focusPos.z - playerPos.z
+		const length    = Math.hypot(fwdX, fwdZ) || 1
+		fwdX /= length
+		fwdZ /= length
+		// Left of the player in Y-up space while facing the machine.
+		const leftX =  fwdZ
+		const leftZ = -fwdX
 
 		const startPosition = Vector3.create(
-			focusPos.x + dx * clawCameraDistance,
-			focusPos.y + clawCameraHeight,
-			focusPos.z + dz * clawCameraDistance,
+			playerPos.x + leftX * clawCameraSideOffset + fwdX * clawCameraForwardBias,
+			playerPos.y + clawCameraHeight,
+			playerPos.z + leftZ * clawCameraSideOffset + fwdZ * clawCameraForwardBias,
 		)
 		const lookPosition = Vector3.create(
 			focusPos.x,
