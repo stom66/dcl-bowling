@@ -5,28 +5,51 @@ import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 
 export namespace TouchscreenControls {
 
+	/** Stays true while a login reward popup session is open. */
+	let rewardLocked = false
+
 	// MARK: init
 	/**
 	 * Hides the native mobile HUD while the local player's roll controls are on
-	 * screen, or during the load fly-in, and brings it back when those end.
+	 * screen, during the load fly-in, or during login rewards, and brings it
+	 * back when those end.
 	 */
 	export function init() {
 		eventBus.on(ClientEvents.ON_MY_ROLL_START, () => {
 			disableInputs()
 		})
 		eventBus.on(ClientEvents.ON_MY_ROLL_END, () => {
+			if (rewardLocked) return
 			enableInputs()
 		})
 		eventBus.on(ClientEvents.ON_GROUP_GAME_END, () => {
+			if (rewardLocked) return
 			enableInputs()
 		})
 		eventBus.on(ClientEvents.REQUEST_LEAVE_GAME, () => {
+			if (rewardLocked) return
 			enableInputs()
 		})
 		eventBus.on(ClientEvents.ON_LOAD_FLY_IN_START, () => {
 			disableInputs()
 		})
 		eventBus.on(ClientEvents.ON_LOAD_FLY_IN_END, () => {
+			if (rewardLocked) return
+			enableInputs()
+		})
+		eventBus.on(ClientEvents.ON_REWARD_OPEN, () => {
+			rewardLocked = true
+			disableInputs()
+		})
+		eventBus.on(ClientEvents.ON_REWARD_CLOSE, () => {
+			rewardLocked = false
+			enableInputs()
+		})
+		eventBus.on(ClientEvents.ON_CLAW_CINEMATIC_START, () => {
+			disableInputs()
+		})
+		eventBus.on(ClientEvents.ON_CLAW_CINEMATIC_END, () => {
+			if (rewardLocked) return
 			enableInputs()
 		})
 	}

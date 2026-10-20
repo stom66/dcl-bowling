@@ -5,7 +5,7 @@ import { scoringAnimations } from "src/shared/data/unlocks/scoringAnimations"
 import { spotlightColors } from "src/shared/data/unlocks/spotlightColors"
 import { spotlightPatterns } from "src/shared/data/unlocks/spotlightPatterns"
 import { trails } from "src/shared/data/unlocks/trails"
-import { CatalogEntry, PlayerLoadoutState, ScoreKind, ScoringAnimationItem, UnlockMeta } from "src/shared/data/unlocks/types"
+import { CatalogEntry, CatalogKind, PlayerLoadoutState, ScoreKind, ScoringAnimationItem, UnlockMeta } from "src/shared/data/unlocks/types"
 
 
 export { balls } from "src/shared/data/unlocks/balls"
@@ -132,6 +132,30 @@ function assertDefaultFlags(): void {
 			console.error(`unlocks: assertDefaultFlags: ${kind} needs exactly one defaultEquipped, found`, equippedIds)
 		}
 	}
+}
+
+
+/** Category names used for unlock copy. A trailing `s` is dropped for singular. */
+const CATALOG_KIND_CATEGORY_NAMES: Record<CatalogKind, string> = {
+	ball           : 'Balls',
+	pin            : 'Pins',
+	lane           : 'Lanes',
+	scoring        : 'Scoring Animations',
+	spotlight      : 'Light Shape',
+	spotlightColor : 'Light Color',
+	trail          : 'Trails',
+}
+
+
+// MARK: getCatalogKindUnlockLabel
+/**
+ * Singular category label for unlock copy.
+ * Takes the plural category name and drops a trailing `s` when present.
+ */
+export function getCatalogKindUnlockLabel(kind: CatalogKind): string {
+	const name = CATALOG_KIND_CATEGORY_NAMES[kind]
+	const base = /s$/i.test(name) ? name.slice(0, -1) : name
+	return base.toLowerCase()
 }
 
 

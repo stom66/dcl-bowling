@@ -6,7 +6,7 @@ import { VERSION } from "src/shared/data/version"
 /** Open-ended rewards use this end date. Year 4000. */
 export const REWARD_ENDS_OPEN = Date.UTC(4000, 0, 1)
 
-export const DEFAULT_REWARD_BUTTON_LABEL = 'Thanks!'
+export const DEFAULT_REWARD_BUTTON_LABEL = 'Yay I won!'
 
 const STREAK_DAY_FIRST           = 2
 const STREAK_DAY_LAST            = 100
@@ -37,7 +37,8 @@ export type RewardGrant =
 export type RewardDefinition = {
 	id           : string
 	title        : string
-	message      : string
+	/** Optional body copy. Omit for unlock popups that only need a title and grant. */
+	message?     : string
 	buttonLabel? : string
 	startsAt     : number
 	endsAt       : number
@@ -49,7 +50,7 @@ export type RewardDefinition = {
 export type PendingRewardOffer = {
 	id          : string
 	title       : string
-	message     : string
+	message?    : string
 	buttonLabel : string
 	kind        : 'tickets' | 'unlock'
 	tickets     : number
@@ -72,6 +73,7 @@ export const REWARDS: RewardDefinition[] = [
 		endsAt     : REWARD_ENDS_OPEN,
 		isEligible : (player) => getSpecialPlayerName(player.userId) !== undefined,
 		reward     : { type: 'tickets', amount: SPECIAL_PLAYER_TICKETS },
+		buttonLabel: 'I deserve this!',
 	},
 	{
 		id         : 'playtester-special',
@@ -81,6 +83,7 @@ export const REWARDS: RewardDefinition[] = [
 		endsAt     : REWARD_ENDS_OPEN,
 		isEligible : (player) => isPlaytester(player.userId),
 		reward     : { type: 'tickets', amount: PLAYTESTER_SPECIAL_TICKETS },
+		buttonLabel: 'I helped!',
 	},
 	{
 		id         : `update-${VERSION}`,
@@ -90,6 +93,7 @@ export const REWARDS: RewardDefinition[] = [
 		endsAt     : REWARD_ENDS_OPEN,
 		isEligible : (player) => player.activity.lastPlayedAt > 0 && player.activity.lastPlayedVersion !== player.version,
 		reward     : { type: 'tickets', amount: UPDATE_TICKETS },
+		buttonLabel: 'I love updates!',
 	},
 	...streakDayRewards(),
 ]
@@ -115,6 +119,7 @@ function streakDayRewards(): RewardDefinition[] {
 			endsAt     : REWARD_ENDS_OPEN,
 			isEligible : (player) => player.visit.currentStreak === day,
 			reward     : { type: 'tickets', amount: day },
+			buttonLabel: 'I\'m on a streak!',
 		})
 	}
 	return rewards
@@ -161,15 +166,18 @@ export function resolveRewardOffer(
 	const grant = typeof reward.reward === 'function' ? reward.reward(player) : reward.reward
 	const resolved = resolveGrant(grant, games)
 
-	return {
+	const offer: PendingRewardOffer = {
 		id          : reward.id,
 		title       : fillRewardMessage(reward.title, resolved.tickets, games, name),
-		message     : fillRewardMessage(reward.message, resolved.tickets, games, name),
 		buttonLabel : reward.buttonLabel ?? DEFAULT_REWARD_BUTTON_LABEL,
 		kind        : resolved.kind,
 		tickets     : resolved.tickets,
 		itemId      : resolved.itemId,
 	}
+	if (reward.message) {
+		offer.message = fillRewardMessage(reward.message, resolved.tickets, games, name)
+	}
+	return offer
 }
 
 

@@ -14,6 +14,7 @@ import { DEFAULT_REWARD_BUTTON_LABEL, isRewardInWindow, isStreakRewardId, Pendin
 import {
 	type CatalogKind,
 	getCatalogEntry,
+	getCatalogKindUnlockLabel,
 	getDefaultLoadout,
 	getDefaultScoringAnimIds,
 	getDefaultUnlockedIds,
@@ -402,11 +403,11 @@ export namespace PlayerProfileManager {
 		grantRewardUnlock(session, pick.itemId)
 
 		const entry = getCatalogEntry(pick.itemId)
-		const name  = entry?.item.name ?? pick.itemId
+		const label = entry ? getCatalogKindUnlockLabel(entry.kind) : 'item'
 		const offer: PendingRewardOffer = {
 			id          : `claw-${Date.now()}-${pick.itemId}`,
-			title       : 'Claw Machine!',
-			message     : `You won ${name}!`,
+			title       : 'You won a prize!',
+			message     : `You unlocked a new ${label}!`,
 			buttonLabel : DEFAULT_REWARD_BUTTON_LABEL,
 			kind        : 'unlock',
 			tickets     : 0,
@@ -701,7 +702,10 @@ export namespace PlayerProfileManager {
 				onPublish     : (state) => {
 					ComponentStore.createOrReplace(PlayerRewards, {
 						redeemedIds : [...state.redeemedIds],
-						pending     : state.pending.map((offer) => ({ ...offer })),
+						pending     : state.pending.map((offer) => ({
+							...offer,
+							message: offer.message ?? '',
+						})),
 					}, { key: userId })
 				},
 			}),
@@ -1030,17 +1034,19 @@ function normalizePendingOffers(value: unknown): PendingRewardOffer[] {
 		const data = asRecord(entry)
 		const id   = typeof data.id === 'string' ? data.id : ''
 		if (!id) continue
-		offers.push({
+		const message = typeof data.message === 'string' ? data.message : ''
+		const offer: PendingRewardOffer = {
 			id,
 			title       : typeof data.title === 'string' ? data.title : '',
-			message     : typeof data.message === 'string' ? data.message : '',
 			buttonLabel : typeof data.buttonLabel === 'string' && data.buttonLabel !== ''
 				? data.buttonLabel
 				: 'Thanks!',
 			kind        : data.kind === 'unlock' ? 'unlock' : 'tickets',
 			tickets     : Math.max(0, Math.floor(asNumber(data.tickets, 0))),
 			itemId      : typeof data.itemId === 'string' ? data.itemId : '',
-		})
+		}
+		if (message !== '') offer.message = message
+		offers.push(offer)
 	}
 	return offers
 }
