@@ -46,12 +46,12 @@ export const leaderboardAnchors: LeaderboardAnchor[] = [
 	{
 		id      : 'weekly-6',
 		position: Vector3.create(-17.2281, 130.6739, 9.4068),
-		rotation: Vector3.create(0, 225, 0),
+		rotation: Vector3.create(0, 230, 0),
 	},
 	{
 		id      : 'alltime-6',
 		position: Vector3.create(-17.2281, 128.7255, 9.4068),
-		rotation: Vector3.create(0, 225, 0),
+		rotation: Vector3.create(0, 230, 0),
 	},
 	{
 		id      : 'weekly-10',
