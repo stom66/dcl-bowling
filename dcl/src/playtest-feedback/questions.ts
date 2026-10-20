@@ -2,7 +2,7 @@ import { IntroSpec, QuestionSpec } from 'src/playtest-feedback/lib/shared/series
 
 
 /** Ask buttons. Local preview only. */
-export const DEBUG = true
+export const DEBUG = false
 
 /** Local preview only: the mobile layout on desktop. Ignored once deployed. */
 export const PREVIEW_MOBILE = false
