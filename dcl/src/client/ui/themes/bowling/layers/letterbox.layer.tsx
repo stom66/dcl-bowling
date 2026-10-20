@@ -108,19 +108,27 @@ export class LetterboxLayer extends Layer {
 		eventBus.on(ClientEvents.REQUEST_LEAVE_GAME,           () => { this.hideBars() })
 		eventBus.on(ClientEvents.ON_CLAW_CINEMATIC_START,      () => { this.showBars({ keepTickets: true }) })
 		eventBus.on(ClientEvents.ON_CLAW_CINEMATIC_END,        () => { this.hideBars() })
+		eventBus.on(ClientEvents.ON_REWARD_OPEN,               () => { this.showBars() })
+		eventBus.on(ClientEvents.ON_REWARD_CLOSE,              () => { this.hideBars() })
 	}
 
 
 	// MARK: showBars
 	/**
 	 * Tweens both letterbox bars on-screen and slides the top HUD away.
-	 * Pass `keepTickets: true` to leave the ticket balance visible (claw cinematics).
+	 * Pass `keepTickets: true` to leave the ticket balance visible (claw
+	 * cinematics before the reward popup). Reward open calls this without
+	 * that flag so tickets tuck away with the rest of the top HUD.
 	 */
 	showBars(options?: { keepTickets?: boolean }) {
 		const keepTickets = options?.keepTickets === true
 		this.tweenOffset(OFFSET_VISIBLE_VH)
 		if (barsVisible) {
-			if (keepTickets) ticketBalanceLayer.show(LETTERBOX_HUD_DURATION)
+			if (keepTickets) {
+				ticketBalanceLayer.show(LETTERBOX_HUD_DURATION)
+			} else {
+				ticketBalanceLayer.hide(LETTERBOX_HUD_DURATION)
+			}
 			return
 		}
 

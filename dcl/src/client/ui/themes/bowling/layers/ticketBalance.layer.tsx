@@ -5,11 +5,11 @@ import { getTheme, Icon, IconString, Layer, playOnce, Pulse, Row, Text, ZoneType
 
 import { ComponentStore } from 'src/shared/components/componentStore'
 import { PlayerTickets } from 'src/shared/components/definitions/shared.playerTickets'
+import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 
 import { ClientStore } from 'src/client/clientStore'
 import { gameIconsAtlas } from 'src/client/ui/themes/bowling/atlases'
-import { TOGGLE_BUTTONS_SIZE, TOGGLE_GAP } from './topRightToggles.layer'
-import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
+import { TOGGLE_BUTTONS_SIZE, TOGGLE_GAP } from 'src/client/ui/themes/bowling/layers/topRightToggles.layer'
 
 
 const CHIP_WIDTH       = 188
@@ -132,6 +132,9 @@ export class TicketBalanceLayer extends Layer {
 	/** Catch-up system while the chip is easing. Absent once the display has settled. */
 	private balanceSystem?: (dt: number) => void
 
+	/** True while a reward popup session is holding the chip off screen. */
+	private rewardHidden = false
+
 	constructor() {
 		super({
 			id         : 'bowling-ticket-balance',
@@ -146,6 +149,15 @@ export class TicketBalanceLayer extends Layer {
 		})
 
 		eventBus.on(ClientEvents.ON_LOAD_FLY_IN_END, () => {
+			if (this.rewardHidden) return
+			this.show()
+		})
+		eventBus.on(ClientEvents.ON_REWARD_OPEN, () => {
+			this.rewardHidden = true
+			this.hide()
+		})
+		eventBus.on(ClientEvents.ON_REWARD_CLOSE, () => {
+			this.rewardHidden = false
 			this.show()
 		})
 

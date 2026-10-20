@@ -38,7 +38,7 @@ const ACTION_BTN_W     = 240
 const ACTION_BTN_H     = 92
 const TICKET_ICON_SIZE = 72
 const UNLOCK_THUMB_SIZE = 160
-const UNLOCK_SPIN_SIZE  = 220
+const UNLOCK_SPIN_SIZE  = 320
 const PANEL_WIDTH      = 640
 const SLIDE_DURATION   = 0.2
 /** Extra wait after loading finishes before the first reward slides on. */
@@ -102,7 +102,7 @@ export class RewardLayer extends Layer {
 		return {
 			id          : raw.id,
 			title       : raw.title,
-			message     : raw.message,
+			message     : raw.message !== '' ? raw.message : undefined,
 			buttonLabel : raw.buttonLabel,
 			kind        : raw.kind === 'unlock' ? 'unlock' : 'tickets',
 			tickets     : raw.tickets,
@@ -160,7 +160,6 @@ export class RewardLayer extends Layer {
 			if (Date.now() < this.showAfterMs) return
 			this.displayed = offer
 			SoundManager.playSound(sfx.ui_reward_popup)
-			UiParticles.burst()
 			this.openSession()
 			this.show(SLIDE_DURATION)
 		}
@@ -169,10 +168,13 @@ export class RewardLayer extends Layer {
 
 	// MARK: openSession
 	/**
-	 * Emits {@link ClientEvents.ON_REWARD_OPEN} for each popup so listeners
-	 * can start the cinematic and keep the rest of the HUD tucked away.
+	 * Emits {@link ClientEvents.ON_REWARD_OPEN} when a popup session begins
+	 * so listeners can start the cinematic and tuck the rest of the HUD away.
+	 * Starburst particles fire for every window, including later ones in a queue.
 	 */
 	private openSession() {
+		UiParticles.burst()
+		if (this.sessionOpen) return
 		this.sessionOpen = true
 		eventBus.emit(ClientEvents.ON_REWARD_OPEN, {})
 	}
@@ -260,16 +262,18 @@ export class RewardLayer extends Layer {
 					width     = "100%"
 					height    = {44}
 				/>
-				<Text
-					key       = "reward-message"
-					value     = {offer.message}
-					fontSize  = {22}
-					fontColor = {theme.colors.light}
-					textAlign = "middle-center"
-					width     = "100%"
-					height    = {offer.kind === 'unlock' ? 72 : 150}
-					margin    = {{ top: 4, bottom: 0 }}
-				/>
+				{offer.message ? (
+					<Text
+						key       = "reward-message"
+						value     = {offer.message}
+						fontSize  = {22}
+						fontColor = {theme.colors.light}
+						textAlign = "middle-center"
+						width     = "100%"
+						height    = {offer.kind === 'unlock' ? 72 : 150}
+						margin    = {{ top: 4, bottom: 0 }}
+					/>
+				) : null}
 				{offer.kind === 'unlock' && thumbSrc ? (
 					<UiBox
 						key            = "reward-unlock-art"
