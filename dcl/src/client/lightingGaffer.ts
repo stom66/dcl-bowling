@@ -5,7 +5,7 @@ import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import { getRootPosition } from 'src/client/data/lanePositions'
 
 
-const SHOW_LIGHT_MESH = true
+const SHOW_LIGHT_MESH = false
 
 /** Cubemap gobo (4×3 atlas) wrapped around point lights. */
 const LOBBY_SHADOW_MASK = 'assets/images/spotlights/shadowmask-lobby.png'
