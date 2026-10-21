@@ -67,9 +67,9 @@ const CLICK_ONCE_REST         = `${100 / CLICK_PULSE_SCALE}%`
 const CLICK_ONCE_ORIGIN       = `${((1 - CLICK_PULSE_SCALE) / 2) * 100}%`
 const CLICK_BORDER            = 2
 const CLICK_RADIUS            = 12
-// Half of the resting button. Mobile ignores percent radius (fills square); pixels
-// stay circular at rest and only look slightly rounded-square at pulse peak.
-const CLICK_CIRCLE_RADIUS     = CLICK_SIZE / 2
+// Half the peak pulse size so the fill stays circular at scaleMax. At rest the
+// radius is oversized; desktop clamps that to a circle. Prefer desktop over mobile.
+const CLICK_CIRCLE_RADIUS     = CLICK_PULSE_BOX / 2
 const BUMPER_SIZE             = 107
 const BUMPER_ICON             = 48
 const BUMPER_LABEL_HEIGHT     = 16
