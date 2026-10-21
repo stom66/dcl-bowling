@@ -70,20 +70,22 @@ const NEON_UV_SCROLL_SPEED = 0.1
 
 /**
  * Full GLTF node paths for the split neon meshes (armature / bone / mesh).
- * Tops: neons.001–004. Bodies: neons.005–008 (one neon object per variant file).
+ * Tops: one neon per top file (neons.001–004).
+ * Bodies: each body file ships a shared `neons.005` plus a variant neon
+ * (`neons.006`–`009`). Both must be overridden or only part of the strip scrolls.
  */
-const TOP_NEON_NODE_BY_VARIANT: Record<string, string> = {
-	'01': 'claw-machine-top.armature/Bone.001/neons.001',
-	'02': 'claw-machine-top.armature.001/Bone.001/neons.002',
-	'03': 'claw-machine-top.armature.003/Bone.001/neons.003',
-	'04': 'claw-machine-top.armature.002/Bone.001/neons.004',
+const TOP_NEON_NODE_BY_VARIANT: Record<string, string[]> = {
+	'01': ['claw-machine-top.armature/Bone.001/neons.001'],
+	'02': ['claw-machine-top.armature.001/Bone.001/neons.002'],
+	'03': ['claw-machine-top.armature.003/Bone.001/neons.003'],
+	'04': ['claw-machine-top.armature.002/Bone.001/neons.004'],
 }
 
-const BODY_NEON_NODE_BY_VARIANT: Record<string, string> = {
-	'01': 'Armature.claw-machine/neons.005',
-	'02': 'Armature.claw-machine/neons.006',
-	'03': 'Armature.claw-machine/neons.007',
-	'04': 'Armature.claw-machine/neons.008',
+const BODY_NEON_NODE_BY_VARIANT: Record<string, string[]> = {
+	'01': ['Armature.claw-machine/neons.005', 'Armature.claw-machine/neons.006'],
+	'02': ['Armature.claw-machine/neons.005', 'Armature.claw-machine/neons.007'],
+	'03': ['Armature.claw-machine/neons.005', 'Armature.claw-machine/neons.008'],
+	'04': ['Armature.claw-machine/neons.005', 'Armature.claw-machine/neons.009'],
 }
 
 
@@ -94,7 +96,8 @@ type MachinePhase = 'idle' | 'waiting' | 'action' | 'blend'
 
 type NeonScrollTarget = {
 	entity : Entity
-	offsetX: number
+	/** Shared by every albedo/emissive override on this entity; mutated in place. */
+	offset : { x: number, y: number }
 }
 
 
@@ -360,21 +363,58 @@ export namespace ClawMachine {
 
 	// MARK: attachNeonScroll
 	/**
-	 * Overrides the split neon mesh material and registers the entity for UV scrolling.
-	 * Each entity gets its own random phase in `[0, 1)`.
+	 * Overrides the split neon mesh material(s) and registers the entity for UV scrolling.
+	 * Each entity gets its own random phase in `[0, 1)`. Offsets are shared and mutated
+	 * in place so the renderer sees a dirty put without replacing the Vector2 object.
 	 */
 	function attachNeonScroll(
-		entity  : Entity,
-		nodePath: string,
+		entity   : Entity,
+		nodePaths: string[],
 	): void {
+		if (nodePaths.length === 0) return
+
 		const offsetX = Math.random()
 		GltfNodeModifiers.create(entity, {
-			modifiers: [{
-				path    : nodePath,
+			modifiers: nodePaths.map((path) => ({
+				path,
 				material: neonGradientMaterial(offsetX),
-			}],
+			})),
 		})
-		neonTargets.push({ entity, offsetX })
+
+		const offset = shareNeonOffset(entity)
+		if (!offset) {
+			console.error('ClawMachine: attachNeonScroll: failed to share neon offset')
+			return
+		}
+		neonTargets.push({ entity, offset })
+	}
+
+
+	// MARK: shareNeonOffset
+	/**
+	 * Points every neon albedo and emissive texture on the entity at one offset object.
+	 */
+	function shareNeonOffset(entity: Entity): { x: number, y: number } | undefined {
+		const modifiers = GltfNodeModifiers.getMutableOrNull(entity)
+		if (!modifiers) return undefined
+
+		let shared: { x: number, y: number } | undefined
+		for (const modifier of modifiers.modifiers) {
+			const material = modifier.material?.material
+			if (material?.$case !== 'pbr') continue
+
+			const albedo   = material.pbr.texture
+			const emissive = material.pbr.emissiveTexture
+			if (albedo?.tex?.$case !== 'texture' || !albedo.tex.texture.offset) continue
+
+			if (!shared) shared = albedo.tex.texture.offset
+			else albedo.tex.texture.offset = shared
+
+			if (emissive?.tex?.$case === 'texture') {
+				emissive.tex.texture.offset = shared
+			}
+		}
+		return shared
 	}
 
 
@@ -408,8 +448,8 @@ export namespace ClawMachine {
 			],
 		})
 
-		const neonPath = BODY_NEON_NODE_BY_VARIANT[variant]
-		if (neonPath) attachNeonScroll(body, neonPath)
+		const neonPaths = BODY_NEON_NODE_BY_VARIANT[variant]
+		if (neonPaths) attachNeonScroll(body, neonPaths)
 
 		return body
 	}
@@ -440,8 +480,8 @@ export namespace ClawMachine {
 			],
 		})
 
-		const neonPath = TOP_NEON_NODE_BY_VARIANT[variant]
-		if (neonPath) attachNeonScroll(top, neonPath)
+		const neonPaths = TOP_NEON_NODE_BY_VARIANT[variant]
+		if (neonPaths) attachNeonScroll(top, neonPaths)
 
 		return top
 	}
@@ -625,27 +665,14 @@ export namespace ClawMachine {
 
 
 	// MARK: sys_scrollNeonGradient
-	/** Advances each neon target's UV offset and writes it onto the node modifiers. */
+	/**
+	 * Advances each neon target's shared UV offset. `getMutableOrNull` marks the
+	 * override dirty; the offset object itself is not replaced.
+	 */
 	function sys_scrollNeonGradient(dt: number): void {
 		for (const target of neonTargets) {
-			target.offsetX = wrapUnit(target.offsetX + NEON_UV_SCROLL_SPEED * dt)
-
-			const modifiers = GltfNodeModifiers.getMutableOrNull(target.entity)
-			if (!modifiers) continue
-
-			for (const modifier of modifiers.modifiers) {
-				const material = modifier.material?.material
-				if (material?.$case !== 'pbr') continue
-
-				const albedo   = material.pbr.texture
-				const emissive = material.pbr.emissiveTexture
-				if (albedo?.tex?.$case === 'texture') {
-					albedo.tex.texture.offset = Vector2.create(target.offsetX, 0)
-				}
-				if (emissive?.tex?.$case === 'texture') {
-					emissive.tex.texture.offset = Vector2.create(target.offsetX, 0)
-				}
-			}
+			if (!GltfNodeModifiers.getMutableOrNull(target.entity)) continue
+			target.offset.x = wrapUnit(target.offset.x + NEON_UV_SCROLL_SPEED * dt)
 		}
 	}
 

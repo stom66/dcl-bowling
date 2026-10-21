@@ -23,7 +23,8 @@ export namespace GltfSpawner {
 	let hasSpawned  = false
 	let sceneEntity : Entity | undefined
 	let neonEntity  : Entity | undefined
-	let neonOffsetX = 0
+	/** Shared by every neon albedo/emissive override. Mutated in place so the scroll does not allocate. */
+	let neonOffset  : { x: number, y: number } | undefined
 
 
 	// MARK: init
@@ -93,7 +94,40 @@ export namespace GltfSpawner {
 				material: neonGradientMaterial(0),
 			}],
 		})
+		neonOffset = shareNeonOffset(entity)
+		if (!neonOffset) {
+			console.error('GltfSpawner: spawnNeonMarquee: failed to share neon offset')
+			return
+		}
 		engine.addSystem(sys_scrollNeonGradient)
+	}
+
+
+	// MARK: shareNeonOffset
+	/**
+	 * Points every neon albedo and emissive texture at one offset object.
+	 */
+	function shareNeonOffset(entity: Entity): { x: number, y: number } | undefined {
+		const modifiers = GltfNodeModifiers.getMutableOrNull(entity)
+		if (!modifiers) return undefined
+
+		let shared: { x: number, y: number } | undefined
+		for (const modifier of modifiers.modifiers) {
+			const material = modifier.material?.material
+			if (material?.$case !== 'pbr') continue
+
+			const albedo   = material.pbr.texture
+			const emissive = material.pbr.emissiveTexture
+			if (albedo?.tex?.$case !== 'texture' || !albedo.tex.texture.offset) continue
+
+			if (!shared) shared = albedo.tex.texture.offset
+			else albedo.tex.texture.offset = shared
+
+			if (emissive?.tex?.$case === 'texture') {
+				emissive.tex.texture.offset = shared
+			}
+		}
+		return shared
 	}
 
 
@@ -136,28 +170,15 @@ export namespace GltfSpawner {
 
 
 	// MARK: sys_scrollNeonGradient
-	/** Advances {@link neonOffsetX} and writes a new Vector2 onto each texture offset. */
+	/**
+	 * Advances the shared UV offset. `getMutableOrNull` marks the override dirty
+	 * so the renderer sees that one number; the offset object itself is not replaced.
+	 */
 	function sys_scrollNeonGradient(dt: number): void {
-		if (neonEntity === undefined) return
+		if (neonOffset === undefined || neonEntity === undefined) return
+		if (!GltfNodeModifiers.getMutableOrNull(neonEntity)) return
 
-		neonOffsetX = wrapUnit(neonOffsetX + NEON_UV_SCROLL_SPEED * dt)
-
-		const modifiers = GltfNodeModifiers.getMutableOrNull(neonEntity)
-		if (!modifiers) return
-
-		for (const modifier of modifiers.modifiers) {
-			const material = modifier.material?.material
-			if (material?.$case !== 'pbr') continue
-
-			const albedo   = material.pbr.texture
-			const emissive = material.pbr.emissiveTexture
-			if (albedo?.tex?.$case === 'texture') {
-				albedo.tex.texture.offset = Vector2.create(neonOffsetX, 0)
-			}
-			if (emissive?.tex?.$case === 'texture') {
-				emissive.tex.texture.offset = Vector2.create(neonOffsetX, 0)
-			}
-		}
+		neonOffset.x = wrapUnit(neonOffset.x + NEON_UV_SCROLL_SPEED * dt)
 	}
 
 
