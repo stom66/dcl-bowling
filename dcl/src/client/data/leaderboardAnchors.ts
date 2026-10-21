@@ -29,8 +29,10 @@ export type LeaderboardAnchor = {
 
 /**
  * World-space roots from composed `scene-new.gltf` node transforms
- * (`leaderboard.3frame.weekly` under `leaderboard.3.root`, Hall of Fame under `pins.root`).
- * GLTF world (x, y, z) → DCL (x, y, -z). Rotation is Euler degrees applied as-is.
+ * (`leaderboard.3frame.weekly` under `leaderboard.3.root`; Hall of Fame
+ * empties `hallOfFame.{3,6,10}frame` mark the top-centre of each column).
+ * Position: GLTF (x, y, z) → DCL (x, y, -z).
+ * Yaw: DCL Y = 180 - GLTF Y (matches the scene root's Y=180).
  */
 export const leaderboardAnchors: LeaderboardAnchor[] = [
 	{
@@ -65,17 +67,17 @@ export const leaderboardAnchors: LeaderboardAnchor[] = [
 	},
 	{
 		id      : 'hallOfFame-3',
-		position: Vector3.create(-21.0414, 128.7252, 18.6640),
+		position: Vector3.create(-20.4265, 130.5134, 18.1612),
 		rotation: Vector3.create(0, 315, 0),
 	},
 	{
 		id      : 'hallOfFame-6',
-		position: Vector3.create(-19.9266, 128.7252, 19.7788),
+		position: Vector3.create(-19.3704, 130.5134, 19.2173),
 		rotation: Vector3.create(0, 315, 0),
 	},
 	{
 		id      : 'hallOfFame-10',
-		position: Vector3.create(-18.8126, 128.7252, 20.8927),
+		position: Vector3.create(-18.3142, 130.5134, 20.2735),
 		rotation: Vector3.create(0, 315, 0),
 	},
 ]

@@ -15,11 +15,12 @@ const DEBUG_FORCE_SHOW = true
 
 const FIRST_ROW_OFFSET_Y     = 1.15
 const ROW_WIDTH              = 1.70
-const HOF_FIRST_ROW_OFFSET_Y = 1.5
 const HOF_ROW_WIDTH          = 1.20
 const ROW_HEIGHT             = 0.10
 const ROW_SPACING            = 0.0075
 const ROW_FORWARD_Z          = 0.0375
+/** Empty is top-centre of the column; first row centre sits half a row below it. */
+const HOF_FIRST_ROW_OFFSET_Y = -ROW_HEIGHT / 2
 const MAX_RANKED_ROWS        = 10
 const MAX_HALL_OF_FAME_ROWS  = 10
 /** Glyph height as a fraction of `ROW_HEIGHT`. 1 fills the row; 0.85 matches the avatars. */
@@ -119,13 +120,14 @@ function getDummyHallOfFameRows(frameCount: GameFrameCount): PerfectGameEntry[] 
 
 // MARK: formatAchievedAt
 /**
- * UTC calendar date for a wall timestamp.
+ * UTC calendar date for a wall timestamp as `dd-mm-yy`.
  */
 function formatAchievedAt(achievedAt: number): string {
 	const date  = new Date(achievedAt)
-	const month = String(date.getUTCMonth() + 1).padStart(2, '0')
 	const day   = String(date.getUTCDate()).padStart(2, '0')
-	return `${date.getUTCFullYear()}-${month}-${day}`
+	const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+	const year  = String(date.getUTCFullYear() % 100).padStart(2, '0')
+	return `${day}-${month}-${year}`
 }
 
 
@@ -265,13 +267,14 @@ function rowFontSize(): number {
  * Empty transform at a row centre. Rank, name, score, and avatar parent here.
  */
 function createRowRoot(
-	parent : Entity,
-	offsetY: number,
+	parent  : Entity,
+	offsetY : number,
+	forwardZ: number = ROW_FORWARD_Z,
 ): Entity {
 	const entity = engine.addEntity()
 	Transform.create(entity, {
 		parent  : parent,
-		position: Vector3.create(0, offsetY, ROW_FORWARD_Z),
+		position: Vector3.create(0, offsetY, forwardZ),
 	})
 	return entity
 }
@@ -447,7 +450,8 @@ class RankedBoard {
 
 // MARK: HallOfFameBoard
 /**
- * One perfect-game overlay for a single game length.
+ * One perfect-game column: avatar, display name, and date per record.
+ * Anchor empty is the top-centre of the column; rows stack downward.
  */
 class HallOfFameBoard {
 	private readonly frameCount: GameFrameCount
@@ -461,11 +465,12 @@ class HallOfFameBoard {
 		this.rows    = []
 
 		for (let index = 0; index < MAX_HALL_OF_FAME_ROWS; index++) {
-			const rowRoot = createRowRoot(root, rowY(index, HOF_FIRST_ROW_OFFSET_Y))
+			// Negated forward: HoF yaw is 180° from the ranked-board convention.
+			const rowRoot = createRowRoot(root, rowY(index, HOF_FIRST_ROW_OFFSET_Y), -ROW_FORWARD_Z)
 			this.rows.push({
-				name  : createRowText(rowRoot, layout.name.left,   TextAlignMode.TAM_MIDDLE_LEFT,  layout.name.width),
-				date  : createRowText(rowRoot, layout.date.right,  TextAlignMode.TAM_MIDDLE_RIGHT, layout.date.width),
 				avatar: createAvatarEntity(rowRoot, layout.avatar.center),
+				name  : createRowText(rowRoot, layout.name.left,  TextAlignMode.TAM_MIDDLE_LEFT,  layout.name.width),
+				date  : createRowText(rowRoot, layout.date.right, TextAlignMode.TAM_MIDDLE_RIGHT, layout.date.width),
 			})
 		}
 	}
@@ -485,9 +490,9 @@ class HallOfFameBoard {
 		for (let index = 0; index < this.rows.length; index++) {
 			const row  = this.rows[index]
 			const data = newestFirst[index]
+			setAvatar(row.avatar, data?.userId ?? '')
 			setRowText(row.name, data ? truncateName(data.displayName) : '')
 			setRowText(row.date, data ? formatAchievedAt(data.achievedAt) : '')
-			setAvatar(row.avatar, data?.userId ?? '')
 		}
 	}
 }

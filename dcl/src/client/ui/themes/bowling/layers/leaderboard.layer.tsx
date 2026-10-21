@@ -65,12 +65,15 @@ function pickBoard(
 
 
 // MARK: formatAchievedAt
-/** UTC calendar date for a wall timestamp. */
+/**
+ * UTC calendar date as `dd-mm-yy`.
+ */
 function formatAchievedAt(achievedAt: number): string {
-	const date = new Date(achievedAt)
-	const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+	const date  = new Date(achievedAt)
 	const day   = String(date.getUTCDate()).padStart(2, '0')
-	return `${date.getUTCFullYear()}-${month}-${day}`
+	const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+	const year  = String(date.getUTCFullYear() % 100).padStart(2, '0')
+	return `${day}-${month}-${year}`
 }
 
 
