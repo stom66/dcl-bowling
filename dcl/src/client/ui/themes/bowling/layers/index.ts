@@ -41,9 +41,10 @@ const IS_DEV = process.env.NODE_ENV === 'development'
  * HUD; records and stats sit with it. The top-right toggles paint after those
  * windows. Ticket balance sits in the top of the right zone.
  * The playtest panel sits in that same zone, below the ticket balance, while
- * `GameSettings.PLAYTEST_DEBUG_PANEL` is on. It stays hidden until ten seconds
- * after loading completes. Bowl-o-tron 3000 is stacked under it and only
- * shows during the local player's turn.
+ * `GameSettings.PLAYTEST_DEBUG_PANEL` is on. Desktop only — disabled on
+ * mobile. It stays hidden until ten seconds after loading completes.
+ * Bowl-o-tron 3000 is stacked under it and only shows during the local
+ * player's turn.
  * Letterbox hides that top HUD (status, leave, toolbar, tickets, playtest,
  * and Bowl-o-tron) for the duration of a group roll replay.
  * The end-of-game summary sits above the letterbox. Login rewards sit above

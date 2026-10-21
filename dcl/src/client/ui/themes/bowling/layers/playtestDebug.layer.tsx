@@ -1,4 +1,5 @@
 import { Vector3 } from '@dcl/sdk/math'
+import { getPlatform, isMobile } from '@dcl/sdk/platform'
 import ReactEcs from '@dcl/sdk/react-ecs'
 import { alpha, ButtonText, Column, darken, getTheme, Icon, Layer, Row, Text, UiBox, ZoneType } from '@stom66/dcl-ui-component-kit'
 
@@ -28,16 +29,36 @@ const PANEL_TOP          = TOGGLE_BUTTONS_SIZE + TOGGLE_GAP + TICKET_CHIP_HEIGHT
 const PLAYTEST_REVEAL_DELAY = 10 * 1000
 
 
+// MARK: waitForPlatform
+/**
+ * Resolves once `getPlatform()` is non-null. Until then `isMobile()` is
+ * false on every client, including mobile.
+ */
+function waitForPlatform(): Promise<void> {
+	if (getPlatform() !== null) return Promise.resolve()
+	return new Promise((resolve) => {
+		const id = timers.setInterval(() => {
+			if (getPlatform() === null) return
+			timers.clearInterval(id)
+			resolve()
+		}, 100)
+	})
+}
+
+
 // MARK: PlaytestDebugLayer
 /**
  * Right-top playtest windows, stacked under the ticket balance.
- * Ticket and unlock actions stay hidden until ten seconds after
- * `ClientEvents.LOAD_COMPLETE`. Bowl-o-tron 3000 shows for the local
- * player's turn (`ON_MY_FRAME_START`) and hides when that turn ends
+ * Desktop only — hidden on mobile. Ticket and unlock actions stay
+ * hidden until ten seconds after `ClientEvents.LOAD_COMPLETE`.
+ * Bowl-o-tron 3000 shows for the local player's turn
+ * (`ON_MY_FRAME_START`) and hides when that turn ends
  * (`ON_MY_FRAME_END`).
  * Registered only while `GameSettings.PLAYTEST_DEBUG_PANEL` is on.
  */
 export class PlaytestDebugLayer extends Layer {
+	/** True once the explorer reports a non-mobile platform. */
+	private desktopEnabled  = false
 	/** True once the post-load delay has elapsed. */
 	private playtestReady   = false
 	/** True from the local player's frame start until that frame ends. */
@@ -65,8 +86,18 @@ export class PlaytestDebugLayer extends Layer {
 	// MARK: bindVisibility
 	/**
 	 * Shows each window on its own event, and keeps both off screen during letterbox.
+	 * Resolves the explorer platform once so mobile never enables these windows.
 	 */
 	private bindVisibility() {
+		void waitForPlatform().then(() => {
+			if (isMobile()) {
+				console.log('PlaytestDebugLayer: bindVisibility: skipped on mobile')
+				return
+			}
+			this.desktopEnabled = true
+			this.syncVisibility()
+		})
+
 		eventBus.on(ClientEvents.LOAD_COMPLETE, () => {
 			timers.setTimeout(() => {
 				this.playtestReady = true
@@ -116,10 +147,12 @@ export class PlaytestDebugLayer extends Layer {
 	// MARK: syncVisibility
 	/**
 	 * Shows the layer when either window should be on screen.
-	 * A later show does not restart the slide if the layer is already in.
+	 * Desktop only. A later show does not restart the slide if the layer is already in.
 	 */
 	private syncVisibility(duration = 0.2) {
-		const shouldShow = !this.letterboxHidden && (this.playtestReady || this.turnActive)
+		const shouldShow = this.desktopEnabled
+			&& !this.letterboxHidden
+			&& (this.playtestReady || this.turnActive)
 		if (shouldShow) {
 			if (this.visibility.isHidden) this.show(duration)
 			return
