@@ -11,6 +11,7 @@ export const DEFAULT_REWARD_BUTTON_LABEL = 'Yes! I won!'
 const STREAK_DAY_FIRST           = 2
 const STREAK_DAY_LAST            = 100
 const STREAK_REWARD_PREFIX       = 'streak-day-'
+const WELCOME_TICKETS            = 20
 const UPDATE_TICKETS             = 5
 const PLAYTESTER_SPECIAL_TICKETS = 10
 const SPECIAL_PLAYER_TICKETS     = 25
@@ -65,6 +66,16 @@ export type PlayerRewardsState = {
 
 
 export const REWARDS: RewardDefinition[] = [
+	{
+		id         : 'welcome-to-fastlane',
+		title      : 'Welcome to Fastlane!',
+		message    : 'Congrats on your first visit! Here are {tickets} tickets to get you going.',
+		startsAt   : 0,
+		endsAt     : REWARD_ENDS_OPEN,
+		isEligible : (player) => player.activity.firstPlayedAt === 0,
+		reward     : { type: 'tickets', amount: WELCOME_TICKETS },
+		buttonLabel: 'Let\'s bowl!',
+	},
 	{
 		id         : 'longterm-player-special',
 		title      : 'The {name} Special',
