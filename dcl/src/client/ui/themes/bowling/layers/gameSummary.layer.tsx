@@ -25,6 +25,7 @@ import { getOrdinalSuffix } from 'src/shared/utils/strings'
 import { userProfileCache } from 'src/shared/utils/userProfileCache'
 
 import { ClientStore } from 'src/client/clientStore'
+import { UiParticles } from 'src/client/ui/particles/uiParticleLayer'
 import {
 	bowlingRussoOneAlphaNumericAtlas,
 	bowlingRussoOneSymbolsAtlas,
@@ -58,6 +59,9 @@ const clientStore = ClientStore.getInstance()
 export class GameSummaryLayer extends Layer {
 	private card: GameSummaryCard | undefined
 
+	/** True after the ticket stream has fired for the active summary card. */
+	private streamedTickets = false
+
 	constructor() {
 		super({
 			id         : 'bowling-game-summary',
@@ -74,12 +78,16 @@ export class GameSummaryLayer extends Layer {
 		})
 
 		eventBus.on(ClientEvents.ON_GAME_SUMMARY, (card: GameSummaryCard) => {
-			this.card = card
+			this.card            = card
+			this.streamedTickets = false
+			UiParticles.burst()
+			UiParticles.snow()
 			this.show(0.8)
 		})
 		eventBus.on(ClientEvents.ON_GAME_SUMMARY_END, () => {
 			this.hide(0.8)
-			this.card = undefined
+			this.card            = undefined
+			this.streamedTickets = false
 		})
 	}
 
@@ -145,6 +153,19 @@ export class GameSummaryLayer extends Layer {
 	}
 
 
+	// MARK: maybeStreamTickets
+	/**
+	 * Fires the ticket stream once when this match's payout first syncs with a
+	 * positive total — same celebration as claiming a ticket reward popup.
+	 */
+	private maybeStreamTickets(total: number) {
+		if (this.streamedTickets) return
+		this.streamedTickets = true
+		if (total <= 0) return
+		UiParticles.stream()
+	}
+
+
 	// MARK: renderTicketPayout
 	/**
 	 * Line-by-line ticket rows for the match being celebrated, plus the total.
@@ -170,6 +191,7 @@ export class GameSummaryLayer extends Layer {
 		}
 
 		const total = lines.reduce((sum, line) => sum + line.tickets, 0)
+		this.maybeStreamTickets(total)
 		return (
 			<UiBox
 				key            = "game-summary-tickets"
