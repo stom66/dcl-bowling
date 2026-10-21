@@ -214,7 +214,7 @@ export class GameSummaryLayer extends Layer {
 					>
 						<Text
 							value     = {`${line.label} × ${line.count}`}
-							fontSize  = {22}
+							fontSize  = {13}
 							fontColor = {fontColor}
 							textAlign = "middle-left"
 							width     = {260}
@@ -222,7 +222,7 @@ export class GameSummaryLayer extends Layer {
 						/>
 						<Text
 							value     = {`+${line.tickets}`}
-							fontSize  = {22}
+							fontSize  = {13}
 							fontColor = {fontColor}
 							textAlign = "middle-right"
 							width     = {80}
