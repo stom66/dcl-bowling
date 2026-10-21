@@ -11,7 +11,7 @@ import { getAnchorFrameCount, getAnchorPeriod, isHallOfFameAnchor, leaderboardAn
 
 
 // Temporary preview: dummy rows on every board. Turn off before shipping.
-const DEBUG_FORCE_SHOW = true
+const DEBUG_FORCE_SHOW = false
 
 const FIRST_ROW_OFFSET_Y     = 1.15
 const ROW_WIDTH              = 1.70
