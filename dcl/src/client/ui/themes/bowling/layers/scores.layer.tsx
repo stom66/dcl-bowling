@@ -50,7 +50,22 @@ export class ScoresLayer extends Layer {
 		})
 		eventBus.on(ClientEvents.ON_GAME_SUMMARY,              () => { this.hide(0.8) })
 		eventBus.on(ClientEvents.ON_GROUP_GAME_END,            () => { this.hide(0.8) })
+		eventBus.on(ClientEvents.REQUEST_LEAVE_GAME,           () => { this.clearAndHide() })
 		eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_END,   () => { this.show(0.8) })
+	}
+
+
+	// MARK: clearAndHide
+	/**
+	 * Drops the cached scorecard and hides the board when the local player leaves.
+	 * Without this, lastKnownScores keep the UI visible after laneIndex is cleared.
+	 */
+	private clearAndHide() {
+		this.lastKnownScores      = null
+		this.lastKnownLeaves      = null
+		this.lastKnownLeftUserIds = []
+		this.lastKnownFrameCount  = GameSettings.DEFAULT_FRAME_COUNT
+		this.hide(0.8)
 	}
 
 
