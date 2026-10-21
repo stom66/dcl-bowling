@@ -7,6 +7,7 @@ export const TICKETS_FOR_WIN            = 3
 export const TICKETS_PER_STRIKE         = 2
 export const TICKETS_PER_SPARE          = 1
 export const TICKETS_FIRST_GAME_TODAY   = 1
+export const TICKETS_FOR_PERFECT        = 100
 
 
 export type GameTicketPayoutInput = {
@@ -15,6 +16,7 @@ export type GameTicketPayoutInput = {
 	strikeCount    : number
 	spareCount     : number
 	firstGameToday : boolean
+	isPerfect      : boolean
 }
 
 
@@ -62,6 +64,13 @@ export function buildGameTicketLines(input: GameTicketPayoutInput): GameTicketLi
 			label   : 'First game today',
 			count   : 1,
 			tickets : TICKETS_FIRST_GAME_TODAY,
+		})
+	}
+	if (input.isPerfect) {
+		lines.push({
+			label   : 'Perfect game',
+			count   : 1,
+			tickets : TICKETS_FOR_PERFECT,
 		})
 	}
 

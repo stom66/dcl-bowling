@@ -259,12 +259,15 @@ export namespace PlayerProfileManager {
 			if (!session) continue
 
 			const firstGameToday = !session.stats.get().matches.some((match) => utcDay(match.startedAt) === today)
+			const frameCount     = normalizeFrameCount(result.frameCount)
+			const isPerfect      = Math.max(0, Math.floor(result.score)) === getPerfectScore(frameCount)
 			const lines          = buildGameTicketLines({
-				frameCount     : result.frameCount,
+				frameCount     : frameCount,
 				sharesTopScore : result.sharesTopScore,
 				strikeCount    : result.strikeCount,
 				spareCount     : result.spareCount,
 				firstGameToday : firstGameToday,
+				isPerfect      : isPerfect,
 			})
 			const total = sumTicketLines(lines)
 
