@@ -86,7 +86,7 @@
 		{
 			"bufferView":0,
 			"componentType":5126,
-			"count":5846,
+			"count":6842,
 			"max":[
 				12.657659530639648,
 				20.48346519470215,
@@ -102,45 +102,45 @@
 		{
 			"bufferView":1,
 			"componentType":5126,
-			"count":5846,
+			"count":6842,
 			"type":"VEC3"
 		},
 		{
 			"bufferView":2,
 			"componentType":5126,
-			"count":5846,
+			"count":6842,
 			"type":"VEC2"
 		},
 		{
 			"bufferView":3,
 			"componentType":5123,
-			"count":26400,
+			"count":29664,
 			"type":"SCALAR"
 		}
 	],
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":70152,
+			"byteLength":82104,
 			"byteOffset":0,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":70152,
-			"byteOffset":70152,
+			"byteLength":82104,
+			"byteOffset":82104,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":46768,
-			"byteOffset":140304,
+			"byteLength":54736,
+			"byteOffset":164208,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":52800,
-			"byteOffset":187072,
+			"byteLength":59328,
+			"byteOffset":218944,
 			"target":34963
 		}
 	],
@@ -152,7 +152,7 @@
 	],
 	"buffers":[
 		{
-			"byteLength":239872,
+			"byteLength":278272,
 			"uri":"neons-animated.bin"
 		}
 	]
