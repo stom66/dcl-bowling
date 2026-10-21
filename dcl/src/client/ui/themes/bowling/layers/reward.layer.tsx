@@ -41,7 +41,7 @@ const UNLOCK_THUMB_SIZE = 160
 const UNLOCK_SPIN_SIZE  = 320
 const PANEL_WIDTH      = 640
 const SLIDE_DURATION   = 0.2
-/** Extra wait after loading finishes before the first reward slides on. */
+/** Extra wait after the load fly-in finishes before the first reward slides on. */
 const OPEN_DELAY_MS    = 3000
 /** Extra wait after a reward slides off before the next one slides on. */
 const BETWEEN_DELAY_MS = 1000
@@ -58,15 +58,16 @@ const clientStore = ClientStore.getInstance()
 
 // MARK: RewardLayer
 /**
- * One pending login reward at a time. The grant happens when the button is pressed.
+ * One pending login reward at a time. Waits until the load fly-in has handed
+ * control back before the first popup. The grant happens when the button is pressed.
  */
 export class RewardLayer extends Layer {
-	private loadFinished = false
-	private showAfterMs  = 0
-	private displayed    : PendingRewardOffer | undefined
-	private dismissingId : string | undefined
-	private replacing    = false
-	private sessionOpen  = false
+	private flyInFinished = false
+	private showAfterMs   = 0
+	private displayed     : PendingRewardOffer | undefined
+	private dismissingId  : string | undefined
+	private replacing     = false
+	private sessionOpen   = false
 
 	constructor() {
 		super({
@@ -83,9 +84,11 @@ export class RewardLayer extends Layer {
 			},
 		})
 
-		eventBus.on(ClientEvents.LOAD_COMPLETE, () => {
-			this.loadFinished = true
-			this.showAfterMs  = Date.now() + OPEN_DELAY_MS
+		// Wait for the load fly-in, not LOAD_COMPLETE — that event starts the
+		// fly-in, and opening a reward orbit would cut the cinematic short.
+		eventBus.on(ClientEvents.ON_LOAD_FLY_IN_END, () => {
+			this.flyInFinished = true
+			this.showAfterMs   = Date.now() + OPEN_DELAY_MS
 		})
 		engine.addSystem(() => { this.syncOffer() })
 	}
@@ -113,11 +116,11 @@ export class RewardLayer extends Layer {
 
 	// MARK: syncOffer
 	/**
-	 * Shows one offer after loading finishes, with a short pause before the
-	 * first window and between consecutive windows.
+	 * Shows one offer after the load fly-in finishes, with a short pause
+	 * before the first window and between consecutive windows.
 	 */
 	private syncOffer() {
-		if (!this.loadFinished) return
+		if (!this.flyInFinished) return
 
 		const offer = this.getOffer()
 		if (this.dismissingId) {
