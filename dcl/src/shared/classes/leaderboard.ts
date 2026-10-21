@@ -93,13 +93,15 @@ export class Leaderboard {
 	// MARK: applyScore
 	/**
 	 * Applies one incoming score to the in-memory leaderboard entries.
-	 * Replaces the player's stored row when the new score beats that player's
-	 * personal best, not the board's highest score.
+	 * Ignores scores below 1. Replaces the player's stored row when the new
+	 * score beats that player's personal best, not the board's highest score.
 	 */
 	private async applyScore(
 		entries: LeaderboardEntry[],
 		score  : LeaderboardScore
 	): Promise<void> {
+		if (!Number.isFinite(score.score) || score.score < 1) return
+
 		const userIdKey   = score.userId.toLowerCase()
 		const displayName = await userProfileCache.getDisplayName(score.userId)
 
@@ -148,6 +150,8 @@ export class Leaderboard {
 		const bestByUser = new Map<string, LeaderboardEntry>()
 
 		for (const entry of entries) {
+			if (!Number.isFinite(entry.score) || entry.score < 1) continue
+
 			const key     = entry.userId.toLowerCase()
 			const current = bestByUser.get(key)
 
