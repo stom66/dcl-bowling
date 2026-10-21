@@ -1,12 +1,12 @@
 {
 	"asset":{
-		"generator":"Khronos glTF Blender I/O v4.5.51",
+		"generator":"Khronos glTF Blender I/O v5.2.40",
 		"version":"2.0"
 	},
 	"scene":0,
 	"scenes":[
 		{
-			"name":"Scene",
+			"name":"control.direction",
 			"nodes":[
 				1
 			]
@@ -26,10 +26,18 @@
 	],
 	"materials":[
 		{
+			"emissiveFactor":[
+				0.3100000023841858,
+				0.3100000023841858,
+				0.3100000023841858
+			],
+			"emissiveTexture":{
+				"index":0
+			},
 			"name":"AtlasGradient_Mat",
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
-					"index":0
+					"index":1
 				},
 				"metallicFactor":0,
 				"roughnessFactor":0.8451327085494995
@@ -38,7 +46,7 @@
 	],
 	"meshes":[
 		{
-			"name":"Mesh",
+			"name":"Plane",
 			"primitives":[
 				{
 					"attributes":{
@@ -56,6 +64,10 @@
 		{
 			"sampler":0,
 			"source":0
+		},
+		{
+			"sampler":0,
+			"source":0
 		}
 	],
 	"images":[
@@ -69,61 +81,61 @@
 		{
 			"bufferView":0,
 			"componentType":5126,
-			"count":246,
+			"count":222,
 			"max":[
-				0.1771465241909027,
-				0.038775987923145294,
-				2.0327701568603516
+				0.17714650928974152,
+				0.06397876888513565,
+				2.0615453720092773
 			],
 			"min":[
-				-0.17714595794677734,
-				0,
-				-2.980232594040899e-08
+				-0.17714594304561615,
+				-1.4221253508139853e-08,
+				-1.562522733422611e-08
 			],
 			"type":"VEC3"
 		},
 		{
 			"bufferView":1,
 			"componentType":5126,
-			"count":246,
+			"count":222,
 			"type":"VEC3"
 		},
 		{
 			"bufferView":2,
 			"componentType":5126,
-			"count":246,
+			"count":222,
 			"type":"VEC2"
 		},
 		{
 			"bufferView":3,
 			"componentType":5123,
-			"count":804,
+			"count":552,
 			"type":"SCALAR"
 		}
 	],
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":2952,
+			"byteLength":2664,
 			"byteOffset":0,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":2952,
-			"byteOffset":2952,
+			"byteLength":2664,
+			"byteOffset":2664,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":1968,
-			"byteOffset":5904,
+			"byteLength":1776,
+			"byteOffset":5328,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":1608,
-			"byteOffset":7872,
+			"byteLength":1104,
+			"byteOffset":7104,
 			"target":34963
 		}
 	],
@@ -135,7 +147,7 @@
 	],
 	"buffers":[
 		{
-			"byteLength":9480,
+			"byteLength":8208,
 			"uri":"control.direction.bin"
 		}
 	]
