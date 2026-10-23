@@ -5,12 +5,15 @@ import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 import { timers } from 'src/shared/utils/timers'
 
 import { feedback } from 'src/playtest-feedback/lib'
-import { feedbackPrior, gaveFeedbackBeforeVisit, setIntroAccepted, setIntroDeclined, showToast } from 'src/playtest-feedback/lib/client/state'
+import { feedbackPrior, gaveFeedbackBeforeVisit, setExternalHold, setIntroAccepted, setIntroDeclined, showToast } from 'src/playtest-feedback/lib/client/state'
 import { releaseFeedbackUi } from 'src/playtest-feedback/lib/client/ui'
 
 
 /** How long after the load fly-in before the intro opens. */
 const INTRO_DELAY_MS = 20 * 1000
+
+/** How long after the last login reward closes before feedback may show again. */
+const AFTER_REWARDS_DELAY_MS = 2 * 1000
 
 /** How long an intro reply notice stays up. */
 const NOTICE_MS = 4500
@@ -32,8 +35,8 @@ const AFTER_FIRST_GAME_HELLO = ['finishedGame'] as const
 /** The two questions that follow that line. */
 const AFTER_FIRST_GAME = ['playGame', 'anythingWrong'] as const
 
-let askedStartGame  = false
-let askedFirstGame  = false
+let askedStartGame = false
+let askedFirstGame = false
 
 
 setIntroAccepted(() => {
@@ -59,9 +62,31 @@ function onFlyInEnd(): void {
 }
 
 
+// MARK: onRewardOpen
+/**
+ * Tucks any open feedback panel away while login rewards are on screen.
+ * Queued asks stay parked until {@link onRewardClose}.
+ */
+function onRewardOpen(): void {
+	setExternalHold(true)
+}
+
+
+// MARK: onRewardClose
+/**
+ * Lets feedback show again after {@link AFTER_REWARDS_DELAY_MS}.
+ */
+function onRewardClose(): void {
+	timers.setTimeout(() => {
+		setExternalHold(false)
+	}, AFTER_REWARDS_DELAY_MS)
+}
+
+
 // MARK: openIntroIfNew
 /**
  * Shows the intro after the delay, unless this player already submitted feedback.
+ * While rewards hold the queue, the intro parks and opens once the hold clears.
  */
 async function openIntroIfNew(): Promise<void> {
 	const given = await feedbackPrior()
@@ -114,6 +139,8 @@ function subscribeOnFirstTick(): void {
 	engine.removeSystem(subscribeOnFirstTick)
 	if (isServer()) return
 	eventBus.on(ClientEvents.ON_LOAD_FLY_IN_END, onFlyInEnd)
+	eventBus.on(ClientEvents.ON_REWARD_OPEN, onRewardOpen)
+	eventBus.on(ClientEvents.ON_REWARD_CLOSE, onRewardClose)
 	eventBus.on(ClientEvents.ON_MY_FRAME_END, onFirstTurnEnd)
 	eventBus.on(ClientEvents.ON_GAME_SUMMARY_END, onFirstGameComplete)
 }

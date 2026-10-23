@@ -159,7 +159,39 @@ function isTaken(questionId: string, trigger: string): boolean {
   return shown.has(`${questionId}|${trigger}`) || (current !== undefined && same(current)) || queue.some(same)
 }
 
+// LOCAL PATCH (bowling): reward popups tuck the panel away without declining or skipping.
+let externalHold = false
+
+
+// MARK: setExternalHold
+/**
+ * When true, hides any open intro or question panel and parks it on the queue
+ * so nothing else opens until the hold is cleared. Does not change participation.
+ */
+export function setExternalHold(hold: boolean): void {
+  if (hold === externalHold) return
+  externalHold = hold
+  if (!hold) {
+    processQueue()
+    return
+  }
+  if (feedback.phase === 'open' && current) {
+    if (cameBack()) keepAnswer()
+    else current.draft = hasAnswer() ? { rating: feedback.rating, comment: feedback.comment } : undefined
+    current.at = step
+    queue.unshift(current)
+    current = undefined
+  }
+  if (feedback.phase !== 'idle') {
+    console.log('[FEEDBACK] setExternalHold: tucking panel away')
+    feedback.phase = 'idle'
+    feedback.question = undefined
+  }
+}
+
+
 function processQueue(): void {
+  if (externalHold) return
   const alive = isServerAlive()
   // An Intro alone shows without the server, its answer waits in the outbox. One with Questions
   // behind it waits for the server with them, so Give feedback leads straight into the first.
