@@ -160,9 +160,6 @@ export class BowlingControlsLayer extends Layer {
 			this.setIndicator('POSITION', true)
 			this.show(0.8)
 		})
-		eventBus.on(ClientEvents.ON_MY_ROLL_REQUEST, () => { this.hide(0.8) })
-		eventBus.on(ClientEvents.ON_MY_ROLL_END,     () => { this.hide(0.8) })
-		eventBus.on(ClientEvents.ON_GROUP_GAME_END,  () => { this.hide(0.8) })
 	}
 
 
@@ -302,9 +299,6 @@ export class BumperToggleLayer extends Layer {
 		})
 
 		eventBus.on(ClientEvents.ON_MY_ROLL_START, () => { this.show(0.8) })
-		eventBus.on(ClientEvents.ON_MY_ROLL_REQUEST, () => { this.hide(0.8) })
-		eventBus.on(ClientEvents.ON_MY_ROLL_END,     () => { this.hide(0.8) })
-		eventBus.on(ClientEvents.ON_GROUP_GAME_END,  () => { this.hide(0.8) })
 	}
 
 
@@ -466,9 +460,6 @@ export class ClickToSetLayer extends Layer {
 				this.flashClickToSet()
 			}, 1500)
 		})
-		eventBus.on(ClientEvents.ON_MY_ROLL_REQUEST, () => { this.hide(0.8) })
-		eventBus.on(ClientEvents.ON_MY_ROLL_END,     () => { this.hide(0.8) })
-		eventBus.on(ClientEvents.ON_GROUP_GAME_END,  () => { this.hide(0.8) })
 	}
 
 
@@ -646,6 +637,38 @@ export class ClickToSetLayer extends Layer {
 }
 
 export const clickToSetLayer = new ClickToSetLayer()
+
+
+// MARK: HideBowlingControlsHud
+/**
+ * Hides the roll HUD (bar, bumper toggle, click-to-set). Safe to call when
+ * already hidden — used as a belt-and-braces clear whenever it is not the
+ * local player's active roll.
+ */
+export function HideBowlingControlsHud(duration = 0.8) {
+	bowlingControlsLayer.hide(duration)
+	bumperToggleLayer.hide(duration)
+	clickToSetLayer.hide(duration)
+}
+
+
+/** Events that mean the local player is not aiming a roll right now. */
+const HIDE_WHEN_NOT_MY_TURN = [
+	ClientEvents.ON_MY_ROLL_REQUEST,
+	ClientEvents.ON_MY_ROLL_END,
+	ClientEvents.ON_GROUP_ROLL_START,
+	ClientEvents.ON_GROUP_ROLL_END,
+	ClientEvents.ON_MY_FRAME_END,
+	ClientEvents.ON_GROUP_FRAME_START,
+	ClientEvents.ON_GROUP_FRAME_END,
+	ClientEvents.ON_GROUP_GAME_END,
+	ClientEvents.ON_GAME_JOINED,
+	ClientEvents.REQUEST_LEAVE_GAME,
+] as const
+
+for (const event of HIDE_WHEN_NOT_MY_TURN) {
+	eventBus.on(event, () => { HideBowlingControlsHud(0.8) })
+}
 
 
 // MARK: SetIndicator

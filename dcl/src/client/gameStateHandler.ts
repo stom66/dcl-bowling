@@ -20,13 +20,19 @@ export namespace gameStateHandler {
 	eventBus.on(ClientEvents.ON_GROUP_GAME_START,         (data: LaneSnapshot)                  => { onGameStart(data) })
 
 	eventBus.on(ClientEvents.ON_MY_ROLL_START,            (data: NotifyPlayerRollStartPayload)  => { onMyRollStart(data) })
-	eventBus.on(ClientEvents.ON_MY_ROLL_END,              (data: { userId: string })            => { onMyRollEnd(data) })
+	eventBus.on(ClientEvents.ON_MY_ROLL_END,              (data: { userId: string })            => { clearBowlingControls() })
+	eventBus.on(ClientEvents.ON_MY_FRAME_END,             ()                                     => { clearBowlingControls() })
 
 	eventBus.on(ClientEvents.ON_GROUP_ROLL_START,         (data: NotifyPlayerRollStartPayload)  => { onGroupRollStart(data) })
+	eventBus.on(ClientEvents.ON_GROUP_ROLL_END,           ()                                     => { clearBowlingControls() })
+	eventBus.on(ClientEvents.ON_GROUP_FRAME_START,        ()                                     => { clearBowlingControls() })
+	eventBus.on(ClientEvents.ON_GROUP_FRAME_END,          ()                                     => { clearBowlingControls() })
 	eventBus.on(ClientEvents.ON_GROUP_ROLL_PLAYBACK_RECEIVED, (data: NotifyPlayerRollPayload)      => { onRollPlaybackReceived(data) })
 
 	eventBus.on(ClientEvents.ON_NON_GROUP_ROLL_START,         (data: NotifyPlayerRollStartPayload)  => { onNonGroupRollStart(data) })
 	eventBus.on(ClientEvents.ON_NON_GROUP_ROLL_PLAYBACK_RECEIVED, (data: NotifyPlayerRollPayload)      => { onRollPlaybackReceived(data) })
+
+	eventBus.on(ClientEvents.REQUEST_LEAVE_GAME,          ()                                     => { clearBowlingControls() })
 
 
 	// MARK: Vars
@@ -39,10 +45,20 @@ export namespace gameStateHandler {
 	// MARK: Init
 	export function init() {
 		eventBus.on(ClientEvents.ON_GROUP_GAME_END, (data: LaneSnapshot) => {
+			clearBowlingControls()
 			if (laneVisuals[data.laneIndex]) {
 				laneVisuals[data.laneIndex]?.destroy()
 			}
 		})
+	}
+
+
+	// MARK: clearBowlingControls
+	/** Drops the local aim arrow if it exists. Safe when already cleared. */
+	function clearBowlingControls() {
+		if (!bowlingControls) return
+		bowlingControls.Destroy()
+		bowlingControls = undefined
 	}
 
 	function createLaneVisuals(
@@ -67,6 +83,7 @@ export namespace gameStateHandler {
 	// MARK: onJoinGame
 	function onJoinGame(data: LaneSnapshot) {
 		console.log('gameStateHandler: onJoinGame: data', data)
+		clearBowlingControls()
 	}
 
 
@@ -85,6 +102,7 @@ export namespace gameStateHandler {
 	function onGroupRollStart(data: NotifyPlayerRollStartPayload) {
 		console.log('gameStateHandler: onGroupRollStart: data', data)
 
+		clearBowlingControls()
 		createLaneVisuals(data)
 	}
 
@@ -93,10 +111,7 @@ export namespace gameStateHandler {
 		
 		const lv = createLaneVisuals(data)
 
-		if (bowlingControls) {
-			bowlingControls.Destroy()
-			bowlingControls = undefined
-		}
+		clearBowlingControls()
 
 		const laneIndex = LaneStore.findLaneByUserId(data.userId)
 		if (laneIndex === undefined) {
@@ -105,13 +120,6 @@ export namespace gameStateHandler {
 		}
 
 		bowlingControls = new BowlingControls(laneIndex, lv?.getBall())
-	}
-
-	function onMyRollEnd(data: { userId: string }) {
-		if (bowlingControls) {
-			bowlingControls.Destroy()
-			bowlingControls = undefined
-		}
 	}
 
 
