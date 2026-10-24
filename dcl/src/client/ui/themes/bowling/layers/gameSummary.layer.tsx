@@ -39,10 +39,11 @@ import {
 } from 'src/client/ui/themes/bowling/layers/scoreboardView'
 
 
-const ACTION_BTN_W     = 200
-const ACTION_BTN_H     = 64
-const TICKET_ICON_SIZE = 36
-const COLOR_PANEL_FILL = Color4.fromHexString('#1d0231ff')
+const ACTION_BTN_W       = 200
+const ACTION_BTN_H       = 64
+const TICKET_ICON_SIZE   = 36
+const TOTAL_TICKETS_WIDTH = 120
+const COLOR_PANEL_FILL   = Color4.fromHexString('#1d0231ff')
 
 const stringAtlases = {
 	characters: bowlingRussoOneAlphaNumericAtlas,
@@ -251,7 +252,7 @@ export class GameSummaryLayer extends Layer {
 						fontSize  = {28}
 						fontColor = {fontColor}
 						textAlign = "middle-left"
-						width     = {80}
+						width     = {TOTAL_TICKETS_WIDTH}
 						height    = {TICKET_ICON_SIZE}
 					/>
 				</Row>
