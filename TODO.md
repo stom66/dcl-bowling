@@ -4,6 +4,7 @@ Central backlog for playtest findings, review notes, and future work.
 
 ## Backlog
 
+- [ ] Resolve neon UV scrolling pauses/jumps on load. Scene writes and an isolated SDK serialization check pass; Explorer's UV-only updates restart texture-loading promises. Confirm the affected client build and apply an upstream fix. See [bug report](docs/bug-report/gltf-node-modifiers-texture-offset-scroll.md).
 - [ ] balloon stand
 - [ ] shoe rental
 - [ ] hide some unlocks, eg "?" mystery item
