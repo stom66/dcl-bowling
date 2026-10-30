@@ -1144,7 +1144,7 @@
     "nearbyVoiceChat": "enabled"
   },
   "worldConfiguration": {
-    "name": "stom.dcl.eth"
+    "name": "fastlane.dcl.eth"
   },
   "creator": "0xCEC7e38e088A87D77F2B60Fcae6840D00E018155",
   "skyboxConfig": {
