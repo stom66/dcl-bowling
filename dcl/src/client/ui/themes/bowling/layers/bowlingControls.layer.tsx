@@ -9,13 +9,13 @@ import {
 	FlashColor,
 	getTheme,
 	Icon,
-	IconString,
 	Layer,
 	lighten,
 	playOnce,
 	PropsController,
 	Pulse,
 	Spinner,
+	Text,
 	tweenValue,
 	UiBox,
 	ZoneType,
@@ -25,7 +25,7 @@ import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 import { timers } from 'src/shared/utils/timers'
 
 import { areLaneBumpersEnabled, toggleLaneBumpers } from 'src/client/bowlingControls'
-import { uiStringsAtlas, bowlingRussoOneAlphaNumericAtlas, bowlingRussoOneSymbolsAtlas, gameIconsAtlas } from 'src/client/ui/themes/bowling/atlases'
+import { uiStringsAtlas, gameIconsAtlas } from 'src/client/ui/themes/bowling/atlases'
 
 
 type IndicatorName = 'POSITION' | 'DIRECTION' | 'STRENGTH'
@@ -347,19 +347,17 @@ export class BumperToggleLayer extends Layer {
 						iconColor   = {theme.colors.primary}
 					/>
 				</Spinner>
-				<IconString
+				<Text
 					value     = "BUMPERS"
+					fontSize  = {BUMPER_LABEL_HEIGHT}
+					fontColor = {Color4.White()}
+					textAlign = "middle-center"
+					textWrap  = "nowrap"
+					width     = "100%"
 					height    = {BUMPER_LABEL_HEIGHT}
-					iconColor = {Color4.White()}
-					atlases   = {{
-						characters: bowlingRussoOneAlphaNumericAtlas,
-						symbols   : bowlingRussoOneSymbolsAtlas,
-					}}
 					uiTransform={{
-						positionType  : 'absolute',
-						position      : { left: 0, right: 0, bottom: 6 },
-						width         : '100%',
-						justifyContent: 'center',
+						positionType: 'absolute',
+						position    : { left: 0, right: 0, bottom: 6 },
 					}}
 				/>
 			</ButtonText>

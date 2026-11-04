@@ -1,7 +1,7 @@
 import { engine } from '@dcl/sdk/ecs'
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs from '@dcl/sdk/react-ecs'
-import { AvatarIcon, ButtonImage, Column, getTheme, IconNumber, IconString, Layer, lighten, ProgressBarRadial, PropsController, Row, UiBox, ZoneType } from '@stom66/dcl-ui-component-kit'
+import { AvatarIcon, ButtonImage, Column, getTheme, Layer, lighten, ProgressBarRadial, PropsController, Row, Text, UiBox, ZoneType } from '@stom66/dcl-ui-component-kit'
 
 import { LanePhase } from 'src/shared/enums'
 import { estimateGameLengthMs, formatGameLengthLabel } from 'src/shared/gameLength'
@@ -12,7 +12,7 @@ import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 
 import { ClientMessaging } from 'src/client/clientMessaging'
 import { ClientStore } from 'src/client/clientStore'
-import { bowlingRussoOneAlphaNumericAtlas, bowlingRussoOneSymbolsAtlas, primaryButtonAtlas, secondaryButtonAtlas } from 'src/client/ui/themes/bowling/atlases'
+import { primaryButtonAtlas, secondaryButtonAtlas } from 'src/client/ui/themes/bowling/atlases'
 import { bindLaneLobbyUi } from 'src/client/ui/themes/bowling/layers/laneLobbyUi'
 
 
@@ -20,20 +20,19 @@ const FORCE_SHOW = false
 
 const PANEL_WIDTH        = 640
 const PANEL_PADDING      = 20
-const FRAME_BTN_W        = 120
+const FRAME_BTN_W        = 180
 const FRAME_BTN_H        = 44
+const FRAME_BTN_PAD_X    = 14
+const FRAME_BTN_TEXT_H   = FRAME_BTN_H - 8
 const AVATAR_SIZE        = 52
 const AVATAR_BORDER      = 2
 const ACTION_BTN_W       = 200
 const ACTION_BTN_H       = 64
+const ACTION_BTN_FONT    = 14
+const ACTION_BTN_PAD_X   = 24
 const RADIAL_SIZE        = 88
 const COLOR_PANEL_FILL   = Color4.fromHexString('#1d0231ff')
 const COLOR_TIMER_BORDER = Color4.fromHexString('#6b4698ff')
-
-const stringAtlases = {
-	characters: bowlingRussoOneAlphaNumericAtlas,
-	symbols   : bowlingRussoOneSymbolsAtlas,
-}
 
 const clientStore = ClientStore.getInstance()
 
@@ -246,11 +245,14 @@ export class LaneLobbyLayer extends Layer {
 				uiTransform     = {{ flexDirection: 'column' }}
 			>
 				<Column width="100%" spacing={16} alignItems="center" justifyContent="center">
-					<IconString
+					<Text
 						value     = {`LANE ${laneIndex + 1}`}
+						fontSize  = {22}
+						fontColor = {theme.colors.primary}
+						textAlign = "middle-center"
+						textWrap  = "nowrap"
+						width     = "100%"
 						height    = {22}
-						iconColor = {theme.colors.primary}
-						atlases   = {stringAtlases}
 					/>
 
 					<Row width="100%" height={FRAME_BTN_H} spacing={10} alignItems="center" justifyContent="center">
@@ -272,12 +274,14 @@ export class LaneLobbyLayer extends Layer {
 										if (canEdit) this.selectFrameCount(count)
 									}}
 								>
-									<IconString
+									<Text
 										value         = {`${count} FRAMES`}
-										width         = {FRAME_BTN_W - 16}
-										height        = {14}
-										iconColor     = {selected ? theme.colors.dark : theme.colors.light}
-										atlases       = {stringAtlases}
+										fontSize      = {14}
+										fontColor     = {selected ? theme.colors.dark : theme.colors.light}
+										textAlign     = "middle-center"
+										textWrap      = "nowrap"
+										width         = {FRAME_BTN_W - (FRAME_BTN_PAD_X * 2)}
+										height        = {FRAME_BTN_TEXT_H}
 										pointerFilter = "none"
 									/>
 								</UiBox>
@@ -287,11 +291,14 @@ export class LaneLobbyLayer extends Layer {
 
 					<Row width="100%" height={AVATAR_SIZE} spacing={8} alignItems="center" justifyContent="center">
 						{players.length === 0 ? (
-							<IconString
+							<Text
 								value     = "WAITING"
+								fontSize  = {14}
+								fontColor = {theme.colors.tertiary}
+								textAlign = "middle-center"
+								textWrap  = "nowrap"
+								width     = "auto"
 								height    = {14}
-								iconColor = {theme.colors.tertiary}
-								atlases   = {stringAtlases}
 							/>
 						) : players.map((userId) => {
 							const isLocal = userId.toLowerCase() === localUserId
@@ -310,20 +317,26 @@ export class LaneLobbyLayer extends Layer {
 					</Row>
 
 					{durationLabel !== '' ? (
-						<IconString
+						<Text
 							value     = {durationLabel}
+							fontSize  = {14}
+							fontColor = {theme.colors.tertiary}
+							textAlign = "middle-center"
+							textWrap  = "nowrap"
+							width     = "100%"
 							height    = {14}
-							iconColor = {theme.colors.tertiary}
-							atlases   = {stringAtlases}
 						/>
 					) : null}
 
 					{occupied ? (
-						<IconString
+						<Text
 							value     = "OCCUPIED"
+							fontSize  = {18}
+							fontColor = {theme.colors.warning}
+							textAlign = "middle-center"
+							textWrap  = "nowrap"
+							width     = "auto"
 							height    = {18}
-							iconColor = {theme.colors.warning}
-							atlases   = {stringAtlases}
 						/>
 					) : starting ? (
 						<Row width="100%" spacing={20} alignItems="center" justifyContent="center">
@@ -338,17 +351,23 @@ export class LaneLobbyLayer extends Layer {
 								inset           = {-8}
 							>
 								<Column width="100%" height="100%" spacing={2} alignItems="center" justifyContent="center">
-									<IconNumber
-										value     = {seconds}
+									<Text
+										value     = {`${seconds}`}
+										fontSize  = {28}
+										fontColor = {Color4.White()}
+										textAlign = "middle-center"
+										textWrap  = "nowrap"
+										width     = "auto"
 										height    = {28}
-										iconColor = {Color4.White()}
-										atlas     = {bowlingRussoOneAlphaNumericAtlas}
 									/>
-									<IconString
+									<Text
 										value     = "SECONDS"
+										fontSize  = {10}
+										fontColor = {lighten(theme.colors.warning, 0)}
+										textAlign = "middle-center"
+										textWrap  = "nowrap"
+										width     = "auto"
 										height    = {10}
-										iconColor = {lighten(theme.colors.warning, 0)}
-										atlases   = {stringAtlases}
 									/>
 								</Column>
 							</ProgressBarRadial>
@@ -366,11 +385,16 @@ export class LaneLobbyLayer extends Layer {
 									position    : { top: 0, left: 0 },
 								}}
 							>
-								<IconString
+								<Text
 									value     = "CANCEL"
-									height    = {18}
-									iconColor = {Color4.White()}
-									atlases   = {stringAtlases}
+									fontSize  = {ACTION_BTN_FONT}
+									fontColor = {Color4.White()}
+									textAlign = "middle-center"
+									textWrap  = "nowrap"
+									width     = {ACTION_BTN_W - ACTION_BTN_PAD_X * 2}
+									height    = {ACTION_BTN_FONT + 8}
+									alignSelf = "center"
+									pointerFilter = "none"
 								/>
 							</ButtonImage>
 						</Row>
@@ -392,11 +416,16 @@ export class LaneLobbyLayer extends Layer {
 								position    : { top: 0, left: 0 },
 							}}
 						>
-							<IconString
+							<Text
 								value     = "START"
-								height    = {20}
-								iconColor = {Color4.White()}
-								atlases   = {stringAtlases}
+								fontSize  = {ACTION_BTN_FONT}
+								fontColor = {Color4.White()}
+								textAlign = "middle-center"
+								textWrap  = "nowrap"
+								width     = {ACTION_BTN_W - ACTION_BTN_PAD_X * 2}
+								height    = {ACTION_BTN_FONT + 8}
+								alignSelf = "center"
+								pointerFilter = "none"
 							/>
 						</ButtonImage>
 					)}

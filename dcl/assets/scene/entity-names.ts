@@ -18,7 +18,6 @@ export enum EntityNames {
   Prize_5_3 = "Prize-5_3",
   Prize_5_4 = "Prize-5_4",
   Prize_5_5 = "Prize-5_5",
-  astro_pigeon_gltf = "astro-pigeon.gltf",
   gameJelly = "gameJelly",
   gameViper = "gameViper",
   scene_new_gltf = "scene-new.gltf",

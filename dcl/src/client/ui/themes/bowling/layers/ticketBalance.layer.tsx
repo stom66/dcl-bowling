@@ -1,7 +1,7 @@
 import { engine } from '@dcl/sdk/ecs'
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs from '@dcl/sdk/react-ecs'
-import { getTheme, Icon, IconString, Layer, playOnce, Pulse, Row, Text, ZoneType } from '@stom66/dcl-ui-component-kit'
+import { getTheme, Icon, Layer, playOnce, Pulse, Row, Text, ZoneType } from '@stom66/dcl-ui-component-kit'
 
 import { ComponentStore } from 'src/shared/components/componentStore'
 import { PlayerTickets } from 'src/shared/components/definitions/shared.playerTickets'
@@ -275,16 +275,11 @@ export class TicketBalanceLayer extends Layer {
 				{pulseContent(
 					PULSE_COUNT_ID,
 					this.pulseDuration,
-					<IconString
+					<BalanceCount
 						value     = {formatTicketCount(Math.round(this.displayedBalance))}
-						width     = {COUNT_WIDTH}
-						height    = {COUNT_HEIGHT}
-					/>
-					//<BalanceCount
-					//	value     = {formatTicketCount(Math.round(this.displayedBalance))}
-					//	fontSize  = {theme.typography.size.h2}
-					//	fontColor = {theme.colors.light}
-					///>,
+						fontSize  = {theme.typography.size.h1}
+						fontColor = {theme.colors.light}
+					/>,
 				)}
 			</Row>,
 		]

@@ -3,6 +3,13 @@ import { Color4 } from '@dcl/sdk/math'
 import type { ThemeCustomize } from '@stom66/dcl-ui-component-kit'
 
 
+/** Scene path for Russo One — theme default and in-world TextShape titles. */
+export const FONT_RUSSO_ONE = 'assets/fonts/RussoOne-Regular.ttf'
+
+/** Scene path for Chakra Petch — pass as `fontSrc` on body copy that should not use Russo One. */
+export const FONT_CHAKRA_PETCH = 'assets/fonts/ChakraPetch-Medium.ttf'
+
+
 // MARK: theme
 /**
  * Bowling-specific DUCK theme overrides.
@@ -19,5 +26,10 @@ export const theme: ThemeCustomize = {
 		success  : Color4.fromHexString('#d53df9ff'),
 		tertiary : Color4.fromHexString('#909294ff'),
 		warning  : Color4.fromHexString('#ccfbfeff'),
+	},
+	typography: {
+		fontSrc: {
+			default: FONT_RUSSO_ONE,
+		},
 	},
 }

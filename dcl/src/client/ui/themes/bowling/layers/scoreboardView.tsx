@@ -1,12 +1,10 @@
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs from '@dcl/sdk/react-ecs'
-import { alpha, AvatarIcon, getTheme, IconString, UiBox } from '@stom66/dcl-ui-component-kit'
+import { alpha, AvatarIcon, getTheme, Text, UiBox } from '@stom66/dcl-ui-component-kit'
 
 import { FrameResult, getFrameResults, getPlayerTotalScore } from 'src/shared/utils/scoreCalc'
 import { getOrdinalSuffix } from 'src/shared/utils/strings'
 import { userProfileCache } from 'src/shared/utils/userProfileCache'
-
-import { bowlingRussoOneAlphaNumericAtlas, bowlingRussoOneSymbolsAtlas } from 'src/client/ui/themes/bowling/atlases'
 
 
 export const FRAME_CELL_WIDTH  = 52
@@ -19,11 +17,6 @@ const SCORE_GLYPH_HEIGHT = 14
 const BADGE_GLYPH_HEIGHT = 16
 const NAME_GLYPH_HEIGHT  = 16
 const DISPLAY_NAME_WIDTH = 140
-
-const SCORE_ATLASES = {
-	characters: bowlingRussoOneAlphaNumericAtlas,
-	symbols   : bowlingRussoOneSymbolsAtlas,
-}
 
 const displayNames       : Map<string, string> = new Map()
 const pendingDisplayNames: Set<string>         = new Set()
@@ -138,11 +131,14 @@ function getFramesUi(
 					justifyContent  = "center"
 					uiTransform     = {{ flexDirection: 'column' }}
 				>
-					<IconString
+					<Text
 						value     = {scoreDisplay}
-						height    = {SCORE_GLYPH_HEIGHT}
-						iconColor = {theme.colors.light}
-						atlases   = {SCORE_ATLASES}
+						fontSize  = {SCORE_GLYPH_HEIGHT}
+						fontColor = {theme.colors.light}
+						textAlign = "middle-center"
+						textWrap  = "nowrap"
+						width     = {SCORE_BOX_WIDTH}
+						height    = {SCORE_BOX_HEIGHT}
 					/>
 				</UiBox>,
 			)
@@ -208,11 +204,14 @@ function getFramesUi(
 					justifyContent = "center"
 					borderWidth    = {0}
 				>
-					<IconString
+					<Text
 						value     = {frameResult.runningScore?.toString() ?? '-'}
+						fontSize  = {SCORE_GLYPH_HEIGHT}
+						fontColor = {alpha(theme.colors.light, frameResult.isPending ? 0.25 : 1)}
+						textAlign = "middle-center"
+						textWrap  = "nowrap"
+						width     = "100%"
 						height    = {SCORE_GLYPH_HEIGHT}
-						iconColor = {alpha(theme.colors.light, frameResult.isPending ? 0.25 : 1)}
-						atlases   = {SCORE_ATLASES}
 					/>
 				</UiBox>
 			</UiBox>,
@@ -266,25 +265,27 @@ export function renderScoreboard(props: ScoreboardViewProps): ReactEcs.JSX.Eleme
 						flexDirection: 'column',
 					}}
 				>
-					<IconString
+					<Text
 						value     = {rank.toString() + getOrdinalSuffix(rank)}
-						height    = {BADGE_GLYPH_HEIGHT}
-						iconColor = {theme.colors.light}
-						atlases   = {SCORE_ATLASES}
+						fontSize  = {BADGE_GLYPH_HEIGHT}
+						fontColor = {theme.colors.light}
+						textAlign = "middle-center"
+						textWrap  = "nowrap"
+						width     = {FRAME_CELL_HEIGHT}
+						height    = {FRAME_CELL_HEIGHT}
 					/>
 				</UiBox>
-				<IconString
-					key         = {`${props.keyPrefix}_row_${userId}_displayName`}
-					value       = {getRowDisplayName(userId)}
-					height      = {NAME_GLYPH_HEIGHT}
-					width       = {DISPLAY_NAME_WIDTH}
-					iconColor   = {theme.colors.light}
-					atlases     = {SCORE_ATLASES}
-					margin      = {{ left: FRAME_CELL_MARGIN / 2, right: FRAME_CELL_MARGIN / 2 }}
-					uiTransform = {{
-						justifyContent: 'flex-start',
-						alignSelf     : 'center',
-					}}
+				<Text
+					key       = {`${props.keyPrefix}_row_${userId}_displayName`}
+					value     = {getRowDisplayName(userId)}
+					fontSize  = {NAME_GLYPH_HEIGHT}
+					fontColor = {theme.colors.light}
+					textAlign = "middle-left"
+					textWrap  = "nowrap"
+					width     = {DISPLAY_NAME_WIDTH}
+					height    = {NAME_GLYPH_HEIGHT}
+					margin    = {{ left: FRAME_CELL_MARGIN / 2, right: FRAME_CELL_MARGIN / 2 }}
+					alignSelf = "center"
 				/>
 				<AvatarIcon
 					key          = {`${props.keyPrefix}_row_${userId}_avatar`}
@@ -329,11 +330,14 @@ export function renderScoreboard(props: ScoreboardViewProps): ReactEcs.JSX.Eleme
 						flexDirection: 'column',
 					}}
 				>
-					<IconString
+					<Text
 						value     = {getPlayerTotalScore(frameResult).toString()}
-						height    = {BADGE_GLYPH_HEIGHT}
-						iconColor = {theme.colors.light}
-						atlases   = {SCORE_ATLASES}
+						fontSize  = {BADGE_GLYPH_HEIGHT}
+						fontColor = {theme.colors.light}
+						textAlign = "middle-center"
+						textWrap  = "nowrap"
+						width     = {FRAME_CELL_HEIGHT}
+						height    = {FRAME_CELL_HEIGHT}
 					/>
 				</UiBox>
 				<UiBox

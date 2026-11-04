@@ -6,7 +6,6 @@ import {
 	ButtonImage,
 	getTheme,
 	Icon,
-	IconString,
 	Layer,
 	Row,
 	Text,
@@ -27,8 +26,6 @@ import { userProfileCache } from 'src/shared/utils/userProfileCache'
 import { ClientStore } from 'src/client/clientStore'
 import { UiParticles } from 'src/client/ui/particles/uiParticleLayer'
 import {
-	bowlingRussoOneAlphaNumericAtlas,
-	bowlingRussoOneSymbolsAtlas,
 	gameIconsAtlas,
 	primaryButtonAtlas,
 } from 'src/client/ui/themes/bowling/atlases'
@@ -41,16 +38,21 @@ import {
 
 const ACTION_BTN_W       = 200
 const ACTION_BTN_H       = 64
+const ACTION_BTN_FONT    = 14
+const ACTION_BTN_PAD_X   = 24
 const TICKET_ICON_SIZE   = 36
 const TOTAL_TICKETS_WIDTH = 120
 const COLOR_PANEL_FILL   = Color4.fromHexString('#1d0231ff')
-
-const stringAtlases = {
-	characters: bowlingRussoOneAlphaNumericAtlas,
-	symbols   : bowlingRussoOneSymbolsAtlas,
-}
+/** Debug Game End uses this start time so the ceremony can show sample tickets. */
+const DEBUG_SAMPLE_GAME_START = 1
 
 const clientStore = ClientStore.getInstance()
+
+const DEBUG_SAMPLE_TICKET_LINES: GameTicketLine[] = [
+	{ label: 'Participation', count: 1, tickets: 10 },
+	{ label: 'Win',           count: 1, tickets: 25 },
+	{ label: 'Perfect game',  count: 1, tickets: 50 },
+]
 
 
 // MARK: GameSummaryLayer
@@ -138,9 +140,13 @@ export class GameSummaryLayer extends Layer {
 	// MARK: getTicketLines
 	/**
 	 * Payout lines for this match. Empty until the server publish matches the card.
+	 * Debug Game End uses a sentinel start time and sample lines for layout work.
 	 */
 	private getTicketLines(): GameTicketLine[] | undefined {
 		if (!this.card || this.card.gameStartTime <= 0) return undefined
+		if (this.card.gameStartTime === DEBUG_SAMPLE_GAME_START) {
+			return DEBUG_SAMPLE_TICKET_LINES
+		}
 
 		const userId  = clientStore.getUserId()
 		const tickets = userId ? ComponentStore.getOrNull(PlayerTickets, { key: userId }) : null
@@ -331,11 +337,16 @@ export class GameSummaryLayer extends Layer {
 						position    : { top: 0, left: 0 },
 					}}
 				>
-					<IconString
+					<Text
 						value     = "CONTINUE"
-						height    = {18}
-						iconColor = {Color4.White()}
-						atlases   = {stringAtlases}
+						fontSize  = {ACTION_BTN_FONT}
+						fontColor = {Color4.White()}
+						textAlign = "middle-center"
+						textWrap  = "nowrap"
+						width     = {ACTION_BTN_W - ACTION_BTN_PAD_X * 2}
+						height    = {ACTION_BTN_FONT + 8}
+						alignSelf = "center"
+						pointerFilter = "none"
 					/>
 				</ButtonImage>
 			</UiBox>,

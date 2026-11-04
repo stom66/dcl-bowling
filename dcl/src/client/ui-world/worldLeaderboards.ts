@@ -8,6 +8,7 @@ import { GameFrameCount } from 'src/shared/settings'
 import { LeaderboardScoreRow, PerfectGameEntry } from 'src/shared/types/shared-types'
 
 import { getAnchorFrameCount, getAnchorPeriod, isHallOfFameAnchor, leaderboardAnchors, LeaderboardAnchor, RankedLeaderboardPeriod } from 'src/client/data/leaderboardAnchors'
+import { FONT_RUSSO_ONE } from 'src/client/ui/themes/bowling/theme'
 
 
 // Temporary preview: dummy rows on every board. Turn off before shipping.
@@ -298,6 +299,7 @@ function createRowText(
 	TextShape.create(entity, {
 		text        : '',
 		font        : Font.F_SANS_SERIF,
+		fontSrc     : FONT_RUSSO_ONE,
 		fontSize    : rowFontSize(),
 		textAlign   : align,
 		textColor   : TEXT_COLOR,

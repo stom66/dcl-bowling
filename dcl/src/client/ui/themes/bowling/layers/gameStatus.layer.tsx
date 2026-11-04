@@ -1,6 +1,6 @@
 import { Color4 } from '@dcl/sdk/math'
 import ReactEcs from '@dcl/sdk/react-ecs'
-import { Column, getTheme, Icon, IconNumber, IconString, Layer, lighten, PropsController, ProgressBarRadial, Row, UiBox, ZoneType, alpha } from '@stom66/dcl-ui-component-kit'
+import { Column, getTheme, Icon, Layer, lighten, PropsController, ProgressBarRadial, Row, Text, UiBox, ZoneType, alpha } from '@stom66/dcl-ui-component-kit'
 
 import { LanePhase } from 'src/shared/enums'
 import { GameSettings } from 'src/shared/settings'
@@ -10,7 +10,7 @@ import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 import { userProfileCache } from 'src/shared/utils/userProfileCache'
 
 import { ClientStore } from 'src/client/clientStore'
-import { bowlingRussoOneAlphaNumericAtlas, bowlingRussoOneSymbolsAtlas, gameIconsAtlas } from 'src/client/ui/themes/bowling/atlases'
+import { gameIconsAtlas } from 'src/client/ui/themes/bowling/atlases'
 
 
 type GameStatusProps = {
@@ -217,10 +217,6 @@ export class GameStatusLayer extends Layer {
 		const lightPurple    = lighten(COLOR_INNER_BORDER, 0.45)
 		const playerName     = this.statusProps.get('playerName')
 		const hasCurrentTurn = this.hasCurrentTurn()
-		const stringAtlases  = {
-			characters: bowlingRussoOneAlphaNumericAtlas,
-			symbols   : bowlingRussoOneSymbolsAtlas,
-		}
 
 		return (
 			<Column
@@ -230,30 +226,35 @@ export class GameStatusLayer extends Layer {
 				justifyContent = "center"
 			>
 				{hasCurrentTurn ? (
-					<IconString
+					<Text
 						value     = "CURRENT TURN"
+						fontSize  = {STATUS_HEADING_SIZE}
+						fontColor = {lightPurple}
+						textAlign = "middle-left"
+						textWrap  = "nowrap"
+						width     = "auto"
 						height    = {STATUS_HEADING_SIZE}
-						iconColor = {lightPurple}
-						atlases   = {stringAtlases}
 					/>
 				) : null}
 				{hasCurrentTurn ? (
-					<IconString
+					<Text
 						value     = {playerName}
+						fontSize  = {STATUS_NAME_SIZE}
+						fontColor = {Color4.White()}
+						textAlign = "middle-left"
+						textWrap  = "nowrap"
+						width     = "auto"
 						height    = {STATUS_NAME_SIZE}
-						iconColor = {Color4.White()}
-						atlases   = {stringAtlases}
 					/>
 				) : null}
-				<IconString
-					value       = {this.getStatusText()}
-					height      = {STATUS_LINE_SIZE}
-					width       = {STATUS_LABEL_MAX_WIDTH}
-					iconColor   = {theme.colors.primary}
-					atlases     = {stringAtlases}
-					uiTransform = {{
-						justifyContent: 'flex-start',
-					}}
+				<Text
+					value     = {this.getStatusText()}
+					fontSize  = {STATUS_LINE_SIZE}
+					fontColor = {theme.colors.primary}
+					textAlign = "middle-left"
+					textWrap  = "nowrap"
+					width     = {STATUS_LABEL_MAX_WIDTH}
+					height    = {STATUS_LINE_SIZE}
 				/>
 			</Column>
 		)
@@ -289,20 +290,23 @@ export class GameStatusLayer extends Layer {
 					alignItems     = "center"
 					justifyContent = "center"
 				>
-					<IconNumber
-						value     = {seconds}
+					<Text
+						value     = {`${seconds}`}
+						fontSize  = {COUNTDOWN_NUM_SIZE}
+						fontColor = {Color4.White()}
+						textAlign = "middle-center"
+						textWrap  = "nowrap"
+						width     = "auto"
 						height    = {COUNTDOWN_NUM_SIZE}
-						iconColor = {Color4.White()}
-						atlas     = {bowlingRussoOneAlphaNumericAtlas}
 					/>
-					<IconString
+					<Text
 						value     = "SECONDS"
+						fontSize  = {SECONDS_LABEL_SIZE}
+						fontColor = {lightPrimary}
+						textAlign = "middle-center"
+						textWrap  = "nowrap"
+						width     = "auto"
 						height    = {SECONDS_LABEL_SIZE}
-						iconColor = {lightPrimary}
-						atlases   = {{
-							characters: bowlingRussoOneAlphaNumericAtlas,
-							symbols   : bowlingRussoOneSymbolsAtlas,
-						}}
 					/>
 				</Column>
 			</ProgressBarRadial>

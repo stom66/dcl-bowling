@@ -7,6 +7,7 @@ import { LaneStore } from "src/shared/laneStore"
 import { userProfileCache } from "src/shared/utils/userProfileCache"
 
 import { getLaneScreenPosition } from "src/client/data/lanePositions"
+import { FONT_RUSSO_ONE } from "src/client/ui/themes/bowling/theme"
 
 
 const DISPLAY_NAME_MAX_LENGTH = 16
@@ -91,6 +92,7 @@ export class UiLaneScreen {
 		TextShape.create(entity, {
 			text        : '',
 			font        : Font.F_SANS_SERIF,
+			fontSrc     : FONT_RUSSO_ONE,
 			fontSize    : fontSize,
 			textAlign   : TextAlignMode.TAM_MIDDLE_CENTER,
 			textColor   : Color4.White(),
