@@ -1,5 +1,5 @@
 import ReactEcs from '@dcl/sdk/react-ecs'
-import { atlasIconsFontAwesome, ButtonText, Column, Divider, getTheme, Grid, Icon, Layer, Row, Text, UiBox, ZoneType } from '@stom66/dcl-ui-component-kit'
+import { atlasIconsFontAwesome, AvatarIcon, ButtonText, Column, Divider, getTheme, Grid, Icon, Layer, Row, Text, UiBox, ZoneType } from '@stom66/dcl-ui-component-kit'
 
 import { ComponentStore } from 'src/shared/components/componentStore'
 import { PlayerActivity } from 'src/shared/components/definitions/shared.playerActivity'
@@ -12,6 +12,7 @@ import { ClientStore } from 'src/client/clientStore'
 const clientStore = ClientStore.getInstance()
 
 const CLOSE_SIZE              = 44
+const HEADER_AVATAR_SIZE      = 48
 const STAT_ROW_HEIGHT         = 28
 const MATCH_HISTORY_VISIBLE   = 10
 const PANEL_WIDTH             = '42vw'
@@ -270,6 +271,7 @@ export class StatsLayer extends Layer {
 			{ id: 'stats-perfect',  label: 'Perfect games', value: formatCount(stats?.perfectGames) },
 			{ id: 'stats-hosted',   label: 'Games hosted',  value: formatCount(stats?.gamesCreated) },
 			{ id: 'stats-left',     label: 'Left early',    value: formatCount(stats?.gamesLeftEarly) },
+			{ id: 'stats-streak',   label: 'Daily streak',  value: activity ? `${formatCount(activity.currentStreak)} / ${formatCount(activity.maxStreak)}` : '-' },
 			{ id: 'stats-first',    label: 'First played',  value: formatUtcDate(activity?.firstPlayedAt) },
 		]
 
@@ -279,7 +281,6 @@ export class StatsLayer extends Layer {
 			{ id: 'stats-spares',   label: 'Spares',        value: formatCount(stats?.rolledSpares) },
 			{ id: 'stats-gutters',  label: 'Gutter balls',  value: formatCount(stats?.rolledGutterBalls) },
 			{ id: 'stats-pins',     label: 'Pins knocked',  value: formatCount(stats?.pinsKnockedDown) },
-			{ id: 'stats-streak',   label: 'Streak',        value: activity ? `${formatCount(activity.currentStreak)} / ${formatCount(activity.maxStreak)}` : '-' },
 		]
 
 		return [
@@ -296,23 +297,53 @@ export class StatsLayer extends Layer {
 				borderColor     = {theme.colors.primary}
 				borderRadius    = {16}
 			>
-				<Row
+				<UiBox
 					width          = "100%"
-					height         = {44}
+					height         = {HEADER_AVATAR_SIZE}
 					margin         = {{ bottom: 8 }}
 					alignItems     = "center"
-					justifyContent = "space-between"
+					justifyContent = "center"
+					borderWidth    = {0}
+					uiTransform    = {{
+						positionType: 'relative',
+					}}
 				>
-					<Text
-						value     = "My Stats"
-						fontSize  = {theme.typography.size.h3}
-						fontColor = {theme.colors.light}
-						textAlign = "middle-left"
-						width     = "auto"
-						height    = {36}
-					/>
-					{this.closeButton()}
-				</Row>
+					<Row
+						width          = "auto"
+						height         = {HEADER_AVATAR_SIZE}
+						spacing        = {12}
+						alignItems     = "center"
+						justifyContent = "center"
+					>
+						<AvatarIcon
+							userId       = {clientStore.getUserId()}
+							width        = {HEADER_AVATAR_SIZE}
+							height       = {HEADER_AVATAR_SIZE}
+							borderRadius = {HEADER_AVATAR_SIZE / 2}
+							borderWidth  = {2}
+							borderColor  = {theme.colors.primary}
+						/>
+						<Text
+							value     = "My Stats"
+							fontSize  = {theme.typography.size.h2}
+							fontColor = {theme.colors.light}
+							textAlign = "middle-left"
+							width     = "auto"
+							height    = {HEADER_AVATAR_SIZE}
+						/>
+					</Row>
+					<UiBox
+						width       = {CLOSE_SIZE}
+						height      = {CLOSE_SIZE}
+						borderWidth = {0}
+						uiTransform = {{
+							positionType: 'absolute',
+							position    : { top: 0, right: 0 },
+						}}
+					>
+						{this.closeButton()}
+					</UiBox>
+				</UiBox>
 				{this.sectionTitle('stats-record-title', 'Career')}
 				{this.statGrid('stats-record-grid', recordCells)}
 				<Divider margin={{ top: 8, bottom: 8 }} thickness={1} />

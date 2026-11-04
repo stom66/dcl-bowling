@@ -296,24 +296,49 @@ export class DebugLayer extends Layer {
 
 	// MARK: getDebugSummaryCard
 	/**
-	 * Scorecard for the debug ceremony. Uses the live lane when it has a roster.
+	 * Multi-player sample scorecard for layout work: local user is a perfect 10,
+	 * plus three other rows with mixed scores. `gameStartTime` is the summary
+	 * layer's debug ticket sentinel.
 	 */
 	private getDebugSummaryCard(snapshot: LaneSnapshot): GameSummaryCard {
-		const userId  = clientStore.getUserId()
-		const players = snapshot.players.length > 0
-			? snapshot.players
-			: (userId ? [userId] : [])
+		const userId = clientStore.getUserId() || '0xLOCALPLAYER'
+		const otherA = '0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEB'
+		const otherB = '0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEC'
+		const otherC = '0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEED'
+		const frameCount = 10 as const
+
+		const perfectFrames: number[][] = [
+			[10], [10], [10], [10], [10], [10], [10], [10], [10], [10, 10, 10],
+		]
+		const frames = new Map<string, number[][]>([
+			[userId, perfectFrames],
+			[otherA, [
+				[8, 0], [3, 7], [9, 0], [7, 0], [6, 4],
+				[10], [9, 1], [8, 1], [7, 3], [9, 0],
+			]],
+			[otherB, [
+				[3, 4], [10], [7, 3], [8, 0], [7, 0],
+				[5, 4], [10], [6, 3], [8, 2], [10, 8, 1],
+			]],
+			[otherC, [
+				[9, 1], [7, 3], [8, 2], [10], [6, 2],
+				[4, 5], [8, 0], [10], [9, 0], [7, 2],
+			]],
+		])
+		const leaves = new Map<string, number[]>([
+			[otherA, [0b1001000000, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
+		])
 
 		return {
-			currentFrameIndex: snapshot.frameCount > 0 ? snapshot.frameCount - 1 : 0,
-			frameCount       : snapshot.frameCount > 0 ? snapshot.frameCount : GameSettings.DEFAULT_FRAME_COUNT,
-			frames           : snapshot.frames,
+			currentFrameIndex: frameCount - 1,
+			frameCount       : frameCount,
+			frames           : frames,
 			laneIndex        : snapshot.laneIndex,
-			leaves           : LaneStore.areLanesReady() ? LaneStore.getLeavesMap(snapshot.laneIndex) : new Map(),
-			leftUserIds      : LaneStore.areLanesReady() ? LaneStore.getLeftUserIds(snapshot.laneIndex) : [],
+			leaves           : leaves,
+			leftUserIds      : [],
 			phase            : LanePhase.FRAME_END,
-			players          : players,
-			gameStartTime    : snapshot.gameStartTime,
+			players          : [userId, otherA, otherB, otherC],
+			gameStartTime    : 1,
 		}
 	}
 

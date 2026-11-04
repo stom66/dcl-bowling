@@ -7,7 +7,6 @@ import {
 	ButtonImage,
 	getTheme,
 	Icon,
-	IconString,
 	Layer,
 	Spinner,
 	Text,
@@ -27,16 +26,22 @@ import { ClientStore } from 'src/client/clientStore'
 import { sfx, SoundManager } from 'src/client/soundManager'
 import { UiParticles } from 'src/client/ui/particles/uiParticleLayer'
 import {
-	bowlingRussoOneAlphaNumericAtlas,
-	bowlingRussoOneSymbolsAtlas,
 	gameIconsAtlas,
 	primaryButtonAtlas,
 } from 'src/client/ui/themes/bowling/atlases'
+import { FONT_CHAKRA_PETCH } from 'src/client/ui/themes/bowling/theme'
 
 
-const ACTION_BTN_W     = 240
+const ACTION_BTN_W     = 280
 const ACTION_BTN_H     = 92
-const TICKET_ICON_SIZE = 72
+const ACTION_BTN_FONT  = 14
+const ACTION_BTN_PAD_X = 32
+/** Shared height for the grant ticket glyph and "+N" copy. */
+const GRANT_SIZE       = 56
+/** Ticket atlas cell has inset art — draw slightly larger so it matches the digits. */
+const GRANT_TICKET_SIZE = 90
+const GRANT_GAP         = 8
+const GRANT_TEXT_WIDTH  = 160
 const UNLOCK_THUMB_SIZE = 160
 const UNLOCK_SPIN_SIZE  = 320
 const PANEL_WIDTH      = 640
@@ -47,11 +52,6 @@ const OPEN_DELAY_MS    = 3000
 const BETWEEN_DELAY_MS = 1000
 const COLOR_PANEL_FILL = Color4.fromHexString('#1d0231ff')
 const SPINNER_BEAMS_SRC = 'assets/images/ui-component-kit/spinner-beams-varied.png'
-
-const stringAtlases = {
-	characters: bowlingRussoOneAlphaNumericAtlas,
-	symbols   : bowlingRussoOneSymbolsAtlas,
-}
 
 const clientStore = ClientStore.getInstance()
 
@@ -269,6 +269,7 @@ export class RewardLayer extends Layer {
 					<Text
 						key       = "reward-message"
 						value     = {offer.message}
+						fontSrc   = {FONT_CHAKRA_PETCH}
 						fontSize  = {22}
 						fontColor = {theme.colors.light}
 						textAlign = "middle-center"
@@ -317,7 +318,7 @@ export class RewardLayer extends Layer {
 				<UiBox
 					key            = "reward-grant"
 					width          = "auto"
-					height         = {TICKET_ICON_SIZE}
+					height         = {GRANT_TICKET_SIZE}
 					alignItems     = "center"
 					justifyContent = "center"
 					margin         = {{ bottom: 8, top: 0 }}
@@ -327,18 +328,23 @@ export class RewardLayer extends Layer {
 					<Icon
 						src         = {gameIconsAtlas.source}
 						uvs         = {gameIconsAtlas.uv.ticket}
-						width       = {TICKET_ICON_SIZE}
-						height      = {TICKET_ICON_SIZE}
+						width       = {GRANT_TICKET_SIZE}
+						height      = {GRANT_TICKET_SIZE}
 						iconColor   = {theme.colors.primary}
 						uiTransform = {{
 							display : offer.kind === 'tickets' ? 'flex' : 'none',
-							margin  : { right: 8 },
+							margin  : { right: GRANT_GAP },
 						}}
 					/>
-					<IconString
+					<Text
 						value     = {grant}
-						width     = {offer.kind === 'tickets' ? 80 : 480}
-						height    = {TICKET_ICON_SIZE}
+						fontSize  = {GRANT_SIZE}
+						fontColor = {theme.colors.light}
+						textAlign = "middle-left"
+						textWrap  = "nowrap"
+						width     = {offer.kind === 'tickets' ? GRANT_TEXT_WIDTH : 480}
+						height    = {GRANT_SIZE}
+						alignSelf = "center"
 					/>
 				</UiBox>
 				<ButtonImage
@@ -355,11 +361,16 @@ export class RewardLayer extends Layer {
 						position    : { top: 0, left: 0 },
 					}}
 				>
-					<IconString
+					<Text
 						value     = {offer.buttonLabel.toUpperCase()}
-						height    = {18}
-						iconColor = {Color4.White()}
-						atlases   = {stringAtlases}
+						fontSize  = {ACTION_BTN_FONT}
+						fontColor = {Color4.White()}
+						textAlign = "middle-center"
+						textWrap  = "nowrap"
+						width     = {ACTION_BTN_W - ACTION_BTN_PAD_X * 2}
+						height    = {ACTION_BTN_FONT + 8}
+						alignSelf = "center"
+						pointerFilter = "none"
 					/>
 				</ButtonImage>
 			</UiBox>,

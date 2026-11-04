@@ -1,7 +1,7 @@
 {
-  "name": "dcl-boilerplate",
+  "name": "dcl-bowling",
   "version": "1.0.0",
-  "description": "Decentraland SDK7 Template scene",
+  "description": "Fastlane Bowling",
   "scripts": {
     "start": "sdk-commands start",
     "startClient": "sdk-commands start --explorer-alpha",
@@ -24,9 +24,9 @@
   },
   "dependencies": {
     "@dcl-sdk/utils": "^1.4.0",
-    "@dcl/js-runtime": "7.30.2-39796956377.commit-4223559",
-    "@dcl/sdk": "7.30.2-39796956377.commit-4223559",
-    "@stom66/dcl-ui-component-kit": "^0.2.7",
+    "@dcl/js-runtime": "7.32.1-41691874543.commit-3063788",
+    "@dcl/sdk": "7.32.1-41691874543.commit-3063788",
+    "@stom66/dcl-ui-component-kit": "^0.3.0",
     "cannon-es": "^0.20.0"
   },
   "engines": {

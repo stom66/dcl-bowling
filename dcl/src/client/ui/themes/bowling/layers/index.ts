@@ -9,7 +9,6 @@ import { debugLayer } from 'src/client/ui/themes/bowling/layers/debug.layer'
 import { gameStatusLayer } from 'src/client/ui/themes/bowling/layers/gameStatus.layer'
 import { gameSummaryLayer } from 'src/client/ui/themes/bowling/layers/gameSummary.layer'
 import { laneLobbyLayer } from 'src/client/ui/themes/bowling/layers/laneLobby.layer'
-import { leaderboardLayer } from 'src/client/ui/themes/bowling/layers/leaderboard.layer'
 import { leaveGameLayer } from 'src/client/ui/themes/bowling/layers/leaveGame.layer'
 import { letterboxLayer } from 'src/client/ui/themes/bowling/layers/letterbox.layer'
 import { loadingLayer } from 'src/client/ui/themes/bowling/layers/loading.layer'
@@ -38,7 +37,7 @@ const IS_DEV = process.env.NODE_ENV === 'development'
  * in bowling controls. The bumper toggle is its own layer: beside the bar on
  * desktop, bottom-left on mobile. Click-to-set is the square bottom-right
  * button (click on desktop, tap on mobile). Customization sits above gameplay
- * HUD; records and stats sit with it. The top-right toggles paint after those
+ * HUD; stats sit with it. The top-right toggles paint after those
  * windows. Ticket balance sits in the top of the right zone.
  * The playtest panel sits in that same zone, below the ticket balance, while
  * `GameSettings.PLAYTEST_DEBUG_PANEL` is on. Desktop only — disabled on
@@ -65,7 +64,6 @@ export const layers: Layer[] = [
 	letterboxLayer,
 	gameSummaryLayer,
 	customizationLayer,
-	leaderboardLayer,
 	statsLayer,
 	topRightTogglesLayer,
 	ticketBalanceLayer,

@@ -1,13 +1,11 @@
 import { Color4 } from '@dcl/sdk/math'
-import { isDesktop, isMobile } from '@dcl/sdk/platform'
-import ReactEcs, { Label } from '@dcl/sdk/react-ecs'
-import { alpha, atlasIconsFontAwesome, ButtonText, getTheme, Icon, IconString, Layer, playOnce, Pulse, Spinner, ZoneType } from '@stom66/dcl-ui-component-kit'
+import { isDesktop } from '@dcl/sdk/platform'
+import ReactEcs from '@dcl/sdk/react-ecs'
+import { alpha, atlasIconsFontAwesome, ButtonText, getTheme, Icon, Layer, playOnce, Pulse, Spinner, Text, ZoneType } from '@stom66/dcl-ui-component-kit'
 
 import { SoundManager } from 'src/client/soundManager'
-import { bowlingRussoOneAlphaNumericAtlas, bowlingRussoOneSymbolsAtlas } from 'src/client/ui/themes/bowling/atlases'
 import { customizationLayer } from 'src/client/ui/themes/bowling/layers/customization.layer'
 import { debugLayer } from 'src/client/ui/themes/bowling/layers/debug.layer'
-import { leaderboardLayer } from 'src/client/ui/themes/bowling/layers/leaderboard.layer'
 import { statsLayer } from 'src/client/ui/themes/bowling/layers/stats.layer'
 import { ClientEvents, eventBus } from 'src/shared/utils/eventBus'
 
@@ -23,9 +21,14 @@ const IS_DEV = process.env.NODE_ENV === 'development'
 export const TOGGLE_BUTTONS_SIZE = 90
 export const TOGGLE_GAP          = 8
 const ICON_SIZE                  = 48
-const TOP_MARK_FONT              = 22
-const TOGGLE_LABEL_HEIGHT        = 14
-const TOGGLE_LABEL_WIDTH         = 80
+const TOGGLE_LABEL_MAX_FONT      = 14
+const TOGGLE_LABEL_MIN_FONT      = 7
+const TOGGLE_LABEL_PAD_X         = 10
+/**
+ * Approx advance width for Russo One as a fraction of em, with headroom so
+ * theme font scaling does not push long labels past the button edge.
+ */
+const RUSSO_CHAR_EM              = 0.82
 const MUTE_SPIN_ID               = 'bowling-mute-spin'
 const MUTE_SPIN_DEGREES          = 360
 const MUTE_SPIN_DURATION         = 0.15
@@ -33,13 +36,7 @@ const TOGGLE_PULSE_DURATION      = 0.2
 const TOGGLE_PULSE_SCALE         = 1.4
 const DEBUG_PULSE_ID             = 'bowling-debug-pulse'
 const STATS_PULSE_ID             = 'bowling-stats-pulse'
-const LEADERBOARD_PULSE_ID       = 'bowling-leaderboard-pulse'
 const CUSTOMIZE_PULSE_ID         = 'bowling-customize-pulse'
-
-const toggleLabelAtlases = {
-	characters: bowlingRussoOneAlphaNumericAtlas,
-	symbols   : bowlingRussoOneSymbolsAtlas,
-}
 
 /** TopRight zone default. Kept when this is not a local dev session. */
 const RIGHT_INSET_DEFAULT = 8
@@ -48,14 +45,13 @@ const RIGHT_INSET_LOCAL_DEV = 152
 
 const exclusivePanels: Layer[] = [
 	statsLayer,
-	leaderboardLayer,
 	customizationLayer,
 ]
 
 
 // MARK: toggleExclusivePanel
 /**
- * Opens one center panel and closes the other two.
+ * Opens one center panel and closes the other.
  * Clicking the panel that is already open closes it.
  */
 function toggleExclusivePanel(target: Layer) {
@@ -96,41 +92,25 @@ function pulseGlyph(
 }
 
 
-// MARK: TopMark
+// MARK: fitToggleLabelFontSize
 /**
- * "TOP" stand-in on the leaderboard toggle. Font size follows `height`
- * so a pulse scales the letters, not just the text box.
+ * Picks a theme-base font size so `label` fits inside `maxWidth` under Russo One.
  */
-function TopMark({
-	width  = ICON_SIZE,
-	height = ICON_SIZE,
-	color,
-}: {
-	width? : number
-	height?: number
-	color  : Color4
-}) {
-	const fontSize = Math.max(1, Math.round(TOP_MARK_FONT * (height / ICON_SIZE)))
+function fitToggleLabelFontSize(
+	label   : string,
+	maxWidth: number,
+): number {
+	if (label.length === 0) return TOGGLE_LABEL_MAX_FONT
 
-	return (
-		<Label
-			value       = "TOP"
-			color       = {color}
-			fontSize    = {fontSize}
-			textAlign   = "middle-center"
-			textWrap    = "nowrap"
-			uiTransform = {{
-				width,
-				height,
-			}}
-		/>
-	)
+	const fitted = Math.floor(maxWidth / (label.length * RUSSO_CHAR_EM)) - 1
+	return Math.max(TOGGLE_LABEL_MIN_FONT, Math.min(TOGGLE_LABEL_MAX_FONT, fitted))
 }
 
 
 // MARK: toggleButton
 /**
  * Square HUD toggle. `gapLeft` is the space before this button in the row.
+ * Label font size shrinks to fit the button width.
  */
 function toggleButton(
 	id     : string,
@@ -139,7 +119,9 @@ function toggleButton(
 	icon   : ReactEcs.JSX.Element,
 	gapLeft: number,
 ) {
-	const theme = getTheme()
+	const theme      = getTheme()
+	const labelWidth = TOGGLE_BUTTONS_SIZE - TOGGLE_LABEL_PAD_X * 2
+	const fontSize   = fitToggleLabelFontSize(label, labelWidth)
 
 	return (
 		<ButtonText
@@ -158,17 +140,17 @@ function toggleButton(
 			}}
 		>
 			{icon}
-			<IconString
-				value       = {label}
-				width       = {TOGGLE_LABEL_WIDTH}
-				height      = {TOGGLE_LABEL_HEIGHT}
-				iconColor   = {Color4.White()}
-				atlases     = {toggleLabelAtlases}
+			<Text
+				value     = {label}
+				fontSize  = {fontSize}
+				fontColor = {Color4.White()}
+				textAlign = "middle-center"
+				textWrap  = "nowrap"
+				width     = {labelWidth}
+				height    = {fontSize + 4}
 				uiTransform = {{
-					positionType  : 'absolute',
-					position      : { left: 0, right: 0, bottom: 4 },
-					width         : '100%',
-					justifyContent: 'center',
+					positionType: 'absolute',
+					position    : { left: TOGGLE_LABEL_PAD_X, bottom: 4 },
 				}}
 			/>
 		</ButtonText>
@@ -178,7 +160,7 @@ function toggleButton(
 
 // MARK: TopRightTogglesLayer
 /**
- * Mute, stats, leaderboard, and customize, in one top-right row.
+ * Mute, stats, and customize, in one top-right row.
  * In local debug the leftmost button toggles the left-top debug panel.
  * The zone lays the buttons out; local dev insets the row 152px from
  * the right, otherwise the zone default of 8px is used.
@@ -292,25 +274,8 @@ export class TopRightTogglesLayer extends Layer {
 				TOGGLE_GAP,
 			),
 			toggleButton(
-				'btn_leaderboard_toggle',
-				'Leaderboard',
-				() => {
-					toggleExclusivePanel(leaderboardLayer)
-					playOnce(LEADERBOARD_PULSE_ID)
-				},
-				pulseGlyph(
-					LEADERBOARD_PULSE_ID,
-					<TopMark
-						width  = {ICON_SIZE}
-						height = {ICON_SIZE}
-						color  = {theme.colors.primary}
-					/>,
-				),
-				TOGGLE_GAP,
-			),
-			toggleButton(
 				'btn_customization_toggle',
-				'Customize',
+				'Customise',
 				() => {
 					toggleExclusivePanel(customizationLayer)
 					playOnce(CUSTOMIZE_PULSE_ID)
